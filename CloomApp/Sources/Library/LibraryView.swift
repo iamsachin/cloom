@@ -4,6 +4,7 @@ import SwiftData
 struct LibraryView: View {
     @Query(sort: \VideoRecord.createdAt, order: .reverse) private var videos: [VideoRecord]
     @EnvironmentObject var appState: AppState
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         NavigationSplitView {
@@ -26,7 +27,12 @@ struct LibraryView: View {
                         spacing: 16
                     ) {
                         ForEach(videos, id: \.id) { video in
-                            VideoCardView(video: video)
+                            Button {
+                                openWindow(value: video.id)
+                            } label: {
+                                VideoCardView(video: video)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding()

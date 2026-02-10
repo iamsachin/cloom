@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+# Ensure cargo is on PATH when launched from Xcode (which has a minimal shell env)
+if [ -f "$HOME/.cargo/env" ]; then
+    source "$HOME/.cargo/env"
+fi
+
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 RUST_DIR="$PROJECT_ROOT/cloom-core"
 SWIFT_BRIDGE_DIR="$PROJECT_ROOT/CloomApp/Sources/Bridge/Generated"

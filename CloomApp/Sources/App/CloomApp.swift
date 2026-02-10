@@ -19,6 +19,14 @@ struct CloomApp: App {
         }
         .defaultSize(width: 900, height: 600)
 
+        WindowGroup("Player", for: String.self) { $videoID in
+            if let videoID {
+                PlayerView(videoID: videoID)
+                    .modelContainer(appState.modelContainer)
+            }
+        }
+        .defaultSize(width: 800, height: 500)
+
         Settings {
             Text("Settings will go here")
                 .frame(width: 400, height: 300)
@@ -38,10 +46,20 @@ struct MenuBarView: View {
 
         Divider()
 
-        Button("Start Recording") {
-            // Phase 1B
+        if appState.recordingState.isIdle {
+            Button("Start Recording") {
+                appState.startRecording()
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
+        } else if appState.recordingState.isRecording {
+            Button("Stop Recording") {
+                appState.stopRecording()
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
+        } else {
+            Text(menuStatusText)
+                .font(.caption)
         }
-        .keyboardShortcut("r", modifiers: [.command, .shift])
 
         Divider()
 
@@ -57,5 +75,13 @@ struct MenuBarView: View {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
+    }
+
+    private var menuStatusText: String {
+        switch appState.recordingState {
+        case .countdown(let n): "Starting in \(n)..."
+        case .stopping: "Stopping..."
+        default: ""
+        }
     }
 }

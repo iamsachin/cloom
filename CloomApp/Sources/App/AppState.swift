@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Combine
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "AppState")
@@ -8,12 +9,13 @@ private let logger = Logger(subsystem: "com.cloom.app", category: "AppState")
 final class AppState: ObservableObject {
     let modelContainer: ModelContainer
 
-    /// Greeting from Rust FFI — verifies the bridge works.
     @Published var rustGreeting: String
     @Published var rustVersion: String
 
+    @Published var recordingState: RecordingState = .idle
+    let recordingCoordinator: RecordingCoordinator
+
     init() {
-        // Initialize SwiftData container
         let schema = Schema([
             VideoRecord.self,
             FolderRecord.self,
@@ -35,12 +37,21 @@ final class AppState: ObservableObject {
             fatalError("Failed to initialize SwiftData ModelContainer: \(error)")
         }
 
-        // Verify Rust FFI round-trip
+        self.recordingCoordinator = RecordingCoordinator(modelContainer: modelContainer)
+
         self.rustGreeting = helloFromRust(name: "Cloom")
         self.rustVersion = cloomCoreVersion()
 
-        logger.info("SwiftData container initialized")
-        logger.info("\(self.rustGreeting)")
-        logger.info("cloom-core version: \(self.rustVersion)")
+        recordingCoordinator.$state.assign(to: &$recordingState)
+
+        logger.info("AppState initialized — \(self.rustGreeting), core v\(self.rustVersion)")
+    }
+
+    func startRecording() {
+        recordingCoordinator.startRecording()
+    }
+
+    func stopRecording() {
+        recordingCoordinator.stopRecording()
     }
 }
