@@ -6,7 +6,14 @@ final class RecordingToolbarPanel {
     private var panel: NSPanel?
     private var onStop: (() -> Void)?
 
-    func show(startedAt: Date, onStop: @escaping () -> Void) {
+    func show(
+        startedAt: Date,
+        micEnabled: Bool,
+        cameraEnabled: Bool,
+        onStop: @escaping () -> Void,
+        onToggleMic: @escaping () -> Void,
+        onToggleCamera: @escaping () -> Void
+    ) {
         self.onStop = onStop
         if panel == nil {
             createPanel()
@@ -14,13 +21,20 @@ final class RecordingToolbarPanel {
         guard let panel else { return }
 
         let hostingView = NSHostingView(
-            rootView: RecordingToolbarContentView(startedAt: startedAt, onStop: onStop)
+            rootView: RecordingToolbarContentView(
+                startedAt: startedAt,
+                initialMicEnabled: micEnabled,
+                initialCameraEnabled: cameraEnabled,
+                onStop: onStop,
+                onToggleMic: onToggleMic,
+                onToggleCamera: onToggleCamera
+            )
         )
-        hostingView.frame = NSRect(x: 0, y: 0, width: 200, height: 44)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 44)
         panel.contentView = hostingView
 
         if let screen = NSScreen.main {
-            let x = screen.frame.midX - 100
+            let x = screen.frame.midX - 160
             let y = screen.frame.maxY - 60
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
@@ -35,7 +49,7 @@ final class RecordingToolbarPanel {
 
     private func createPanel() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 44),
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 44),
             styleMask: [.borderless, .nonactivatingPanel, .hudWindow],
             backing: .buffered,
             defer: false
@@ -46,16 +60,38 @@ final class RecordingToolbarPanel {
         panel.hasShadow = true
         panel.isMovableByWindowBackground = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.sharingType = .none  // Don't capture the toolbar itself
         self.panel = panel
     }
 }
 
 private struct RecordingToolbarContentView: View {
     let startedAt: Date
+    @State var micEnabled: Bool
+    @State var cameraEnabled: Bool
     let onStop: () -> Void
+    let onToggleMic: () -> Void
+    let onToggleCamera: () -> Void
+
+    init(
+        startedAt: Date,
+        initialMicEnabled: Bool,
+        initialCameraEnabled: Bool,
+        onStop: @escaping () -> Void,
+        onToggleMic: @escaping () -> Void,
+        onToggleCamera: @escaping () -> Void
+    ) {
+        self.startedAt = startedAt
+        self._micEnabled = State(initialValue: initialMicEnabled)
+        self._cameraEnabled = State(initialValue: initialCameraEnabled)
+        self.onStop = onStop
+        self.onToggleMic = onToggleMic
+        self.onToggleCamera = onToggleCamera
+    }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
+            // Recording indicator + timer
             Circle()
                 .fill(.red)
                 .frame(width: 10, height: 10)
@@ -70,6 +106,34 @@ private struct RecordingToolbarContentView: View {
             Divider()
                 .frame(height: 20)
 
+            // Mic toggle
+            Button {
+                micEnabled.toggle()
+                onToggleMic()
+            } label: {
+                Image(systemName: micEnabled ? "mic.fill" : "mic.slash.fill")
+                    .foregroundStyle(micEnabled ? .white : .red)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .help(micEnabled ? "Mute microphone" : "Unmute microphone")
+
+            // Camera toggle
+            Button {
+                cameraEnabled.toggle()
+                onToggleCamera()
+            } label: {
+                Image(systemName: cameraEnabled ? "video.fill" : "video.slash.fill")
+                    .foregroundStyle(cameraEnabled ? .white : .secondary)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .help(cameraEnabled ? "Turn off camera" : "Turn on camera")
+
+            Divider()
+                .frame(height: 20)
+
+            // Stop button
             Button(action: onStop) {
                 Image(systemName: "stop.fill")
                     .foregroundStyle(.white)

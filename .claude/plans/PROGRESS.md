@@ -30,19 +30,20 @@
 ---
 
 ## Phase 2: All Recording Modes + Webcam
-**Status:** Not started
+**Status:** Complete
+**Date:** 2026-02-11
 
-- [ ] Task 10 — Window/region capture + multi-monitor
-- [ ] Task 11 — Region selection overlay window
-- [ ] Task 12 — Camera service (AVCaptureSession)
-- [ ] Task 13 — Webcam bubble (circular, draggable, resize)
-- [ ] Task 14 — Background blur via Vision segmentation
-- [ ] Task 15 — Virtual backgrounds
-- [ ] Task 16 — Mic + system audio capture
-- [ ] Task 17 — Dual-stream recording (screen + webcam separate files)
-- [ ] Task 18 — Recording controls polish (control bar, mute, timer)
+- [x] Task 10 — Window/region capture + multi-monitor (CaptureMode enum, SCContentFilter per mode, ContentPicker)
+- [x] Task 11 — Region selection overlay window (RegionSelectionWindow with rubber-band NSPanel)
+- [x] Task 12 — Camera service (AVCaptureSession wrapper with 720p, frame callback)
+- [x] Task 13 — Webcam bubble (circular, draggable, resizable NSPanel with sharingType=.none)
+- [x] Task 14 — Background blur via Vision segmentation (VNGeneratePersonSegmentationRequest + CIFilter compositing)
+- [ ] Task 15 — Virtual backgrounds (deferred to later phase)
+- [x] Task 16 — Mic + system audio capture (captureMicrophone on SCStreamConfiguration, live toggle)
+- [x] Task 17 — Dual-stream recording (WebcamRecorder AVAssetWriter, separate MP4, webcamFilePath on VideoRecord)
+- [x] Task 18 — Recording controls polish (mic/camera toggles in toolbar, 320px width, stop button)
 
-**Milestone:** All recording modes work. Webcam bubble with blur/virtual bg.
+**Milestone:** All recording modes (full screen, window, region) work. Webcam bubble with background blur. Dual-stream recording. Mic toggle. Polished toolbar with mic/camera controls.
 
 ---
 

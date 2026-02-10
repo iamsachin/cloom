@@ -15,6 +15,17 @@
 ## Git & Commits
 - At natural checkpoints (feature complete, bug fixed, refactor done, etc.), ask the user if they'd like to commit the changes so far before continuing.
 
+## Progress Tracking
+- After completing each phase, mark it as done in the progress tracker (`.claude/plans/PROGRESS.md`) before moving on.
+
+## Xcode Build & Run
+- After rebuilding (Cmd+R), macOS resets TCC permissions for the debug build. Run these before testing:
+  ```
+  tccutil reset Camera com.cloom.app
+  tccutil reset Microphone com.cloom.app
+  tccutil reset ScreenCapture com.cloom.app
+  ```
+
 ## Tools & Skills
 - Prefer using available skills if they can be helpful for the task.
 - For web search, use the Tavily MCP tool.

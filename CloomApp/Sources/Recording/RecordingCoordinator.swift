@@ -9,6 +9,10 @@ private let logger = Logger(subsystem: "com.cloom.app", category: "RecordingCoor
 @MainActor
 final class RecordingCoordinator: ObservableObject {
     @Published var state: RecordingState = .idle
+    @Published var selectedMode: CaptureMode = .default
+    @Published var micEnabled: Bool = false
+    @Published var cameraEnabled: Bool = false
+    @Published var blurEnabled: Bool = false
 
     private let modelContainer: ModelContainer
     private let captureService = ScreenCaptureService()
@@ -17,6 +21,15 @@ final class RecordingCoordinator: ObservableObject {
 
     private let countdownOverlay = CountdownOverlayWindow()
     private let recordingToolbar = RecordingToolbarPanel()
+    private let regionSelector = RegionSelectionWindow()
+    private let regionHighlight = RegionHighlightOverlay()
+
+    private var cameraService: CameraService?
+    private var webcamBubble: WebcamBubbleWindow?
+    private var personSegmenter: PersonSegmenter?
+
+    private var webcamRecorder: WebcamRecorder?
+    private var currentWebcamURL: URL?
 
     init(modelContainer: ModelContainer) {
         self.modelContainer = modelContainer
@@ -27,19 +40,37 @@ final class RecordingCoordinator: ObservableObject {
 
     func startRecording() {
         guard state.isIdle else { return }
+        selectedMode = .default
+        beginPreRecordingFlow()
+    }
 
-        Task {
-            do {
-                _ = try await SCShareableContent.current
-            } catch {
-                logger.error("Permission check failed: \(error)")
-                showCaptureFailedAlert(error: error)
-                return
+    func startRecordingWithPicker() {
+        guard state.isIdle else { return }
+        state = .selectingContent
+    }
+
+    func selectMode(_ mode: CaptureMode) {
+        selectedMode = mode
+        beginPreRecordingFlow()
+    }
+
+    func startRegionSelection() {
+        regionSelector.show(
+            onSelection: { [weak self] displayID, rect in
+                Task { @MainActor [weak self] in
+                    self?.selectMode(.region(displayID: displayID, rect: rect))
+                }
+            },
+            onCancel: { [weak self] in
+                Task { @MainActor [weak self] in
+                    self?.state = .idle
+                }
             }
-            state = .countdown(3)
-            countdownOverlay.show(count: 3)
-            startCountdownTimer()
-        }
+        )
+    }
+
+    func cancelContentSelection() {
+        state = .idle
     }
 
     func stopRecording() {
@@ -47,22 +78,81 @@ final class RecordingCoordinator: ObservableObject {
 
         state = .stopping
         recordingToolbar.dismiss()
+        regionHighlight.dismiss()
 
         Task {
+            stopWebcam()
+            webcamRecorder?.stop()
+
             do {
                 try await captureService.stopCapture()
             } catch {
                 logger.error("Failed to stop capture: \(error)")
             }
+
             if let url = currentOutputURL {
-                await handleRecordingFinished(outputURL: url)
+                await handleRecordingFinished(outputURL: url, webcamURL: currentWebcamURL)
             } else {
                 state = .idle
             }
         }
     }
 
+    func toggleMic() {
+        micEnabled.toggle()
+        guard state.isRecording else { return }
+        Task {
+            do {
+                try await captureService.updateConfiguration(micEnabled: micEnabled)
+            } catch {
+                logger.error("Failed to toggle mic: \(error)")
+            }
+        }
+    }
+
+    func toggleCamera() {
+        cameraEnabled.toggle()
+        if cameraEnabled {
+            startWebcam()
+        } else {
+            stopWebcam()
+        }
+    }
+
+    func toggleBlur() {
+        blurEnabled.toggle()
+        personSegmenter?.isEnabled = blurEnabled
+    }
+
+    // MARK: - Pre-recording flow
+
+    private func beginPreRecordingFlow() {
+        Task {
+            do {
+                _ = try await SCShareableContent.current
+            } catch {
+                logger.info("Screen capture permission not yet granted — waiting for user")
+                state = .idle
+                return
+            }
+
+            state = .countdown(3)
+            showCountdownOverlay(count: 3)
+            startCountdownTimer()
+        }
+    }
+
     // MARK: - Countdown
+
+    private func showCountdownOverlay(count: Int) {
+        switch selectedMode {
+        case .region(_, let rect):
+            // For region mode, overlay only the selected region area
+            countdownOverlay.show(count: count, region: rect)
+        default:
+            countdownOverlay.show(count: count)
+        }
+    }
 
     private func startCountdownTimer() {
         countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
@@ -82,7 +172,7 @@ final class RecordingCoordinator: ObservableObject {
         let next = remaining - 1
         if next > 0 {
             state = .countdown(next)
-            countdownOverlay.show(count: next)
+            showCountdownOverlay(count: next)
         } else {
             countdownTimer?.invalidate()
             countdownTimer = nil
@@ -103,9 +193,21 @@ final class RecordingCoordinator: ObservableObject {
         let outputURL = desktopURL.appendingPathComponent(filename)
         self.currentOutputURL = outputURL
 
+        if cameraEnabled {
+            let webcamFilename = "Cloom Webcam \(timestamp).mp4"
+            let webcamURL = desktopURL.appendingPathComponent(webcamFilename)
+            self.currentWebcamURL = webcamURL
+        } else {
+            self.currentWebcamURL = nil
+        }
+
         Task {
             do {
-                try await captureService.startCapture(outputURL: outputURL)
+                try await captureService.startCapture(
+                    outputURL: outputURL,
+                    mode: selectedMode,
+                    micEnabled: micEnabled
+                )
             } catch {
                 logger.error("Failed to start capture: \(error)")
                 state = .idle
@@ -113,6 +215,48 @@ final class RecordingCoordinator: ObservableObject {
             }
         }
     }
+
+    // MARK: - Webcam
+
+    private func startWebcam() {
+        if cameraService == nil {
+            cameraService = CameraService()
+        }
+        if blurEnabled && personSegmenter == nil {
+            personSegmenter = PersonSegmenter()
+            personSegmenter?.isEnabled = true
+        }
+        if webcamBubble == nil {
+            webcamBubble = WebcamBubbleWindow()
+        }
+
+        cameraService?.onFrame = { [weak self] pixelBuffer, ciImage in
+            guard let self else { return }
+            Task { @MainActor in
+                self.handleCameraFrame(ciImage, pixelBuffer: pixelBuffer)
+            }
+        }
+        cameraService?.start()
+        webcamBubble?.show()
+    }
+
+    private func stopWebcam() {
+        cameraService?.stop()
+        webcamBubble?.dismiss()
+    }
+
+    private func handleCameraFrame(_ image: CIImage, pixelBuffer: CVPixelBuffer) {
+        var displayImage = image
+
+        if blurEnabled, let segmenter = personSegmenter {
+            displayImage = segmenter.process(image: displayImage, pixelBuffer: pixelBuffer)
+        }
+
+        webcamBubble?.updateFrame(displayImage)
+        webcamRecorder?.appendFrame(pixelBuffer)
+    }
+
+    // MARK: - Alerts
 
     private func showCaptureFailedAlert(error: Error) {
         let alert = NSAlert()
@@ -128,7 +272,7 @@ final class RecordingCoordinator: ObservableObject {
 
     // MARK: - Post-Recording
 
-    private func handleRecordingFinished(outputURL: URL) async {
+    private func handleRecordingFinished(outputURL: URL, webcamURL: URL?) async {
         let asset = AVURLAsset(url: outputURL)
 
         let duration: CMTime
@@ -162,6 +306,13 @@ final class RecordingCoordinator: ObservableObject {
 
         let thumbnailPath = await ThumbnailGenerator.generateThumbnail(for: outputURL) ?? ""
 
+        let recordingType: String
+        if webcamURL != nil {
+            recordingType = "screenAndWebcam"
+        } else {
+            recordingType = "screenOnly"
+        }
+
         let context = ModelContext(modelContainer)
         let durationMs = Int64(duration.seconds * 1000)
         let record = VideoRecord(
@@ -172,7 +323,8 @@ final class RecordingCoordinator: ObservableObject {
             width: width,
             height: height,
             fileSizeBytes: fileSize,
-            recordingType: "screenOnly"
+            recordingType: recordingType,
+            webcamFilePath: webcamURL?.path
         )
         context.insert(record)
         do {
@@ -192,14 +344,36 @@ extension RecordingCoordinator: CaptureServiceDelegate {
     func captureDidStart() {
         let now = Date()
         state = .recording(startedAt: now)
-        recordingToolbar.show(startedAt: now) { [weak self] in
-            self?.stopRecording()
+
+        if case .region(_, let rect) = selectedMode {
+            regionHighlight.show(region: rect)
         }
+
+        if cameraEnabled, let webcamURL = currentWebcamURL {
+            let recorder = WebcamRecorder()
+            do {
+                try recorder.start(outputURL: webcamURL, width: 1280, height: 720)
+                self.webcamRecorder = recorder
+            } catch {
+                logger.error("Failed to start webcam recording: \(error)")
+            }
+        }
+
+        recordingToolbar.show(
+            startedAt: now,
+            micEnabled: micEnabled,
+            cameraEnabled: cameraEnabled,
+            onStop: { [weak self] in self?.stopRecording() },
+            onToggleMic: { [weak self] in self?.toggleMic() },
+            onToggleCamera: { [weak self] in self?.toggleCamera() }
+        )
     }
 
     func captureDidFail(error: Error) {
         logger.error("Recording failed: \(error)")
         recordingToolbar.dismiss()
+        regionHighlight.dismiss()
+        stopWebcam()
         state = .idle
     }
 }

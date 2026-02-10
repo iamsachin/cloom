@@ -2,6 +2,7 @@ import Foundation
 
 enum RecordingState: Equatable {
     case idle
+    case selectingContent
     case countdown(Int)
     case recording(startedAt: Date)
     case stopping
@@ -13,6 +14,10 @@ enum RecordingState: Equatable {
 
     var isIdle: Bool {
         self == .idle
+    }
+
+    var isSelectingContent: Bool {
+        self == .selectingContent
     }
 
     var isBusy: Bool {

@@ -26,7 +26,12 @@ enum ThumbnailGenerator {
                 return nil
             }
 
-            let thumbnailURL = videoURL.deletingPathExtension().appendingPathExtension("jpg")
+            let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+                .appendingPathComponent("com.cloom.app/thumbnails", isDirectory: true)
+            try FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+            let thumbnailURL = cacheDir.appendingPathComponent(
+                videoURL.deletingPathExtension().lastPathComponent + ".jpg"
+            )
             try jpegData.write(to: thumbnailURL)
             return thumbnailURL.path
         } catch {

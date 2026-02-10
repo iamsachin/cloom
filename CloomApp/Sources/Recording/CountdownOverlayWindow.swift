@@ -5,13 +5,24 @@ import AppKit
 final class CountdownOverlayWindow {
     private var panel: NSPanel?
 
-    func show(count: Int) {
+        func show(count: Int) {
         if panel == nil {
-            createPanel()
+            createFullScreenPanel()
         }
         guard let panel else { return }
 
         let hostingView = NSHostingView(rootView: CountdownContentView(count: count))
+        panel.contentView = hostingView
+        panel.orderFrontRegardless()
+    }
+
+    func show(count: Int, region: CGRect) {
+        if panel == nil {
+            createFullScreenPanel()
+        }
+        guard let panel else { return }
+
+        let hostingView = NSHostingView(rootView: CountdownRegionContentView(count: count, region: region))
         panel.contentView = hostingView
         panel.orderFrontRegardless()
     }
@@ -21,7 +32,7 @@ final class CountdownOverlayWindow {
         panel = nil
     }
 
-    private func createPanel() {
+    private func createFullScreenPanel() {
         guard let screen = NSScreen.main else { return }
 
         let panel = NSPanel(
@@ -40,7 +51,7 @@ final class CountdownOverlayWindow {
     }
 }
 
-// MARK: - SwiftUI Content
+// MARK: - Countdown views
 
 private struct CountdownContentView: View {
     let count: Int
@@ -55,5 +66,43 @@ private struct CountdownContentView: View {
                 .contentTransition(.numericText())
                 .animation(.easeInOut(duration: 0.3), value: count)
         }
+    }
+}
+
+private struct CountdownRegionContentView: View {
+    let count: Int
+    let region: CGRect
+
+    var body: some View {
+        GeometryReader { geo in
+            let holeRect = CGRect(
+                x: region.origin.x,
+                y: region.origin.y,
+                width: region.width,
+                height: region.height
+            )
+
+            ZStack {
+                Path { path in
+                    path.addRect(CGRect(origin: .zero, size: geo.size))
+                    path.addRect(holeRect)
+                }
+                .fill(Color.black.opacity(0.4), style: FillStyle(eoFill: true))
+
+                Rectangle()
+                    .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8, 4]))
+                    .foregroundStyle(.white)
+                    .frame(width: region.width, height: region.height)
+                    .position(x: holeRect.midX, y: holeRect.midY)
+
+                Text("\(count)")
+                    .font(.system(size: min(region.width, region.height) * 0.4, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .position(x: holeRect.midX, y: holeRect.midY)
+                    .contentTransition(.numericText())
+                    .animation(.easeInOut(duration: 0.3), value: count)
+            }
+        }
+        .ignoresSafeArea()
     }
 }

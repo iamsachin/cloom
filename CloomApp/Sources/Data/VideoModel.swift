@@ -14,6 +14,7 @@ final class VideoRecord {
     var height: Int32
     var fileSizeBytes: Int64
     var recordingType: String  // "screenAndWebcam" | "screenOnly" | "webcamOnly"
+    var webcamFilePath: String?
 
     // Relationships
     @Relationship var folder: FolderRecord?
@@ -39,7 +40,8 @@ final class VideoRecord {
         height: Int32 = 0,
         fileSizeBytes: Int64 = 0,
         recordingType: String = "screenOnly",
-        hasTranscript: Bool = false
+        hasTranscript: Bool = false,
+        webcamFilePath: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -57,5 +59,6 @@ final class VideoRecord {
         self.comments = []
         self.viewEvents = []
         self.hasTranscript = hasTranscript
+        self.webcamFilePath = webcamFilePath
     }
 }

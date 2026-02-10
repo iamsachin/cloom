@@ -13,6 +13,11 @@ final class AppState: ObservableObject {
     @Published var rustVersion: String
 
     @Published var recordingState: RecordingState = .idle
+    @Published var micEnabled: Bool = false
+    @Published var cameraEnabled: Bool = false
+    @Published var blurEnabled: Bool = false
+    @Published var showContentPicker: Bool = false
+
     let recordingCoordinator: RecordingCoordinator
 
     init() {
@@ -43,15 +48,54 @@ final class AppState: ObservableObject {
         self.rustVersion = cloomCoreVersion()
 
         recordingCoordinator.$state.assign(to: &$recordingState)
+        recordingCoordinator.$micEnabled.assign(to: &$micEnabled)
+        recordingCoordinator.$cameraEnabled.assign(to: &$cameraEnabled)
+        recordingCoordinator.$blurEnabled.assign(to: &$blurEnabled)
 
         logger.info("AppState initialized — \(self.rustGreeting), core v\(self.rustVersion)")
     }
+
+    // MARK: - Recording actions
 
     func startRecording() {
         recordingCoordinator.startRecording()
     }
 
+    func startRecordingWithPicker() {
+        recordingCoordinator.startRecordingWithPicker()
+        showContentPicker = true
+    }
+
     func stopRecording() {
         recordingCoordinator.stopRecording()
+    }
+
+    func selectMode(_ mode: CaptureMode) {
+        showContentPicker = false
+        recordingCoordinator.selectMode(mode)
+    }
+
+    func startRegionSelection() {
+        showContentPicker = false
+        recordingCoordinator.startRegionSelection()
+    }
+
+    func cancelContentSelection() {
+        showContentPicker = false
+        recordingCoordinator.cancelContentSelection()
+    }
+
+    // MARK: - Toggle controls
+
+    func toggleMic() {
+        recordingCoordinator.toggleMic()
+    }
+
+    func toggleCamera() {
+        recordingCoordinator.toggleCamera()
+    }
+
+    func toggleBlur() {
+        recordingCoordinator.toggleBlur()
     }
 }

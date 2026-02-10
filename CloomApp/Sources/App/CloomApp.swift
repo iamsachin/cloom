@@ -27,6 +27,13 @@ struct CloomApp: App {
         }
         .defaultSize(width: 800, height: 500)
 
+        Window("Content Picker", id: "contentPicker") {
+            ContentPickerView()
+                .environmentObject(appState)
+        }
+        .defaultSize(width: 480, height: 400)
+        .windowResizability(.contentSize)
+
         Settings {
             Text("Settings will go here")
                 .frame(width: 400, height: 300)
@@ -47,10 +54,42 @@ struct MenuBarView: View {
         Divider()
 
         if appState.recordingState.isIdle {
-            Button("Start Recording") {
-                appState.startRecording()
+            Menu("Start Recording") {
+                Button("Full Screen") {
+                    appState.startRecording()
+                }
+
+                Button("Choose Window or Display...") {
+                    appState.startRecordingWithPicker()
+                    openWindow(id: "contentPicker")
+                }
+
+                Button("Select Region...") {
+                    appState.recordingCoordinator.cancelContentSelection()
+                    appState.recordingCoordinator.startRegionSelection()
+                }
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
+
+            Divider()
+
+            Toggle("Microphone", isOn: Binding(
+                get: { appState.micEnabled },
+                set: { _ in appState.toggleMic() }
+            ))
+
+            Toggle("Webcam", isOn: Binding(
+                get: { appState.cameraEnabled },
+                set: { _ in appState.toggleCamera() }
+            ))
+
+            if appState.cameraEnabled {
+                Toggle("Background Blur", isOn: Binding(
+                    get: { appState.blurEnabled },
+                    set: { _ in appState.toggleBlur() }
+                ))
+            }
+
         } else if appState.recordingState.isRecording {
             Button("Stop Recording") {
                 appState.stopRecording()
@@ -81,6 +120,7 @@ struct MenuBarView: View {
         switch appState.recordingState {
         case .countdown(let n): "Starting in \(n)..."
         case .stopping: "Stopping..."
+        case .selectingContent: "Selecting content..."
         default: ""
         }
     }
