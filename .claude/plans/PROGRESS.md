@@ -15,15 +15,17 @@
 ---
 
 ## Phase 1B: Walking Skeleton (Record → Library → Play)
-**Status:** Not started
+**Status:** Complete
+**Commit:** `d3d1058`
+**Date:** 2026-02-11
 
-- [ ] Task 5 — Full-screen recording via SCRecordingOutput
-- [ ] Task 6 — Recording state machine (idle → countdown → recording → stopped)
-- [ ] Task 7 — Save recording metadata to SwiftData after recording stops
-- [ ] Task 8 — Library grid view with @Query + video cards
-- [ ] Task 9 — Basic AVPlayer playback
+- [x] Task 5 — Full-screen recording via SCRecordingOutput (ScreenCaptureService + SCStreamOutput)
+- [x] Task 6 — Recording state machine (idle → countdown → recording → stopping) + countdown overlay + toolbar panel
+- [x] Task 7 — Save recording metadata to SwiftData (duration, dimensions, file size, thumbnail)
+- [x] Task 8 — Library grid with click-to-play + real thumbnail loading
+- [x] Task 9 — AVKit VideoPlayer in WindowGroup scene with @Query lookup
 
-**Milestone:** Click menu bar → record screen → stop → see in library → play back.
+**Milestone verified:** Menu bar → Start Recording → 3-2-1 countdown → screen captured to ~/Desktop MP4 → Stop → metadata + thumbnail saved → library shows recording → click opens player.
 
 ---
 
