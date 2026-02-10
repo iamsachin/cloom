@@ -12,6 +12,9 @@
 ## Agents & Research
 - Ask whether to use multiple subagents or background agents when researching something, rather than assuming.
 
+## Git & Commits
+- At natural checkpoints (feature complete, bug fixed, refactor done, etc.), ask the user if they'd like to commit the changes so far before continuing.
+
 ## Tools & Skills
 - Prefer using available skills if they can be helpful for the task.
 - For web search, use the Tavily MCP tool.

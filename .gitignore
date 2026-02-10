@@ -9,6 +9,7 @@ bun.lock
 .env
 .env.local
 .env.*.local
+settings.local.json
 
 # Build outputs
 dist/
