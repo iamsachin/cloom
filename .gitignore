@@ -1,23 +1,23 @@
-# Dependencies
-node_modules/
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-bun.lock
+# Rust
+cloom-core/target/
+
+# Xcode
+Cloom.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+*.xcscmblueprint
+*.xccheckout
+
+# Build artifacts
+libs/
+CloomApp/Sources/Bridge/Generated/
 
 # Environment variables
 .env
 .env.local
 .env.*.local
 settings.local.json
-
-# Build outputs
-dist/
-build/
-out/
-.next/
-.nuxt/
-.vuepress/dist/
 
 # IDE and editor
 .vscode/
@@ -30,17 +30,9 @@ out/
 
 # Testing
 coverage/
-.nyc_output/
-junit.xml
 
 # Logs
-logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
 # Temporary files
 tmp/

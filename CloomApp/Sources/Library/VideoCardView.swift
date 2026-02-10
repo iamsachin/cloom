@@ -1,0 +1,49 @@
+import SwiftUI
+import SwiftData
+
+struct VideoCardView: View {
+    let video: VideoRecord
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Thumbnail placeholder
+            RoundedRectangle(cornerRadius: 8)
+                .fill(.quaternary)
+                .aspectRatio(16 / 9, contentMode: .fit)
+                .overlay {
+                    Image(systemName: "play.circle.fill")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
+                }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(video.title)
+                    .font(.headline)
+                    .lineLimit(2)
+
+                HStack {
+                    Text(formattedDuration)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Text(video.createdAt, style: .relative)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+        .padding(8)
+        .background(.background, in: RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+    }
+
+    private var formattedDuration: String {
+        let totalSeconds = video.durationMs / 1000
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+}
