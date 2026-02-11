@@ -16,7 +16,10 @@ final class RecordingToolbarPanel {
         onToggleMic: @escaping () -> Void,
         onToggleCamera: @escaping () -> Void,
         onPause: @escaping () -> Void = {},
-        onResume: @escaping () -> Void = {}
+        onResume: @escaping () -> Void = {},
+        onToggleAnnotations: @escaping () -> Void = {},
+        onToggleClickEmphasis: @escaping () -> Void = {},
+        onToggleCursorSpotlight: @escaping () -> Void = {}
     ) {
         self.onStop = onStop
         if panel == nil {
@@ -35,14 +38,17 @@ final class RecordingToolbarPanel {
                 onToggleMic: onToggleMic,
                 onToggleCamera: onToggleCamera,
                 onPause: onPause,
-                onResume: onResume
+                onResume: onResume,
+                onToggleAnnotations: onToggleAnnotations,
+                onToggleClickEmphasis: onToggleClickEmphasis,
+                onToggleCursorSpotlight: onToggleCursorSpotlight
             )
         )
-        hostingView.frame = NSRect(x: 0, y: 0, width: 360, height: 44)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 520, height: 44)
         panel.contentView = hostingView
 
         if let screen = NSScreen.main {
-            let x = screen.frame.midX - 180
+            let x = screen.frame.midX - 260
             let y = screen.frame.maxY - 60
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
@@ -57,12 +63,13 @@ final class RecordingToolbarPanel {
 
     private func createPanel() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 360, height: 44),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 44),
             styleMask: [.borderless, .nonactivatingPanel, .hudWindow],
             backing: .buffered,
             defer: false
         )
-        panel.level = .floating
+        // Must be above annotation canvas (.screenSaver = 1000) so toolbar stays clickable during draw mode
+        panel.level = NSWindow.Level(Int(CGShieldingWindowLevel()) + 1)
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
@@ -79,11 +86,17 @@ private struct RecordingToolbarContentView: View {
     @State var isPaused: Bool
     @State var micEnabled: Bool
     @State var cameraEnabled: Bool
+    @State var annotationsEnabled: Bool = false
+    @State var clickEmphasisEnabled: Bool = false
+    @State var spotlightEnabled: Bool = false
     let onStop: () -> Void
     let onToggleMic: () -> Void
     let onToggleCamera: () -> Void
     let onPause: () -> Void
     let onResume: () -> Void
+    let onToggleAnnotations: () -> Void
+    let onToggleClickEmphasis: () -> Void
+    let onToggleCursorSpotlight: () -> Void
 
     init(
         startedAt: Date,
@@ -95,7 +108,10 @@ private struct RecordingToolbarContentView: View {
         onToggleMic: @escaping () -> Void,
         onToggleCamera: @escaping () -> Void,
         onPause: @escaping () -> Void,
-        onResume: @escaping () -> Void
+        onResume: @escaping () -> Void,
+        onToggleAnnotations: @escaping () -> Void,
+        onToggleClickEmphasis: @escaping () -> Void,
+        onToggleCursorSpotlight: @escaping () -> Void
     ) {
         self.startedAt = startedAt
         self.initialPausedDuration = initialPausedDuration
@@ -107,6 +123,9 @@ private struct RecordingToolbarContentView: View {
         self.onToggleCamera = onToggleCamera
         self.onPause = onPause
         self.onResume = onResume
+        self.onToggleAnnotations = onToggleAnnotations
+        self.onToggleClickEmphasis = onToggleClickEmphasis
+        self.onToggleCursorSpotlight = onToggleCursorSpotlight
     }
 
     var body: some View {
@@ -172,6 +191,45 @@ private struct RecordingToolbarContentView: View {
             }
             .buttonStyle(.plain)
             .help(cameraEnabled ? "Turn off camera" : "Turn on camera")
+
+            Divider()
+                .frame(height: 20)
+
+            // Draw annotations toggle
+            Button {
+                annotationsEnabled.toggle()
+                onToggleAnnotations()
+            } label: {
+                Image(systemName: "pencil.tip.crop.circle")
+                    .foregroundStyle(annotationsEnabled ? .blue : .white)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .help(annotationsEnabled ? "Stop drawing" : "Draw on screen")
+
+            // Click emphasis toggle
+            Button {
+                clickEmphasisEnabled.toggle()
+                onToggleClickEmphasis()
+            } label: {
+                Image(systemName: "cursorarrow.click.2")
+                    .foregroundStyle(clickEmphasisEnabled ? .blue : .white)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .help(clickEmphasisEnabled ? "Disable click emphasis" : "Enable click emphasis")
+
+            // Cursor spotlight toggle
+            Button {
+                spotlightEnabled.toggle()
+                onToggleCursorSpotlight()
+            } label: {
+                Image(systemName: "light.max")
+                    .foregroundStyle(spotlightEnabled ? .blue : .white)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .help(spotlightEnabled ? "Disable cursor spotlight" : "Enable cursor spotlight")
 
             Divider()
                 .frame(height: 20)

@@ -26,27 +26,28 @@ final class ScreenCaptureService: NSObject {
     private var stream: SCStream?
     nonisolated(unsafe) var videoWriter: VideoWriter?
     nonisolated(unsafe) var compositor: WebcamCompositor?
+    nonisolated(unsafe) var annotationRenderer: AnnotationRenderer?
     nonisolated(unsafe) var bufferPool: CVPixelBufferPool?
 
     private let outputQueue = DispatchQueue(label: "com.cloom.capture.output", qos: .userInteractive)
 
-    func startCapture(outputURL: URL, mode: CaptureMode, micEnabled: Bool, settings: RecordingSettings, compositor: WebcamCompositor?) async throws {
+    func startCapture(outputURL: URL, mode: CaptureMode, micEnabled: Bool, settings: RecordingSettings, compositor: WebcamCompositor?, annotationRenderer: AnnotationRenderer? = nil) async throws {
         let content = try await SCShareableContent.current
         let filter = try buildFilter(mode: mode, content: content)
         let config = SCStreamConfiguration()
         configureStream(config, mode: mode, content: content)
         configureCommon(config, settings: settings, micEnabled: micEnabled)
-        try await startStream(filter: filter, config: config, outputURL: outputURL, settings: settings, compositor: compositor)
+        try await startStream(filter: filter, config: config, outputURL: outputURL, settings: settings, compositor: compositor, annotationRenderer: annotationRenderer)
         logger.info("Capture started → \(outputURL.lastPathComponent) mode=\(String(describing: mode))")
     }
 
-    func startCapture(outputURL: URL, filter: SCContentFilter, micEnabled: Bool, settings: RecordingSettings, compositor: WebcamCompositor?) async throws {
+    func startCapture(outputURL: URL, filter: SCContentFilter, micEnabled: Bool, settings: RecordingSettings, compositor: WebcamCompositor?, annotationRenderer: AnnotationRenderer? = nil) async throws {
         let config = SCStreamConfiguration()
         let scale = Int(filter.pointPixelScale)
         config.width = Int(filter.contentRect.width) * scale
         config.height = Int(filter.contentRect.height) * scale
         configureCommon(config, settings: settings, micEnabled: micEnabled)
-        try await startStream(filter: filter, config: config, outputURL: outputURL, settings: settings, compositor: compositor)
+        try await startStream(filter: filter, config: config, outputURL: outputURL, settings: settings, compositor: compositor, annotationRenderer: annotationRenderer)
         logger.info("Capture started (picker filter) → \(outputURL.lastPathComponent)")
     }
 
@@ -65,8 +66,9 @@ final class ScreenCaptureService: NSObject {
         }
     }
 
-    private func startStream(filter: SCContentFilter, config: SCStreamConfiguration, outputURL: URL, settings: RecordingSettings, compositor: WebcamCompositor?) async throws {
+    private func startStream(filter: SCContentFilter, config: SCStreamConfiguration, outputURL: URL, settings: RecordingSettings, compositor: WebcamCompositor?, annotationRenderer: AnnotationRenderer? = nil) async throws {
         self.compositor = compositor
+        self.annotationRenderer = annotationRenderer
 
         // Create VideoWriter with the configured dimensions
         let writer = try VideoWriter(
@@ -110,6 +112,7 @@ final class ScreenCaptureService: NSObject {
         self.stream = nil
         self.videoWriter = nil
         self.compositor = nil
+        self.annotationRenderer = nil
         self.bufferPool = nil
     }
 
@@ -224,13 +227,40 @@ extension ScreenCaptureService: SCStreamOutput {
 
         guard let writer = videoWriter else { return }
 
-        // Composite webcam if available
-        let outputBuffer: CVPixelBuffer
+        // Step 1: Composite webcam if available
+        let afterWebcam: CVPixelBuffer
         if let comp = compositor, let pool = bufferPool,
            let composited = comp.composite(screenBuffer: pixelBuffer, bufferPool: pool) {
-            outputBuffer = composited
+            afterWebcam = composited
         } else {
-            outputBuffer = pixelBuffer
+            afterWebcam = pixelBuffer
+        }
+
+        // Step 2: Composite annotations if available
+        let outputBuffer: CVPixelBuffer
+        if let renderer = annotationRenderer, let pool = bufferPool {
+            let screenWidth = CVPixelBufferGetWidth(afterWebcam)
+            let screenHeight = CVPixelBufferGetHeight(afterWebcam)
+            let currentTime = ProcessInfo.processInfo.systemUptime
+
+            if let annotationOverlay = renderer.render(screenWidth: screenWidth, screenHeight: screenHeight, currentTime: currentTime) {
+                let base = CIImage(cvPixelBuffer: afterWebcam)
+                let final = annotationOverlay.composited(over: base)
+
+                var poolBuffer: CVPixelBuffer?
+                let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &poolBuffer)
+                if status == kCVReturnSuccess, let output = poolBuffer {
+                    let extent = CGRect(x: 0, y: 0, width: screenWidth, height: screenHeight)
+                    renderer.ciContext.render(final, to: output, bounds: extent, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)
+                    outputBuffer = output
+                } else {
+                    outputBuffer = afterWebcam
+                }
+            } else {
+                outputBuffer = afterWebcam
+            }
+        } else {
+            outputBuffer = afterWebcam
         }
 
         let wrapped = SendableCVBuffer(buffer: outputBuffer)
