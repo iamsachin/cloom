@@ -9,6 +9,12 @@ final class CameraService: NSObject, @unchecked Sendable {
 
     private var session: AVCaptureSession?
     private let outputQueue = DispatchQueue(label: "com.cloom.camera", qos: .userInteractive)
+    private let preferredDeviceID: String?
+
+    init(deviceID: String? = nil) {
+        self.preferredDeviceID = deviceID
+        super.init()
+    }
 
     func start() {
         guard session == nil else { return }
@@ -55,7 +61,13 @@ final class CameraService: NSObject, @unchecked Sendable {
         let session = AVCaptureSession()
         session.sessionPreset = .hd1280x720
 
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .unspecified) else {
+        let device: AVCaptureDevice?
+        if let id = preferredDeviceID {
+            device = AVCaptureDevice(uniqueID: id)
+        } else {
+            device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .unspecified)
+        }
+        guard let device else {
             logger.error("No camera device available")
             return
         }

@@ -8,11 +8,15 @@ final class RecordingToolbarPanel {
 
     func show(
         startedAt: Date,
+        pausedDuration: TimeInterval = 0,
+        isPaused: Bool = false,
         micEnabled: Bool,
         cameraEnabled: Bool,
         onStop: @escaping () -> Void,
         onToggleMic: @escaping () -> Void,
-        onToggleCamera: @escaping () -> Void
+        onToggleCamera: @escaping () -> Void,
+        onPause: @escaping () -> Void = {},
+        onResume: @escaping () -> Void = {}
     ) {
         self.onStop = onStop
         if panel == nil {
@@ -23,18 +27,22 @@ final class RecordingToolbarPanel {
         let hostingView = NSHostingView(
             rootView: RecordingToolbarContentView(
                 startedAt: startedAt,
+                initialPausedDuration: pausedDuration,
+                initialIsPaused: isPaused,
                 initialMicEnabled: micEnabled,
                 initialCameraEnabled: cameraEnabled,
                 onStop: onStop,
                 onToggleMic: onToggleMic,
-                onToggleCamera: onToggleCamera
+                onToggleCamera: onToggleCamera,
+                onPause: onPause,
+                onResume: onResume
             )
         )
-        hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 44)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 360, height: 44)
         panel.contentView = hostingView
 
         if let screen = NSScreen.main {
-            let x = screen.frame.midX - 160
+            let x = screen.frame.midX - 180
             let y = screen.frame.maxY - 60
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
@@ -49,7 +57,7 @@ final class RecordingToolbarPanel {
 
     private func createPanel() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 320, height: 44),
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 44),
             styleMask: [.borderless, .nonactivatingPanel, .hudWindow],
             backing: .buffered,
             defer: false
@@ -60,48 +68,83 @@ final class RecordingToolbarPanel {
         panel.hasShadow = true
         panel.isMovableByWindowBackground = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.sharingType = .none  // Don't capture the toolbar itself
+        panel.sharingType = .none
         self.panel = panel
     }
 }
 
 private struct RecordingToolbarContentView: View {
     let startedAt: Date
+    let initialPausedDuration: TimeInterval
+    @State var isPaused: Bool
     @State var micEnabled: Bool
     @State var cameraEnabled: Bool
     let onStop: () -> Void
     let onToggleMic: () -> Void
     let onToggleCamera: () -> Void
+    let onPause: () -> Void
+    let onResume: () -> Void
 
     init(
         startedAt: Date,
+        initialPausedDuration: TimeInterval,
+        initialIsPaused: Bool,
         initialMicEnabled: Bool,
         initialCameraEnabled: Bool,
         onStop: @escaping () -> Void,
         onToggleMic: @escaping () -> Void,
-        onToggleCamera: @escaping () -> Void
+        onToggleCamera: @escaping () -> Void,
+        onPause: @escaping () -> Void,
+        onResume: @escaping () -> Void
     ) {
         self.startedAt = startedAt
+        self.initialPausedDuration = initialPausedDuration
+        self._isPaused = State(initialValue: initialIsPaused)
         self._micEnabled = State(initialValue: initialMicEnabled)
         self._cameraEnabled = State(initialValue: initialCameraEnabled)
         self.onStop = onStop
         self.onToggleMic = onToggleMic
         self.onToggleCamera = onToggleCamera
+        self.onPause = onPause
+        self.onResume = onResume
     }
 
     var body: some View {
         HStack(spacing: 10) {
             // Recording indicator + timer
             Circle()
-                .fill(.red)
+                .fill(isPaused ? .orange : .red)
                 .frame(width: 10, height: 10)
 
-            TimelineView(.periodic(from: startedAt, by: 1)) { context in
-                let elapsed = context.date.timeIntervalSince(startedAt)
-                Text(formatElapsed(elapsed))
+            if isPaused {
+                Text("Paused")
                     .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.orange)
+            } else {
+                TimelineView(.periodic(from: startedAt, by: 1)) { context in
+                    let elapsed = context.date.timeIntervalSince(startedAt) - initialPausedDuration
+                    Text(formatElapsed(elapsed))
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundStyle(.white)
+                }
             }
+
+            // Pause/Resume button
+            Button {
+                if isPaused {
+                    isPaused = false
+                    onResume()
+                } else {
+                    isPaused = true
+                    onPause()
+                }
+            } label: {
+                Image(systemName: isPaused ? "play.fill" : "pause.fill")
+                    .foregroundStyle(.white)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .help(isPaused ? "Resume recording" : "Pause recording")
 
             Divider()
                 .frame(height: 20)

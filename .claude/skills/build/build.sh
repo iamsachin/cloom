@@ -23,6 +23,12 @@ WARNINGS=$(echo "$BUILD_OUTPUT" | grep -c "warning:" 2>/dev/null || echo "0")
 if echo "$BUILD_OUTPUT" | grep -q "BUILD SUCCEEDED"; then
     echo ""
     echo "BUILD SUCCEEDED ($WARNINGS warnings)"
+    echo ""
+    echo "==> Resetting TCC permissions for debug build..."
+    tccutil reset Camera com.cloom.app 2>/dev/null || true
+    tccutil reset Microphone com.cloom.app 2>/dev/null || true
+    tccutil reset ScreenCapture com.cloom.app 2>/dev/null || true
+    echo "    TCC reset done (Camera, Microphone, ScreenCapture)"
 else
     echo ""
     echo "BUILD FAILED ($ERRORS errors, $WARNINGS warnings)"
