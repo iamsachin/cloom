@@ -71,15 +71,19 @@
 ---
 
 ## Phase 4: Drawing & Annotations
-**Status:** Not started
+**Status:** Complete
+**Branch:** `feature/phase3-compositing-export`
+**Date:** 2026-02-12
 
-- [ ] Task 27 — Drawing canvas (pen, highlighter, arrow, shapes)
-- [ ] Task 28 — Eraser, undo, color picker, stroke width
-- [ ] Task 29 — Mouse click emphasis (ripple)
-- [ ] Task 30 — Cursor spotlight
-- [ ] Task 31 — AnnotationRenderer: burn annotations into export via CoreImage
+- [x] Task 27 — Drawing canvas (pen, highlighter, arrow, shapes) + AnnotationCanvasWindow/View with transparent NSPanel overlay
+- [x] Task 28 — Eraser, undo, color picker, stroke width + AnnotationToolbarPanel with SwiftUI tool/color/width controls
+- [x] Task 29 — Mouse click emphasis (ripple) via ClickEmphasisMonitor + CIRadialGradient expanding ring
+- [x] Task 30 — Cursor spotlight via CursorSpotlightMonitor + CIRadialGradient dim overlay
+- [x] Task 31 — AnnotationRenderer: burn annotations into export via CoreImage (composited in handleScreenFrame after webcam)
 
-**Milestone:** Draw during recording. Annotations burned into exported video.
+**Milestone verified:** Draw on screen during recording with pen/highlighter/arrow/line/rect/ellipse/eraser. Annotations burned into recorded MP4 in real-time. Click emphasis ripples and cursor spotlight toggle from toolbar. Undo/clear all. Escape key exits draw mode.
+
+**Post-completion fixes:** Fixed toolbar z-order (recording + annotation toolbars above canvas via CGShieldingWindowLevel). Added Escape key to exit draw mode. Fixed real-time stroke rendering in video (active stroke pushed to store during drag, not just on mouse-up).
 
 ---
 

@@ -13,6 +13,9 @@ final class RecordingCoordinator: ObservableObject {
     @Published var micEnabled: Bool = false
     @Published var cameraEnabled: Bool = false
     @Published var blurEnabled: Bool = false
+    @Published var annotationsEnabled: Bool = false
+    @Published var clickEmphasisEnabled: Bool = false
+    @Published var cursorSpotlightEnabled: Bool = false
 
     private let modelContainer: ModelContainer
     private let captureService = ScreenCaptureService()
@@ -28,6 +31,14 @@ final class RecordingCoordinator: ObservableObject {
     private var webcamBubble: WebcamBubbleWindow?
     private var personSegmenter: PersonSegmenter?
     private var compositor: WebcamCompositor?
+
+    // Annotations
+    private var annotationStore: AnnotationStore?
+    private var annotationRenderer: AnnotationRenderer?
+    private var annotationCanvas: AnnotationCanvasWindow?
+    private var annotationToolbar: AnnotationToolbarPanel?
+    private var clickEmphasisMonitor: ClickEmphasisMonitor?
+    private var cursorSpotlightMonitor: CursorSpotlightMonitor?
 
     private let systemPicker = SystemContentPicker()
     private var pendingFilter: SCContentFilter?
@@ -105,6 +116,7 @@ final class RecordingCoordinator: ObservableObject {
         state = .stopping
         recordingToolbar.dismiss()
         regionHighlight.dismiss()
+        cleanupAnnotations()
 
         Task {
             stopWebcam()
@@ -214,6 +226,16 @@ final class RecordingCoordinator: ObservableObject {
             activeCompositor = nil
         }
 
+        // Re-wire annotation renderer for new segment (store persists)
+        let activeRenderer: AnnotationRenderer?
+        if let store = annotationStore {
+            let renderer = AnnotationRenderer(store: store)
+            self.annotationRenderer = renderer
+            activeRenderer = renderer
+        } else {
+            activeRenderer = nil
+        }
+
         Task {
             do {
                 if let filter = currentFilter {
@@ -222,7 +244,8 @@ final class RecordingCoordinator: ObservableObject {
                         filter: filter,
                         micEnabled: micEnabled,
                         settings: settings,
-                        compositor: activeCompositor
+                        compositor: activeCompositor,
+                        annotationRenderer: activeRenderer
                     )
                 } else {
                     try await captureService.startCapture(
@@ -230,23 +253,13 @@ final class RecordingCoordinator: ObservableObject {
                         mode: selectedMode,
                         micEnabled: micEnabled,
                         settings: settings,
-                        compositor: activeCompositor
+                        compositor: activeCompositor,
+                        annotationRenderer: activeRenderer
                     )
                 }
                 state = .recording(startedAt: startedAt)
 
-                recordingToolbar.show(
-                    startedAt: startedAt,
-                    pausedDuration: pausedDuration,
-                    isPaused: false,
-                    micEnabled: micEnabled,
-                    cameraEnabled: cameraEnabled,
-                    onStop: { [weak self] in self?.stopRecording() },
-                    onToggleMic: { [weak self] in self?.toggleMic() },
-                    onToggleCamera: { [weak self] in self?.toggleCamera() },
-                    onPause: { [weak self] in self?.pauseRecording() },
-                    onResume: { [weak self] in self?.resumeRecording() }
-                )
+                showRecordingToolbar(startedAt: startedAt)
             } catch {
                 logger.error("Failed to resume capture: \(error)")
                 state = .idle
@@ -278,6 +291,155 @@ final class RecordingCoordinator: ObservableObject {
     func toggleBlur() {
         blurEnabled.toggle()
         personSegmenter?.isEnabled = blurEnabled
+    }
+
+    func toggleAnnotations() {
+        annotationsEnabled.toggle()
+        if annotationsEnabled {
+            showAnnotationCanvas()
+        } else {
+            hideAnnotationCanvas()
+        }
+    }
+
+    func toggleClickEmphasis() {
+        clickEmphasisEnabled.toggle()
+        if clickEmphasisEnabled {
+            if let store = annotationStore {
+                if clickEmphasisMonitor == nil {
+                    clickEmphasisMonitor = ClickEmphasisMonitor(store: store)
+                }
+                clickEmphasisMonitor?.start(captureArea: getCaptureAreaScreenRect())
+            }
+        } else {
+            clickEmphasisMonitor?.stop()
+        }
+    }
+
+    func toggleCursorSpotlight() {
+        cursorSpotlightEnabled.toggle()
+        if cursorSpotlightEnabled {
+            if let store = annotationStore {
+                if cursorSpotlightMonitor == nil {
+                    cursorSpotlightMonitor = CursorSpotlightMonitor(store: store)
+                }
+                store.setSpotlightEnabled(true)
+                cursorSpotlightMonitor?.start(captureArea: getCaptureAreaScreenRect())
+            }
+        } else {
+            annotationStore?.setSpotlightEnabled(false)
+            cursorSpotlightMonitor?.stop()
+        }
+    }
+
+    /// Returns the screen rect of the current capture area for normalizing mouse positions.
+    private func getCaptureAreaScreenRect() -> CGRect {
+        switch selectedMode {
+        case .fullScreen(let displayID):
+            for screen in NSScreen.screens {
+                let key = NSDeviceDescriptionKey("NSScreenNumber")
+                if let screenID = screen.deviceDescription[key] as? CGDirectDisplayID, screenID == displayID {
+                    return screen.frame
+                }
+            }
+            return NSScreen.main?.frame ?? .zero
+
+        case .window:
+            // For window captures, use the main screen as approximation
+            return NSScreen.main?.frame ?? .zero
+
+        case .region(_, let rect):
+            return rect
+        }
+    }
+
+    // MARK: - Annotation Canvas
+
+    private func showAnnotationCanvas() {
+        guard let store = annotationStore else { return }
+        guard let screen = NSScreen.main else { return }
+
+        if annotationCanvas == nil {
+            annotationCanvas = AnnotationCanvasWindow()
+        }
+        annotationCanvas?.onEscape = { [weak self] in
+            self?.annotationsEnabled = false
+            self?.hideAnnotationCanvas()
+        }
+        annotationCanvas?.isDrawingEnabled = true
+        annotationCanvas?.show(covering: screen, store: store)
+
+        // Show annotation toolbar
+        if annotationToolbar == nil {
+            annotationToolbar = AnnotationToolbarPanel()
+        }
+        annotationToolbar?.show(
+            currentTool: annotationCanvas?.currentTool ?? .pen,
+            currentColor: annotationCanvas?.currentColor ?? .red,
+            currentLineWidth: annotationCanvas?.currentLineWidth ?? 3.0,
+            onToolChanged: { [weak self] tool in
+                self?.annotationCanvas?.currentTool = tool
+            },
+            onColorChanged: { [weak self] color in
+                self?.annotationCanvas?.currentColor = color
+            },
+            onLineWidthChanged: { [weak self] width in
+                self?.annotationCanvas?.currentLineWidth = width
+            },
+            onUndo: { [weak self] in
+                self?.annotationStore?.undo()
+                self?.annotationCanvas?.canvasView?.needsDisplay = true
+            },
+            onClearAll: { [weak self] in
+                self?.annotationStore?.clearAll()
+                self?.annotationCanvas?.canvasView?.needsDisplay = true
+            },
+            onDismiss: { [weak self] in
+                self?.annotationsEnabled = false
+                self?.hideAnnotationCanvas()
+            }
+        )
+    }
+
+    private func hideAnnotationCanvas() {
+        annotationCanvas?.isDrawingEnabled = false
+        annotationToolbar?.dismiss()
+    }
+
+    private func cleanupAnnotations() {
+        annotationsEnabled = false
+        clickEmphasisEnabled = false
+        cursorSpotlightEnabled = false
+        annotationCanvas?.dismiss()
+        annotationCanvas = nil
+        annotationToolbar?.dismiss()
+        annotationToolbar = nil
+        clickEmphasisMonitor?.stop()
+        clickEmphasisMonitor = nil
+        cursorSpotlightMonitor?.stop()
+        cursorSpotlightMonitor = nil
+        annotationStore = nil
+        annotationRenderer = nil
+    }
+
+    // MARK: - Recording Toolbar
+
+    private func showRecordingToolbar(startedAt: Date) {
+        recordingToolbar.show(
+            startedAt: startedAt,
+            pausedDuration: pausedDuration,
+            isPaused: false,
+            micEnabled: micEnabled,
+            cameraEnabled: cameraEnabled,
+            onStop: { [weak self] in self?.stopRecording() },
+            onToggleMic: { [weak self] in self?.toggleMic() },
+            onToggleCamera: { [weak self] in self?.toggleCamera() },
+            onPause: { [weak self] in self?.pauseRecording() },
+            onResume: { [weak self] in self?.resumeRecording() },
+            onToggleAnnotations: { [weak self] in self?.toggleAnnotations() },
+            onToggleClickEmphasis: { [weak self] in self?.toggleClickEmphasis() },
+            onToggleCursorSpotlight: { [weak self] in self?.toggleCursorSpotlight() }
+        )
     }
 
     // MARK: - Pre-recording flow
@@ -379,6 +541,12 @@ final class RecordingCoordinator: ObservableObject {
             activeCompositor = nil
         }
 
+        // Create annotation store and renderer
+        let store = AnnotationStore()
+        self.annotationStore = store
+        let renderer = AnnotationRenderer(store: store)
+        self.annotationRenderer = renderer
+
         Task {
             do {
                 if let filter = pendingFilter {
@@ -388,7 +556,8 @@ final class RecordingCoordinator: ObservableObject {
                         filter: filter,
                         micEnabled: micEnabled,
                         settings: settings,
-                        compositor: activeCompositor
+                        compositor: activeCompositor,
+                        annotationRenderer: renderer
                     )
                     pendingFilter = nil
                 } else {
@@ -398,7 +567,8 @@ final class RecordingCoordinator: ObservableObject {
                         mode: selectedMode,
                         micEnabled: micEnabled,
                         settings: settings,
-                        compositor: activeCompositor
+                        compositor: activeCompositor,
+                        annotationRenderer: renderer
                     )
                 }
             } catch {
@@ -555,24 +725,14 @@ extension RecordingCoordinator: CaptureServiceDelegate {
             regionHighlight.show(region: rect)
         }
 
-        recordingToolbar.show(
-            startedAt: now,
-            pausedDuration: pausedDuration,
-            isPaused: false,
-            micEnabled: micEnabled,
-            cameraEnabled: cameraEnabled,
-            onStop: { [weak self] in self?.stopRecording() },
-            onToggleMic: { [weak self] in self?.toggleMic() },
-            onToggleCamera: { [weak self] in self?.toggleCamera() },
-            onPause: { [weak self] in self?.pauseRecording() },
-            onResume: { [weak self] in self?.resumeRecording() }
-        )
+        showRecordingToolbar(startedAt: now)
     }
 
     func captureDidFail(error: Error) {
         logger.error("Recording failed: \(error)")
         recordingToolbar.dismiss()
         regionHighlight.dismiss()
+        cleanupAnnotations()
         stopWebcam()
         state = .idle
     }
