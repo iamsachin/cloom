@@ -50,18 +50,23 @@
 ---
 
 ## Phase 3: Compositing & Export Pipeline
-**Status:** Not started
+**Status:** Complete
+**PR:** [#3](https://github.com/iamsachin/cloom/pull/3)
+**Branch:** `feature/phase3-compositing-export`
+**Date:** 2026-02-11
 
-- [ ] Task 19 — CompositingService: AVMutableComposition + AVMutableVideoComposition
-- [ ] Task 20 — WebcamCompositor: circular webcam overlay on screen frames
-- [ ] Task 21 — Audio mixing via AVMutableAudioMix (system audio + mic)
-- [ ] Task 22 — Post-recording composite flow: screen + webcam → single MP4
-- [ ] Task 23 — Pause/resume: segment stitching
-- [ ] Task 24 — MP4ExportService: apply EditDecisionList
-- [ ] Task 25 — Export progress reporting
-- [ ] Task 26 — Settings UI (quality, FPS, codec, devices)
+- [x] Task 19 — RecordingSettings + VideoQuality enum (FPS, bitrate, device selection via @AppStorage)
+- [x] Task 20 — VideoWriter actor (AVAssetWriter, HEVC encoding, PTS normalization, dual audio inputs)
+- [x] Task 21 — WebcamCompositor (real-time circular overlay via Metal-backed CIContext, dynamic position tracking)
+- [x] Task 22 — ScreenCaptureService refactor (SCRecordingOutput → SCStreamOutput per-frame pipeline)
+- [x] Task 23 — RecordingCoordinator refactor (single-file composited output, no separate webcam file)
+- [x] Task 24 — Pause/resume with segment-based recording + SegmentStitcher (AVMutableComposition)
+- [x] Task 25 — Export progress UI (ExportProgressWindow + PlayerView export dialog with quality picker)
+- [x] Task 26 — Settings UI (SettingsView with FPS, quality, mic/camera device pickers)
 
-**Milestone:** Composited output with webcam. Pause/resume works. MP4 export with EDL.
+**Milestone verified:** Webcam overlay composited in real-time into single MP4. Pause/resume stitches segments. Export with quality selection. Settings persist via @AppStorage. Permissions requested on app startup.
+
+**Post-completion fixes:** Click-to-cycle bubble size (replaced jittery scroll resize), Loom-style shadow on webcam bubble, drag vs click detection via screen coordinates, TCC reset in build skill.
 
 ---
 
