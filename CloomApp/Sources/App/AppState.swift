@@ -16,7 +16,7 @@ final class AppState: ObservableObject {
     @Published var micEnabled: Bool = false
     @Published var cameraEnabled: Bool = false
     @Published var blurEnabled: Bool = false
-    @Published var showContentPicker: Bool = false
+    // Content picker is now handled by system SCContentSharingPicker
 
     let recordingCoordinator: RecordingCoordinator
 
@@ -63,7 +63,6 @@ final class AppState: ObservableObject {
 
     func startRecordingWithPicker() {
         recordingCoordinator.startRecordingWithPicker()
-        showContentPicker = true
     }
 
     func stopRecording() {
@@ -71,17 +70,14 @@ final class AppState: ObservableObject {
     }
 
     func selectMode(_ mode: CaptureMode) {
-        showContentPicker = false
         recordingCoordinator.selectMode(mode)
     }
 
     func startRegionSelection() {
-        showContentPicker = false
         recordingCoordinator.startRegionSelection()
     }
 
     func cancelContentSelection() {
-        showContentPicker = false
         recordingCoordinator.cancelContentSelection()
     }
 
