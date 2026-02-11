@@ -27,12 +27,20 @@ final class RecordingCoordinator: ObservableObject {
     private var cameraService: CameraService?
     private var webcamBubble: WebcamBubbleWindow?
     private var personSegmenter: PersonSegmenter?
-
-    private var webcamRecorder: WebcamRecorder?
-    private var currentWebcamURL: URL?
+    private var compositor: WebcamCompositor?
 
     private let systemPicker = SystemContentPicker()
     private var pendingFilter: SCContentFilter?
+
+    // Pause/resume segment tracking
+    private var segmentURLs: [URL] = []
+    private var segmentIndex: Int = 0
+    private var currentSettings: RecordingSettings?
+    private var currentFilter: SCContentFilter?
+    private var pausedDuration: TimeInterval = 0
+    private var recordingStartedAt: Date?
+    private let stitcher = SegmentStitcher()
+    private var exportProgressWindow: ExportProgressWindow?
 
     init(modelContainer: ModelContainer) {
         self.modelContainer = modelContainer
@@ -91,25 +99,156 @@ final class RecordingCoordinator: ObservableObject {
     }
 
     func stopRecording() {
-        guard state.isRecording else { return }
+        guard state.isActiveOrPaused else { return }
 
+        let wasPaused = state.isPaused
         state = .stopping
         recordingToolbar.dismiss()
         regionHighlight.dismiss()
 
         Task {
             stopWebcam()
-            webcamRecorder?.stop()
 
+            // If not paused, stop the current capture to finalize the segment
+            if !wasPaused {
+                do {
+                    try await captureService.stopCapture()
+                } catch {
+                    logger.error("Failed to stop capture: \(error)")
+                }
+            }
+
+            guard let finalURL = currentOutputURL else {
+                state = .idle
+                return
+            }
+
+            if segmentURLs.count <= 1 {
+                // Single segment — move temp file to final destination
+                if let segmentURL = segmentURLs.first {
+                    do {
+                        try FileManager.default.moveItem(at: segmentURL, to: finalURL)
+                    } catch {
+                        logger.error("Failed to move segment to final URL: \(error)")
+                    }
+                }
+                await handleRecordingFinished(outputURL: finalURL)
+            } else {
+                // Multiple segments — stitch into final URL
+                let progressWindow = ExportProgressWindow()
+                self.exportProgressWindow = progressWindow
+                progressWindow.show(message: "Stitching segments...")
+
+                do {
+                    try await stitcher.stitch(segments: segmentURLs, to: finalURL) { progress in
+                        Task { @MainActor in
+                            progressWindow.updateProgress(progress)
+                        }
+                    }
+                    progressWindow.dismiss()
+                    await handleRecordingFinished(outputURL: finalURL)
+                } catch {
+                    progressWindow.dismiss()
+                    logger.error("Failed to stitch segments: \(error)")
+                    state = .idle
+                }
+                self.exportProgressWindow = nil
+            }
+
+            segmentURLs = []
+            segmentIndex = 0
+            pausedDuration = 0
+            recordingStartedAt = nil
+            currentSettings = nil
+            currentFilter = nil
+        }
+    }
+
+    func pauseRecording() {
+        guard case .recording(let startedAt) = state else { return }
+
+        state = .paused(startedAt: startedAt, pausedAt: Date())
+
+        Task {
             do {
                 try await captureService.stopCapture()
             } catch {
-                logger.error("Failed to stop capture: \(error)")
+                logger.error("Failed to stop capture for pause: \(error)")
             }
+        }
 
-            if let url = currentOutputURL {
-                await handleRecordingFinished(outputURL: url, webcamURL: currentWebcamURL)
-            } else {
+        recordingToolbar.dismiss()
+    }
+
+    func resumeRecording() {
+        guard case .paused(let startedAt, let pausedAt) = state else { return }
+
+        pausedDuration += Date().timeIntervalSince(pausedAt)
+        segmentIndex += 1
+
+        let settings = currentSettings ?? RecordingSettings.fromDefaults()
+        let segmentURL = makeSegmentURL()
+        segmentURLs.append(segmentURL)
+
+        let activeCompositor: WebcamCompositor?
+        if cameraEnabled {
+            let comp = WebcamCompositor()
+            self.compositor = comp
+            activeCompositor = comp
+            // Re-wire camera frames and layout to new compositor
+            webcamBubble?.onLayoutChanged = { [weak self] layout in
+                self?.compositor?.updateBubbleLayout(layout)
+            }
+            // Send current layout immediately
+            if let bubble = webcamBubble {
+                comp.updateBubbleLayout(bubble.currentLayout())
+            }
+            cameraService?.onFrame = { [weak self] pixelBuffer, ciImage in
+                guard let self else { return }
+                self.compositor?.updateWebcamFrame(pixelBuffer)
+                Task { @MainActor in
+                    self.handleCameraFrameForPreview(ciImage, pixelBuffer: pixelBuffer)
+                }
+            }
+        } else {
+            activeCompositor = nil
+        }
+
+        Task {
+            do {
+                if let filter = currentFilter {
+                    try await captureService.startCapture(
+                        outputURL: segmentURL,
+                        filter: filter,
+                        micEnabled: micEnabled,
+                        settings: settings,
+                        compositor: activeCompositor
+                    )
+                } else {
+                    try await captureService.startCapture(
+                        outputURL: segmentURL,
+                        mode: selectedMode,
+                        micEnabled: micEnabled,
+                        settings: settings,
+                        compositor: activeCompositor
+                    )
+                }
+                state = .recording(startedAt: startedAt)
+
+                recordingToolbar.show(
+                    startedAt: startedAt,
+                    pausedDuration: pausedDuration,
+                    isPaused: false,
+                    micEnabled: micEnabled,
+                    cameraEnabled: cameraEnabled,
+                    onStop: { [weak self] in self?.stopRecording() },
+                    onToggleMic: { [weak self] in self?.toggleMic() },
+                    onToggleCamera: { [weak self] in self?.toggleCamera() },
+                    onPause: { [weak self] in self?.pauseRecording() },
+                    onResume: { [weak self] in self?.resumeRecording() }
+                )
+            } catch {
+                logger.error("Failed to resume capture: \(error)")
                 state = .idle
             }
         }
@@ -144,7 +283,6 @@ final class RecordingCoordinator: ObservableObject {
     // MARK: - Pre-recording flow
 
     private func beginPreRecordingFlow() {
-        // When using the system picker, we already have a filter — skip permission check
         if pendingFilter == nil {
             Task {
                 do {
@@ -170,7 +308,6 @@ final class RecordingCoordinator: ObservableObject {
     private func showCountdownOverlay(count: Int) {
         switch selectedMode {
         case .region(_, let rect):
-            // For region mode, overlay only the selected region area
             countdownOverlay.show(count: count, region: rect)
         default:
             countdownOverlay.show(count: count)
@@ -216,28 +353,52 @@ final class RecordingCoordinator: ObservableObject {
         let outputURL = desktopURL.appendingPathComponent(filename)
         self.currentOutputURL = outputURL
 
+        let settings = RecordingSettings.fromDefaults()
+        self.currentSettings = settings
+
+        // Reset segment tracking
+        segmentURLs = []
+        segmentIndex = 0
+        pausedDuration = 0
+
+        // First segment writes directly to the final URL (if no pauses, it stays)
+        let segmentURL = makeSegmentURL()
+        segmentURLs.append(segmentURL)
+
+        // Create compositor if camera is enabled
+        let activeCompositor: WebcamCompositor?
         if cameraEnabled {
-            let webcamFilename = "Cloom Webcam \(timestamp).mp4"
-            let webcamURL = desktopURL.appendingPathComponent(webcamFilename)
-            self.currentWebcamURL = webcamURL
+            let comp = WebcamCompositor()
+            self.compositor = comp
+            activeCompositor = comp
+            // Seed with current bubble position
+            if let bubble = webcamBubble {
+                comp.updateBubbleLayout(bubble.currentLayout())
+            }
         } else {
-            self.currentWebcamURL = nil
+            activeCompositor = nil
         }
 
         Task {
             do {
                 if let filter = pendingFilter {
+                    self.currentFilter = filter
                     try await captureService.startCapture(
-                        outputURL: outputURL,
+                        outputURL: segmentURL,
                         filter: filter,
-                        micEnabled: micEnabled
+                        micEnabled: micEnabled,
+                        settings: settings,
+                        compositor: activeCompositor
                     )
                     pendingFilter = nil
                 } else {
+                    self.currentFilter = nil
                     try await captureService.startCapture(
-                        outputURL: outputURL,
+                        outputURL: segmentURL,
                         mode: selectedMode,
-                        micEnabled: micEnabled
+                        micEnabled: micEnabled,
+                        settings: settings,
+                        compositor: activeCompositor
                     )
                 }
             } catch {
@@ -248,11 +409,19 @@ final class RecordingCoordinator: ObservableObject {
         }
     }
 
+    private func makeSegmentURL() -> URL {
+        let tempDir = FileManager.default.temporaryDirectory
+        let segmentFilename = "cloom_segment_\(segmentIndex)_\(UUID().uuidString).mp4"
+        return tempDir.appendingPathComponent(segmentFilename)
+    }
+
     // MARK: - Webcam
 
     private func startWebcam() {
+        let settings = RecordingSettings.fromDefaults()
+
         if cameraService == nil {
-            cameraService = CameraService()
+            cameraService = CameraService(deviceID: settings.cameraDeviceID)
         }
         if blurEnabled && personSegmenter == nil {
             personSegmenter = PersonSegmenter()
@@ -262,10 +431,19 @@ final class RecordingCoordinator: ObservableObject {
             webcamBubble = WebcamBubbleWindow()
         }
 
+        // Wire bubble layout changes to compositor
+        webcamBubble?.onLayoutChanged = { [weak self] layout in
+            self?.compositor?.updateBubbleLayout(layout)
+        }
+
         cameraService?.onFrame = { [weak self] pixelBuffer, ciImage in
             guard let self else { return }
+
+            // Update compositor frame (thread-safe, called from camera queue)
+            self.compositor?.updateWebcamFrame(pixelBuffer)
+
             Task { @MainActor in
-                self.handleCameraFrame(ciImage, pixelBuffer: pixelBuffer)
+                self.handleCameraFrameForPreview(ciImage, pixelBuffer: pixelBuffer)
             }
         }
         cameraService?.start()
@@ -275,9 +453,10 @@ final class RecordingCoordinator: ObservableObject {
     private func stopWebcam() {
         cameraService?.stop()
         webcamBubble?.dismiss()
+        compositor = nil
     }
 
-    private func handleCameraFrame(_ image: CIImage, pixelBuffer: CVPixelBuffer) {
+    private func handleCameraFrameForPreview(_ image: CIImage, pixelBuffer: CVPixelBuffer) {
         var displayImage = image
 
         if blurEnabled, let segmenter = personSegmenter {
@@ -285,7 +464,6 @@ final class RecordingCoordinator: ObservableObject {
         }
 
         webcamBubble?.updateFrame(displayImage)
-        webcamRecorder?.appendFrame(pixelBuffer)
     }
 
     // MARK: - Alerts
@@ -304,7 +482,7 @@ final class RecordingCoordinator: ObservableObject {
 
     // MARK: - Post-Recording
 
-    private func handleRecordingFinished(outputURL: URL, webcamURL: URL?) async {
+    private func handleRecordingFinished(outputURL: URL) async {
         let asset = AVURLAsset(url: outputURL)
 
         let duration: CMTime
@@ -338,12 +516,7 @@ final class RecordingCoordinator: ObservableObject {
 
         let thumbnailPath = await ThumbnailGenerator.generateThumbnail(for: outputURL) ?? ""
 
-        let recordingType: String
-        if webcamURL != nil {
-            recordingType = "screenAndWebcam"
-        } else {
-            recordingType = "screenOnly"
-        }
+        let recordingType = cameraEnabled ? "screenAndWebcam" : "screenOnly"
 
         let context = ModelContext(modelContainer)
         let durationMs = Int64(duration.seconds * 1000)
@@ -356,7 +529,7 @@ final class RecordingCoordinator: ObservableObject {
             height: height,
             fileSizeBytes: fileSize,
             recordingType: recordingType,
-            webcamFilePath: webcamURL?.path
+            webcamFilePath: nil
         )
         context.insert(record)
         do {
@@ -376,28 +549,23 @@ extension RecordingCoordinator: CaptureServiceDelegate {
     func captureDidStart() {
         let now = Date()
         state = .recording(startedAt: now)
+        recordingStartedAt = now
 
         if case .region(_, let rect) = selectedMode {
             regionHighlight.show(region: rect)
         }
 
-        if cameraEnabled, let webcamURL = currentWebcamURL {
-            let recorder = WebcamRecorder()
-            do {
-                try recorder.start(outputURL: webcamURL, width: 1280, height: 720)
-                self.webcamRecorder = recorder
-            } catch {
-                logger.error("Failed to start webcam recording: \(error)")
-            }
-        }
-
         recordingToolbar.show(
             startedAt: now,
+            pausedDuration: pausedDuration,
+            isPaused: false,
             micEnabled: micEnabled,
             cameraEnabled: cameraEnabled,
             onStop: { [weak self] in self?.stopRecording() },
             onToggleMic: { [weak self] in self?.toggleMic() },
-            onToggleCamera: { [weak self] in self?.toggleCamera() }
+            onToggleCamera: { [weak self] in self?.toggleCamera() },
+            onPause: { [weak self] in self?.pauseRecording() },
+            onResume: { [weak self] in self?.resumeRecording() }
         )
     }
 

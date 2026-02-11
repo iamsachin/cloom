@@ -1,6 +1,15 @@
 @preconcurrency import ScreenCaptureKit
 import AVFoundation
+import CoreVideo
 import os.log
+
+private struct SendableCVBuffer: @unchecked Sendable {
+    let buffer: CVPixelBuffer
+}
+
+private struct SendableSampleBuffer: @unchecked Sendable {
+    let buffer: CMSampleBuffer
+}
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "ScreenCaptureService")
 
@@ -15,74 +24,93 @@ final class ScreenCaptureService: NSObject {
     weak var delegate: CaptureServiceDelegate?
 
     private var stream: SCStream?
-    private var recordingOutput: SCRecordingOutput?
+    nonisolated(unsafe) var videoWriter: VideoWriter?
+    nonisolated(unsafe) var compositor: WebcamCompositor?
+    nonisolated(unsafe) var bufferPool: CVPixelBufferPool?
 
-    func startCapture(outputURL: URL, mode: CaptureMode, micEnabled: Bool) async throws {
+    private let outputQueue = DispatchQueue(label: "com.cloom.capture.output", qos: .userInteractive)
+
+    func startCapture(outputURL: URL, mode: CaptureMode, micEnabled: Bool, settings: RecordingSettings, compositor: WebcamCompositor?) async throws {
         let content = try await SCShareableContent.current
-
         let filter = try buildFilter(mode: mode, content: content)
-
         let config = SCStreamConfiguration()
         configureStream(config, mode: mode, content: content)
-        config.minimumFrameInterval = CMTime(value: 1, timescale: 30)
-        config.showsCursor = true
-        config.capturesAudio = true
-
-        if micEnabled {
-            config.captureMicrophone = true
-            if let defaultMic = AVCaptureDevice.default(for: .audio) {
-                config.microphoneCaptureDeviceID = defaultMic.uniqueID
-            }
-        }
-
-        try await startStream(filter: filter, config: config, outputURL: outputURL)
+        configureCommon(config, settings: settings, micEnabled: micEnabled)
+        try await startStream(filter: filter, config: config, outputURL: outputURL, settings: settings, compositor: compositor)
         logger.info("Capture started → \(outputURL.lastPathComponent) mode=\(String(describing: mode))")
     }
 
-    /// Start capture using an SCContentFilter directly (from SCContentSharingPicker).
-    func startCapture(outputURL: URL, filter: SCContentFilter, micEnabled: Bool) async throws {
+    func startCapture(outputURL: URL, filter: SCContentFilter, micEnabled: Bool, settings: RecordingSettings, compositor: WebcamCompositor?) async throws {
         let config = SCStreamConfiguration()
         let scale = Int(filter.pointPixelScale)
         config.width = Int(filter.contentRect.width) * scale
         config.height = Int(filter.contentRect.height) * scale
-        config.minimumFrameInterval = CMTime(value: 1, timescale: 30)
+        configureCommon(config, settings: settings, micEnabled: micEnabled)
+        try await startStream(filter: filter, config: config, outputURL: outputURL, settings: settings, compositor: compositor)
+        logger.info("Capture started (picker filter) → \(outputURL.lastPathComponent)")
+    }
+
+    private func configureCommon(_ config: SCStreamConfiguration, settings: RecordingSettings, micEnabled: Bool) {
+        config.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(settings.fps))
         config.showsCursor = true
         config.capturesAudio = true
 
         if micEnabled {
             config.captureMicrophone = true
-            if let defaultMic = AVCaptureDevice.default(for: .audio) {
+            if let micID = settings.micDeviceID {
+                config.microphoneCaptureDeviceID = micID
+            } else if let defaultMic = AVCaptureDevice.default(for: .audio) {
                 config.microphoneCaptureDeviceID = defaultMic.uniqueID
             }
         }
-
-        try await startStream(filter: filter, config: config, outputURL: outputURL)
-        logger.info("Capture started (picker filter) → \(outputURL.lastPathComponent)")
     }
 
-    private func startStream(filter: SCContentFilter, config: SCStreamConfiguration, outputURL: URL) async throws {
-        let stream = SCStream(filter: filter, configuration: config, delegate: nil)
+    private func startStream(filter: SCContentFilter, config: SCStreamConfiguration, outputURL: URL, settings: RecordingSettings, compositor: WebcamCompositor?) async throws {
+        self.compositor = compositor
+
+        // Create VideoWriter with the configured dimensions
+        let writer = try VideoWriter(
+            outputURL: outputURL,
+            settings: settings,
+            width: config.width,
+            height: config.height
+        )
+        self.videoWriter = writer
+
+        let stream = SCStream(filter: filter, configuration: config, delegate: self)
         self.stream = stream
 
-        try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: .global())
+        try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: outputQueue)
+        try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: outputQueue)
 
-        let recordingConfig = SCRecordingOutputConfiguration()
-        recordingConfig.outputURL = outputURL
-        recordingConfig.outputFileType = .mp4
+        if config.captureMicrophone {
+            try stream.addStreamOutput(self, type: .microphone, sampleHandlerQueue: outputQueue)
+        }
 
-        let recording = SCRecordingOutput(configuration: recordingConfig, delegate: self)
-        self.recordingOutput = recording
-        try stream.addRecordingOutput(recording)
+        // Start the writer, then capture
+        await writer.start()
+
+        // Get the buffer pool after writer has started
+        self.bufferPool = writer.exposedPixelBufferPool
 
         try await stream.startCapture()
+
+        delegate?.captureDidStart()
     }
 
     func stopCapture() async throws {
         guard let stream else { return }
         try await stream.stopCapture()
+
+        if let writer = videoWriter {
+            await writer.finish()
+        }
+
         logger.info("Capture stopped")
         self.stream = nil
-        self.recordingOutput = nil
+        self.videoWriter = nil
+        self.compositor = nil
+        self.bufferPool = nil
     }
 
     func updateConfiguration(micEnabled: Bool) async throws {
@@ -176,24 +204,52 @@ final class ScreenCaptureService: NSObject {
 
 extension ScreenCaptureService: SCStreamOutput {
     nonisolated func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
-    }
-}
+        guard CMSampleBufferIsValid(sampleBuffer) else { return }
 
-// MARK: - SCRecordingOutputDelegate
-
-extension ScreenCaptureService: SCRecordingOutputDelegate {
-    nonisolated func recordingOutputDidStartRecording(_ recordingOutput: SCRecordingOutput) {
-        Task { @MainActor in
-            delegate?.captureDidStart()
+        switch type {
+        case .screen:
+            handleScreenFrame(sampleBuffer)
+        case .audio:
+            handleAudio(sampleBuffer, sourceType: .system)
+        case .microphone:
+            handleAudio(sampleBuffer, sourceType: .microphone)
+        @unknown default:
+            break
         }
     }
 
-    nonisolated func recordingOutputDidFinishRecording(_ recordingOutput: SCRecordingOutput) {
-        logger.info("Recording file written")
+    nonisolated private func handleScreenFrame(_ sampleBuffer: CMSampleBuffer) {
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+
+        guard let writer = videoWriter else { return }
+
+        // Composite webcam if available
+        let outputBuffer: CVPixelBuffer
+        if let comp = compositor, let pool = bufferPool,
+           let composited = comp.composite(screenBuffer: pixelBuffer, bufferPool: pool) {
+            outputBuffer = composited
+        } else {
+            outputBuffer = pixelBuffer
+        }
+
+        let wrapped = SendableCVBuffer(buffer: outputBuffer)
+        Task { await writer.appendVideo(wrapped.buffer, pts: pts) }
     }
 
-    nonisolated func recordingOutput(_ recordingOutput: SCRecordingOutput, didFailWithError error: any Error) {
-        logger.error("Recording failed: \(error)")
+    nonisolated private func handleAudio(_ sampleBuffer: CMSampleBuffer, sourceType: AudioSourceType) {
+        guard let writer = videoWriter else { return }
+        let wrapped = SendableSampleBuffer(buffer: sampleBuffer)
+        let source = sourceType
+        Task { await writer.appendAudio(wrapped.buffer, sourceType: source) }
+    }
+}
+
+// MARK: - SCStreamDelegate
+
+extension ScreenCaptureService: SCStreamDelegate {
+    nonisolated func stream(_ stream: SCStream, didStopWithError error: any Error) {
+        logger.error("SCStream stopped with error: \(error)")
         Task { @MainActor in
             delegate?.captureDidFail(error: error)
         }

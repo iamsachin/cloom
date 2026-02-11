@@ -1,6 +1,8 @@
 import SwiftUI
 import SwiftData
 import Combine
+import AVFoundation
+@preconcurrency import ScreenCaptureKit
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "AppState")
@@ -53,6 +55,36 @@ final class AppState: ObservableObject {
         recordingCoordinator.$blurEnabled.assign(to: &$blurEnabled)
 
         logger.info("AppState initialized — \(self.rustGreeting), core v\(self.rustVersion)")
+
+        requestPermissions()
+    }
+
+    // MARK: - Permissions
+
+    private func requestPermissions() {
+        Task {
+            // Camera
+            let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
+            if cameraStatus == .notDetermined {
+                let granted = await AVCaptureDevice.requestAccess(for: .video)
+                logger.info("Camera permission: \(granted ? "granted" : "denied")")
+            }
+
+            // Microphone
+            let micStatus = AVCaptureDevice.authorizationStatus(for: .audio)
+            if micStatus == .notDetermined {
+                let granted = await AVCaptureDevice.requestAccess(for: .audio)
+                logger.info("Microphone permission: \(granted ? "granted" : "denied")")
+            }
+
+            // Screen Recording — requesting SCShareableContent triggers the prompt
+            do {
+                _ = try await SCShareableContent.current
+                logger.info("Screen recording permission: granted")
+            } catch {
+                logger.info("Screen recording permission: not yet granted (\(error.localizedDescription))")
+            }
+        }
     }
 
     // MARK: - Recording actions
@@ -79,6 +111,14 @@ final class AppState: ObservableObject {
 
     func cancelContentSelection() {
         recordingCoordinator.cancelContentSelection()
+    }
+
+    func pauseRecording() {
+        recordingCoordinator.pauseRecording()
+    }
+
+    func resumeRecording() {
+        recordingCoordinator.resumeRecording()
     }
 
     // MARK: - Toggle controls

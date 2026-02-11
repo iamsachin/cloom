@@ -28,8 +28,7 @@ struct CloomApp: App {
         .defaultSize(width: 800, height: 500)
 
         Settings {
-            Text("Settings will go here")
-                .frame(width: 400, height: 300)
+            SettingsView()
         }
     }
 }
@@ -82,11 +81,21 @@ struct MenuBarView: View {
                 ))
             }
 
-        } else if appState.recordingState.isRecording {
+        } else if appState.recordingState.isRecording || appState.recordingState.isPaused {
             Button("Stop Recording") {
                 appState.stopRecording()
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
+
+            if appState.recordingState.isRecording {
+                Button("Pause Recording") {
+                    appState.pauseRecording()
+                }
+            } else {
+                Button("Resume Recording") {
+                    appState.resumeRecording()
+                }
+            }
         } else {
             Text(menuStatusText)
                 .font(.caption)
@@ -102,6 +111,11 @@ struct MenuBarView: View {
 
         Divider()
 
+        SettingsLink {
+            Text("Settings...")
+        }
+        .keyboardShortcut(",", modifiers: [.command])
+
         Button("Quit Cloom") {
             NSApplication.shared.terminate(nil)
         }
@@ -113,6 +127,7 @@ struct MenuBarView: View {
         case .countdown(let n): "Starting in \(n)..."
         case .stopping: "Stopping..."
         case .selectingContent: "Selecting content..."
+        case .paused: "Paused"
         default: ""
         }
     }
