@@ -35,6 +35,32 @@ final class ScreenCaptureService: NSObject {
             }
         }
 
+        try await startStream(filter: filter, config: config, outputURL: outputURL)
+        logger.info("Capture started → \(outputURL.lastPathComponent) mode=\(String(describing: mode))")
+    }
+
+    /// Start capture using an SCContentFilter directly (from SCContentSharingPicker).
+    func startCapture(outputURL: URL, filter: SCContentFilter, micEnabled: Bool) async throws {
+        let config = SCStreamConfiguration()
+        let scale = Int(filter.pointPixelScale)
+        config.width = Int(filter.contentRect.width) * scale
+        config.height = Int(filter.contentRect.height) * scale
+        config.minimumFrameInterval = CMTime(value: 1, timescale: 30)
+        config.showsCursor = true
+        config.capturesAudio = true
+
+        if micEnabled {
+            config.captureMicrophone = true
+            if let defaultMic = AVCaptureDevice.default(for: .audio) {
+                config.microphoneCaptureDeviceID = defaultMic.uniqueID
+            }
+        }
+
+        try await startStream(filter: filter, config: config, outputURL: outputURL)
+        logger.info("Capture started (picker filter) → \(outputURL.lastPathComponent)")
+    }
+
+    private func startStream(filter: SCContentFilter, config: SCStreamConfiguration, outputURL: URL) async throws {
         let stream = SCStream(filter: filter, configuration: config, delegate: nil)
         self.stream = stream
 
@@ -49,7 +75,6 @@ final class ScreenCaptureService: NSObject {
         try stream.addRecordingOutput(recording)
 
         try await stream.startCapture()
-        logger.info("Capture started → \(outputURL.lastPathComponent) mode=\(String(describing: mode))")
     }
 
     func stopCapture() async throws {

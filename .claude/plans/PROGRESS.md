@@ -33,7 +33,7 @@
 **Status:** Complete
 **Date:** 2026-02-11
 
-- [x] Task 10 — Window/region capture + multi-monitor (CaptureMode enum, SCContentFilter per mode, ContentPicker)
+- [x] Task 10 — Window/region capture + multi-monitor (CaptureMode enum, SCContentFilter per mode, SCContentSharingPicker)
 - [x] Task 11 — Region selection overlay window (RegionSelectionWindow with rubber-band NSPanel)
 - [x] Task 12 — Camera service (AVCaptureSession wrapper with 720p, frame callback)
 - [x] Task 13 — Webcam bubble (circular, draggable, resizable NSPanel with sharingType=.none)
@@ -44,6 +44,8 @@
 - [x] Task 18 — Recording controls polish (mic/camera toggles in toolbar, 320px width, stop button)
 
 **Milestone:** All recording modes (full screen, window, region) work. Webcam bubble with background blur. Dual-stream recording. Mic toggle. Polished toolbar with mic/camera controls.
+
+**Post-completion fix:** Replaced custom ContentPickerView (broken TCC permission flow) with Apple's SCContentSharingPicker — handles permissions automatically, no TCC pre-grant needed. Added `/build` CLI skill for catching compile errors without Xcode.
 
 ---
 

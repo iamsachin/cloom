@@ -27,13 +27,6 @@ struct CloomApp: App {
         }
         .defaultSize(width: 800, height: 500)
 
-        Window("Content Picker", id: "contentPicker") {
-            ContentPickerView()
-                .environmentObject(appState)
-        }
-        .defaultSize(width: 480, height: 400)
-        .windowResizability(.contentSize)
-
         Settings {
             Text("Settings will go here")
                 .frame(width: 400, height: 300)
@@ -61,7 +54,6 @@ struct MenuBarView: View {
 
                 Button("Choose Window or Display...") {
                     appState.startRecordingWithPicker()
-                    openWindow(id: "contentPicker")
                 }
 
                 Button("Select Region...") {

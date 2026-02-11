@@ -31,6 +31,9 @@ final class RecordingCoordinator: ObservableObject {
     private var webcamRecorder: WebcamRecorder?
     private var currentWebcamURL: URL?
 
+    private let systemPicker = SystemContentPicker()
+    private var pendingFilter: SCContentFilter?
+
     init(modelContainer: ModelContainer) {
         self.modelContainer = modelContainer
         captureService.delegate = self
@@ -47,9 +50,23 @@ final class RecordingCoordinator: ObservableObject {
     func startRecordingWithPicker() {
         guard state.isIdle else { return }
         state = .selectingContent
+        systemPicker.present(
+            onFilterSelected: { [weak self] filter in
+                Task { @MainActor [weak self] in
+                    self?.pendingFilter = filter
+                    self?.beginPreRecordingFlow()
+                }
+            },
+            onCancelled: { [weak self] in
+                Task { @MainActor [weak self] in
+                    self?.state = .idle
+                }
+            }
+        )
     }
 
     func selectMode(_ mode: CaptureMode) {
+        pendingFilter = nil
         selectedMode = mode
         beginPreRecordingFlow()
     }
@@ -127,15 +144,21 @@ final class RecordingCoordinator: ObservableObject {
     // MARK: - Pre-recording flow
 
     private func beginPreRecordingFlow() {
-        Task {
-            do {
-                _ = try await SCShareableContent.current
-            } catch {
-                logger.info("Screen capture permission not yet granted — waiting for user")
-                state = .idle
-                return
+        // When using the system picker, we already have a filter — skip permission check
+        if pendingFilter == nil {
+            Task {
+                do {
+                    _ = try await SCShareableContent.current
+                } catch {
+                    logger.info("Screen capture permission not yet granted — waiting for user")
+                    state = .idle
+                    return
+                }
+                state = .countdown(3)
+                showCountdownOverlay(count: 3)
+                startCountdownTimer()
             }
-
+        } else {
             state = .countdown(3)
             showCountdownOverlay(count: 3)
             startCountdownTimer()
@@ -203,11 +226,20 @@ final class RecordingCoordinator: ObservableObject {
 
         Task {
             do {
-                try await captureService.startCapture(
-                    outputURL: outputURL,
-                    mode: selectedMode,
-                    micEnabled: micEnabled
-                )
+                if let filter = pendingFilter {
+                    try await captureService.startCapture(
+                        outputURL: outputURL,
+                        filter: filter,
+                        micEnabled: micEnabled
+                    )
+                    pendingFilter = nil
+                } else {
+                    try await captureService.startCapture(
+                        outputURL: outputURL,
+                        mode: selectedMode,
+                        micEnabled: micEnabled
+                    )
+                }
             } catch {
                 logger.error("Failed to start capture: \(error)")
                 state = .idle
