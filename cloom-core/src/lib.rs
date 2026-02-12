@@ -1,5 +1,8 @@
 uniffi::setup_scaffolding!();
 
+mod gif_export;
+pub use gif_export::*;
+
 use thiserror::Error;
 
 /// Error type exposed across the FFI boundary.

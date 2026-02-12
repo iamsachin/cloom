@@ -44,12 +44,16 @@ final class RecordingToolbarPanel {
                 onToggleCursorSpotlight: onToggleCursorSpotlight
             )
         )
-        hostingView.frame = NSRect(x: 0, y: 0, width: 520, height: 44)
+        let fittingSize = hostingView.fittingSize
+        let panelWidth = max(fittingSize.width, 400)
+        let panelHeight = max(fittingSize.height, 44)
+        hostingView.frame = NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight)
         panel.contentView = hostingView
+        panel.setContentSize(NSSize(width: panelWidth, height: panelHeight))
 
         if let screen = NSScreen.main {
-            let x = screen.frame.midX - 260
-            let y = screen.frame.maxY - 60
+            let x = screen.frame.midX - panelWidth / 2
+            let y = screen.frame.maxY - screen.frame.height * 0.10
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
         panel.orderFrontRegardless()

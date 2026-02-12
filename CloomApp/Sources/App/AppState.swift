@@ -32,6 +32,7 @@ final class AppState: ObservableObject {
             ChapterRecord.self,
             VideoComment.self,
             ViewEvent.self,
+            EditDecisionList.self,
         ])
         let config = ModelConfiguration(
             "CloomStore",
