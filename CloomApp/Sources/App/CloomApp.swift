@@ -19,13 +19,13 @@ struct CloomApp: App {
         }
         .defaultSize(width: 900, height: 600)
 
-        WindowGroup("Player", for: String.self) { $videoID in
+        WindowGroup("Editor", for: String.self) { $videoID in
             if let videoID {
-                PlayerView(videoID: videoID)
+                EditorView(videoID: videoID)
                     .modelContainer(appState.modelContainer)
             }
         }
-        .defaultSize(width: 800, height: 500)
+        .defaultSize(width: 1000, height: 700)
 
         Settings {
             SettingsView()

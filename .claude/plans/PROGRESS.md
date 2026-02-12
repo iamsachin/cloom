@@ -88,17 +88,18 @@
 ---
 
 ## Phase 5: Editor
-**Status:** Not started
+**Status:** Complete
+**Date:** 2026-02-12
 
-- [ ] Task 32 — Timeline UI with scrubber + waveform
-- [ ] Task 33 — Trim from start/end (drag handles)
-- [ ] Task 34 — Cut out sections (split + delete)
-- [ ] Task 35 — Stitch multiple clips
-- [ ] Task 36 — Speed adjustment
-- [ ] Task 37 — Thumbnail selection
-- [ ] Task 38 — GIF export via Rust encoder
+- [x] Task 32 — Timeline UI with scrubber + waveform (EditorTimelineView with Canvas-based waveform peaks + thumbnail strip + red playhead)
+- [x] Task 33 — Trim from start/end (TrimHandlesView with yellow drag handles + grayed-out overlay)
+- [x] Task 34 — Cut out sections (CutRegionOverlay with red hatched regions + context menu to remove, EditorState skip logic)
+- [x] Task 35 — Stitch multiple clips (StitchPanelView with drag-to-reorder, EditorCompositionBuilder concatenation)
+- [x] Task 36 — Speed adjustment (SpeedControlView popover with 0.25x–4x presets, AVPlayer rate + composition scaleTimeRange)
+- [x] Task 37 — Thumbnail selection (ThumbnailPickerView with slider + "Use Current Frame" + PNG save)
+- [x] Task 38 — GIF export via Rust gifski (gif_export.rs with PNG manifest + gifski encoder, GifExportService Swift actor)
 
-**Milestone:** Non-destructive editor. Export MP4/GIF.
+**Milestone verified:** Non-destructive editor with EDL model (EditDecisionList SwiftData). Trim, cut, stitch, speed, thumbnail. Export as MP4 (AVAssetExportSession on AVMutableComposition) or GIF (gifski via Rust FFI). Player replaced with editor window (1000x700).
 
 ---
 
