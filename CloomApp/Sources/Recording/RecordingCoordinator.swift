@@ -709,6 +709,19 @@ final class RecordingCoordinator: ObservableObject {
             logger.error("Failed to save recording: \(error)")
         }
 
+        // Launch AI pipeline in background
+        let videoID = record.id
+        let audioPath = outputURL.path
+        let container = self.modelContainer
+        Task.detached {
+            let orchestrator = AIOrchestrator()
+            await orchestrator.runPipeline(
+                videoRecordID: videoID,
+                audioPath: audioPath,
+                modelContainer: container
+            )
+        }
+
         state = .idle
     }
 }

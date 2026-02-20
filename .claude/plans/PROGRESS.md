@@ -104,16 +104,17 @@
 ---
 
 ## Phase 6: AI Features
-**Status:** Not started
+**Status:** Complete
+**Date:** 2026-02-21
 
-- [ ] Task 39 — Transcription client in Rust (OpenAI gpt-4o-mini-transcribe)
-- [ ] Task 40 — Provider-aware LLM client in Rust
-- [ ] Task 41 — AI FFI bridge + Swift AIOrchestrator
-- [ ] Task 42 — Filler word detection from transcript (Rust)
-- [ ] Task 43 — Silence detection (Rust + symphonia)
-- [ ] Task 44 — API key settings UI + Keychain storage
+- [x] Task 39 — Transcription client in Rust (OpenAI whisper-1 via reqwest multipart, verbose_json with word timestamps)
+- [x] Task 40 — Provider-aware LLM client in Rust (gpt-4o-mini for title/summary/chapters via chat completions)
+- [x] Task 41 — AI FFI bridge + Swift AIOrchestrator (actor pipeline: transcribe → fillers → title → summary → chapters → silence → persist)
+- [x] Task 42 — Filler word detection from transcript (Rust, single + multi-word sliding window, unit tests)
+- [x] Task 43 — Silence detection (Rust + symphonia, RMS per 10ms window, configurable threshold/duration)
+- [x] Task 44 — API key settings UI + Keychain storage (SecureField, key prefix display, auto-transcribe toggle, remove button)
 
-**Milestone:** Auto-transcription, title, summary, chapters. Silence/filler detection.
+**Milestone verified:** Auto-transcription via OpenAI whisper-1 with word-level timestamps. LLM-generated title, summary, chapters (skipped if transcript too short). Filler word detection. Silence detection via symphonia. API key stored in Keychain. Processing spinner on library cards. Error alerts for pipeline failures. Background pipeline via Task.detached after recording.
 
 ---
 
