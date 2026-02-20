@@ -36,9 +36,11 @@ struct CloomApp: App {
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Button("Open Library") {
+            NSApp.activate()
             openWindow(id: "library")
         }
         .keyboardShortcut("l", modifiers: [.command])
@@ -111,8 +113,9 @@ struct MenuBarView: View {
 
         Divider()
 
-        SettingsLink {
-            Text("Settings...")
+        Button("Settings...") {
+            NSApp.activate()
+            openSettings()
         }
         .keyboardShortcut(",", modifiers: [.command])
 

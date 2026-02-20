@@ -3,6 +3,14 @@ uniffi::setup_scaffolding!();
 mod gif_export;
 pub use gif_export::*;
 
+mod ai;
+pub use ai::transcribe::*;
+pub use ai::llm::*;
+
+mod audio;
+pub use audio::filler::*;
+pub use audio::silence::*;
+
 use thiserror::Error;
 
 /// Error type exposed across the FFI boundary.

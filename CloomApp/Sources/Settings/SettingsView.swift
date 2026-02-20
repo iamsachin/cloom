@@ -6,9 +6,13 @@ struct SettingsView: View {
     @AppStorage("recordingQuality") private var qualityRaw: String = VideoQuality.medium.rawValue
     @AppStorage("recordingMicDeviceID") private var micDeviceID: String = ""
     @AppStorage("recordingCameraDeviceID") private var cameraDeviceID: String = ""
+    @AppStorage("aiAutoTranscribe") private var aiAutoTranscribe: Bool = true
 
     @State private var microphones: [AVCaptureDevice] = []
     @State private var cameras: [AVCaptureDevice] = []
+    @State private var apiKeyInput: String = ""
+    @State private var hasAPIKey: Bool = false
+    @State private var apiKeyPrefix: String = ""
 
     private var quality: Binding<VideoQuality> {
         Binding(
@@ -51,12 +55,68 @@ struct SettingsView: View {
                     }
                 }
             }
+
+            Section("AI") {
+                if hasAPIKey {
+                    HStack {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("OpenAI API Key")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text("\(apiKeyPrefix)...")
+                                    .monospaced()
+                            }
+                        } icon: {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                        }
+
+                        Spacer()
+
+                        Button("Remove", role: .destructive) {
+                            KeychainService.deleteAPIKey()
+                            apiKeyInput = ""
+                            apiKeyPrefix = ""
+                            hasAPIKey = false
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                } else {
+                    HStack {
+                        SecureField("OpenAI API Key", text: $apiKeyInput)
+                            .textFieldStyle(.roundedBorder)
+                            .onSubmit {
+                                saveAPIKey()
+                            }
+
+                        Button("Save") {
+                            saveAPIKey()
+                        }
+                        .disabled(apiKeyInput.isEmpty)
+                    }
+                }
+
+                Toggle("Auto-transcribe after recording", isOn: $aiAutoTranscribe)
+            }
         }
         .formStyle(.grouped)
-        .frame(width: 400, height: 300)
+        .frame(width: 400, height: 550)
         .onAppear {
             refreshDevices()
+            if let key = KeychainService.loadAPIKey() {
+                hasAPIKey = true
+                apiKeyPrefix = String(key.prefix(15))
+            }
         }
+    }
+
+    private func saveAPIKey() {
+        guard !apiKeyInput.isEmpty else { return }
+        apiKeyPrefix = String(apiKeyInput.prefix(15))
+        KeychainService.saveAPIKey(apiKeyInput)
+        hasAPIKey = true
+        apiKeyInput = ""
     }
 
     private func refreshDevices() {

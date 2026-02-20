@@ -36,11 +36,30 @@ struct VideoCardView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
+                    if AIProcessingTracker.shared.isProcessing(video.id) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Transcribing...")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    } else if video.hasTranscript {
+                        Image(systemName: "text.bubble.fill")
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                    }
+
                     Spacer()
 
                     Text(video.createdAt, style: .relative)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+
+                if let summary = video.summary, !summary.isEmpty {
+                    Text(summary)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
                 }
             }
             .padding(.horizontal, 4)
