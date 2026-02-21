@@ -29,6 +29,7 @@ struct RecordingSettings {
     let quality: VideoQuality
     let micDeviceID: String?
     let cameraDeviceID: String?
+    let noiseCancellationEnabled: Bool
 
     static func fromDefaults() -> RecordingSettings {
         let defaults = UserDefaults.standard
@@ -36,12 +37,14 @@ struct RecordingSettings {
         let qualityRaw = defaults.string(forKey: "recordingQuality") ?? VideoQuality.medium.rawValue
         let micID = defaults.string(forKey: "recordingMicDeviceID")
         let cameraID = defaults.string(forKey: "recordingCameraDeviceID")
+        let noiseCancellation = defaults.bool(forKey: "noiseCancellationEnabled")
 
         return RecordingSettings(
             fps: fps > 0 ? fps : 30,
             quality: VideoQuality(rawValue: qualityRaw) ?? .medium,
             micDeviceID: micID,
-            cameraDeviceID: cameraID
+            cameraDeviceID: cameraID,
+            noiseCancellationEnabled: noiseCancellation
         )
     }
 }

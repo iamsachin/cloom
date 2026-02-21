@@ -157,20 +157,44 @@
 ---
 
 ## Phase 9: Polish & Settings
-**Status:** Not started
+**Status:** Complete
+**Date:** 2026-02-22
 
-- [ ] Task 54 — Global keyboard shortcuts (Carbon HotKey API)
-- [ ] Task 55 — Launch at startup (SMAppService)
-- [ ] Task 56 — Notifications
-- [ ] Task 57 — Noise cancellation
-- [ ] Task 58 — Welcome/onboarding screen (first-launch popup requesting permissions — Screen Recording, Camera, Microphone, Accessibility — with live granted/not-granted status indicators and checkmarks)
-- [ ] Task 59 — Dark mode polish + UI consistency pass
-- [ ] Task 60 — Crash recovery + temp file cleanup
-- [ ] Task 61 — Disk space monitoring + storage management
+- [x] Task 54 — Global keyboard shortcuts (CGEvent tap, Cmd+Shift+R toggle recording, Cmd+Shift+P toggle pause, ShortcutRecorderButton in Settings, UCKeyTranslate display strings, UserDefaults persistence)
+- [x] Task 55 — Launch at startup (SMAppService.mainApp register/unregister, toggle in Settings > General, state synced on appear)
+- [x] Task 56 — Notifications (UNUserNotificationCenter, recording-complete with "Open Library" action, AppDelegate as notification center delegate, notificationsEnabled toggle, guards on AI orchestrator notifications)
+- [x] Task 57 — Noise cancellation (NoiseCancellationProcessor noise gate, RMS threshold -40dB, processes mic CMSampleBuffers, toggle in Settings > Microphone, noiseCancellationEnabled in RecordingSettings)
+- [x] Task 58 — Welcome/onboarding screen (PermissionChecker + OnboardingView with live status polling for Screen Recording, Camera, Microphone, Accessibility; auto-opens on launch if any missing; "Complete Setup..." in menu bar; removed old scattered permission requests from AppState/CloomApp.init)
+- [x] Task 59 — Dark mode polish (Theme.swift semantic Color extensions with NSColor dynamic provider, 9 adaptive colors, updated 6 view files, appearance picker System/Light/Dark in Settings, applied on launch via AppDelegate)
+- [x] Task 60 — Crash recovery + temp file cleanup (cleanupOrphanedTempFiles in AppState.init, scans /tmp for cloom_segment_* and cloom_audio_*)
+- [x] Task 61 — Disk space monitoring (checkDiskSpace <1GB guard in beginCapture, storage summary "{count} videos · {size}" in LibraryView toolbar)
 
 ---
 
-## Phase 10: Cleanup & Tests
+## Phase 10: Recording Controls & Video Enhancements
+**Status:** Not started
+
+### Webcam Bubble Controls (Loom-style)
+- [ ] Task 84 — Floating control pill on webcam bubble (stop, timer, pause/resume, discard buttons — capsule-shaped overlay anchored to bottom of bubble)
+- [ ] Task 85 — Webcam bubble background themes (solid colors, gradients, patterns behind the circular webcam — like Loom's colored/patterned backdrops)
+- [ ] Task 86 — Webcam shape options (circle, rounded rectangle, pill) with smooth transition animations
+
+### Video Enhancement Controls
+- [ ] Task 87 — Webcam image adjustments (brightness, contrast, saturation, highlights, shadows — CIFilter pipeline on camera frames)
+- [ ] Task 88 — Beauty / soft-focus filter for webcam (skin smoothing via CIGaussianBlur + person segmentation mask)
+- [ ] Task 89 — Color temperature / white balance adjustment for webcam feed
+- [ ] Task 90 — Screen recording adjustments (brightness, contrast in post-export via editor)
+
+### Recording UX
+- [ ] Task 91 — Discard recording button (cancel mid-recording, delete temp files, return to idle)
+- [ ] Task 92 — Webcam-only recording mode (no screen, just camera + audio — for intros/outros)
+
+**Milestone:** Loom-style floating controls on webcam bubble. Webcam image adjustments (contrast, highlights, saturation). Background themes. Discard recording. Webcam-only mode.
+
+---
+
+## Phase 11: Cleanup & Tests
+
 **Status:** Not started
 
 ### Cleanup
@@ -199,7 +223,7 @@
 
 ---
 
-## Phase 11: Advanced
+## Phase 12: Advanced
 **Status:** Not started
 
 - [ ] Task 78 — Local view analytics (track views, watch time)
@@ -208,7 +232,7 @@
 
 ---
 
-## Phase 12: Pre-Release
+## Phase 13: Pre-Release
 **Status:** Not started
 
 - [ ] Task 81 — Developer ID signing + notarization + DMG packaging

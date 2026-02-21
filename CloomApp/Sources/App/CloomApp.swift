@@ -1,23 +1,27 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 @main
 struct CloomApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var appState = AppState()
-
-    init() {
-        // Prompt for Accessibility permission at startup so the dialog
-        // appears before the user starts recording, not mid-session.
-        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-        AXIsProcessTrustedWithOptions(options)
-    }
+    @StateObject private var permissionChecker = PermissionChecker()
 
     var body: some Scene {
         MenuBarExtra("Cloom", systemImage: "record.circle") {
             MenuBarView()
                 .environmentObject(appState)
+                .environmentObject(permissionChecker)
         }
         .menuBarExtraStyle(.menu)
+
+        Window("Welcome to Cloom", id: "onboarding") {
+            OnboardingView(permissionChecker: permissionChecker)
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+        .defaultLaunchBehavior(.presented)
 
         Window("Cloom Library", id: "library") {
             LibraryView()
@@ -42,10 +46,20 @@ struct CloomApp: App {
 
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var permissionChecker: PermissionChecker
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
+        if !permissionChecker.allGranted {
+            Button("Complete Setup...") {
+                NSApp.activate()
+                openWindow(id: "onboarding")
+            }
+
+            Divider()
+        }
+
         Button("Open Library") {
             NSApp.activate()
             openWindow(id: "library")
@@ -70,25 +84,6 @@ struct MenuBarView: View {
                 }
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
-
-            Divider()
-
-            Toggle("Microphone", isOn: Binding(
-                get: { appState.micEnabled },
-                set: { _ in appState.toggleMic() }
-            ))
-
-            Toggle("Webcam", isOn: Binding(
-                get: { appState.cameraEnabled },
-                set: { _ in appState.toggleCamera() }
-            ))
-
-            if appState.cameraEnabled {
-                Toggle("Background Blur", isOn: Binding(
-                    get: { appState.blurEnabled },
-                    set: { _ in appState.toggleBlur() }
-                ))
-            }
 
         } else if appState.recordingState.isRecording || appState.recordingState.isPaused {
             Button("Stop Recording") {
@@ -140,5 +135,55 @@ struct MenuBarView: View {
         case .paused: "Paused"
         default: ""
         }
+    }
+}
+
+// MARK: - App Delegate (Notifications)
+
+final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Apply saved appearance mode
+        let mode = UserDefaults.standard.string(forKey: "appearanceMode") ?? "system"
+        switch mode {
+        case "light":
+            NSApp.appearance = NSAppearance(named: .aqua)
+        case "dark":
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        default:
+            break
+        }
+
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+
+        center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
+
+        // Register "Open Library" action for recording-complete notifications
+        let openAction = UNNotificationAction(identifier: "OPEN_LIBRARY", title: "Open Library")
+        let category = UNNotificationCategory(
+            identifier: "RECORDING_COMPLETE",
+            actions: [openAction],
+            intentIdentifiers: []
+        )
+        center.setNotificationCategories([category])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        await MainActor.run {
+            NSApp.activate()
+            if let window = NSApp.windows.first(where: { $0.title.contains("Library") }) {
+                window.makeKeyAndOrderFront(nil)
+            }
+        }
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
     }
 }

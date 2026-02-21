@@ -25,14 +25,14 @@ struct TrimHandlesView: View {
                 // Grayed out: before trim start
                 if trimStartFraction > 0 {
                     Rectangle()
-                        .fill(Color.black.opacity(0.4))
+                        .fill(Color.trimExcluded)
                         .frame(width: trimStartFraction * timelineWidth, height: height)
                 }
 
                 // Grayed out: after trim end
                 if trimEndFraction < 1 {
                     Rectangle()
-                        .fill(Color.black.opacity(0.4))
+                        .fill(Color.trimExcluded)
                         .frame(width: (1 - trimEndFraction) * timelineWidth, height: height)
                         .offset(x: trimEndFraction * timelineWidth)
                 }

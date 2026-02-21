@@ -313,8 +313,22 @@ struct LibraryView: View {
 
     // MARK: - Toolbar
 
+    private var storageSummary: String {
+        let count = videos.count
+        let totalBytes = videos.reduce(Int64(0)) { $0 + $1.fileSizeBytes }
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return "\(count) video\(count == 1 ? "" : "s") · \(formatter.string(fromByteCount: totalBytes))"
+    }
+
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .automatic) {
+            Text(storageSummary)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+
         ToolbarItemGroup(placement: .primaryAction) {
             if isSelecting {
                 Button(selectedIDs.count == filteredVideos.count ? "Deselect All" : "Select All") {
@@ -393,7 +407,7 @@ struct LibraryView: View {
     private func selectionBadge(isSelected: Bool) -> some View {
         ZStack {
             Circle()
-                .fill(isSelected ? Color.accentColor : Color.black.opacity(0.4))
+                .fill(isSelected ? Color.accentColor : Color.selectionBadge)
                 .frame(width: 24, height: 24)
             if isSelected {
                 Image(systemName: "checkmark")

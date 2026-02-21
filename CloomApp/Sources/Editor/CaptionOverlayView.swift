@@ -23,7 +23,7 @@ struct CaptionOverlayView: View {
             .font(.system(size: 16, weight: .medium))
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(.black.opacity(0.65), in: Capsule())
+            .background(Color.captionBackground, in: Capsule())
             .padding(.bottom, 16)
             .allowsHitTesting(false)
             .transition(.opacity)

@@ -28,6 +28,7 @@ final class ScreenCaptureService: NSObject {
     nonisolated(unsafe) var compositor: WebcamCompositor?
     nonisolated(unsafe) var annotationRenderer: AnnotationRenderer?
     nonisolated(unsafe) var bufferPool: CVPixelBufferPool?
+    nonisolated(unsafe) var noiseCancellationProcessor: NoiseCancellationProcessor?
 
     private let outputQueue = DispatchQueue(label: "com.cloom.capture.output", qos: .userInteractive)
     private let audioQueue = DispatchQueue(label: "com.cloom.capture.audio", qos: .userInteractive)
@@ -57,19 +58,22 @@ final class ScreenCaptureService: NSObject {
         config.showsCursor = true
         config.capturesAudio = true
 
-        if micEnabled {
-            config.captureMicrophone = true
-            if let micID = settings.micDeviceID {
-                config.microphoneCaptureDeviceID = micID
-            } else if let defaultMic = AVCaptureDevice.default(for: .audio) {
-                config.microphoneCaptureDeviceID = defaultMic.uniqueID
-            }
+        // Always configure microphone so the stream output is registered;
+        // toggling mid-recording just flips captureMicrophone on/off.
+        config.captureMicrophone = micEnabled
+        if let micID = settings.micDeviceID {
+            config.microphoneCaptureDeviceID = micID
+        } else if let defaultMic = AVCaptureDevice.default(for: .audio) {
+            config.microphoneCaptureDeviceID = defaultMic.uniqueID
         }
     }
 
     private func startStream(filter: SCContentFilter, config: SCStreamConfiguration, outputURL: URL, settings: RecordingSettings, compositor: WebcamCompositor?, annotationRenderer: AnnotationRenderer? = nil) async throws {
         self.compositor = compositor
         self.annotationRenderer = annotationRenderer
+        self.noiseCancellationProcessor = settings.noiseCancellationEnabled
+            ? NoiseCancellationProcessor()
+            : nil
 
         // Create VideoWriter with the configured dimensions
         let writer = try VideoWriter(
@@ -85,10 +89,8 @@ final class ScreenCaptureService: NSObject {
 
         try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: outputQueue)
         try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: audioQueue)
-
-        if config.captureMicrophone {
-            try stream.addStreamOutput(self, type: .microphone, sampleHandlerQueue: audioQueue)
-        }
+        // Always register microphone output so mid-recording toggle works
+        try stream.addStreamOutput(self, type: .microphone, sampleHandlerQueue: audioQueue)
 
         // Start the writer, then capture
         await writer.start()
@@ -115,6 +117,11 @@ final class ScreenCaptureService: NSObject {
         self.compositor = nil
         self.annotationRenderer = nil
         self.bufferPool = nil
+        self.noiseCancellationProcessor = nil
+    }
+
+    func updateCompositor(_ compositor: WebcamCompositor?) {
+        self.compositor = compositor
     }
 
     func updateConfiguration(micEnabled: Bool) async throws {
@@ -270,7 +277,16 @@ extension ScreenCaptureService: SCStreamOutput {
 
     nonisolated private func handleAudio(_ sampleBuffer: CMSampleBuffer, sourceType: AudioSourceType) {
         guard let writer = videoWriter else { return }
-        let wrapped = SendableSampleBuffer(buffer: sampleBuffer)
+
+        // Apply noise cancellation to microphone audio if enabled
+        let processedBuffer: CMSampleBuffer
+        if sourceType == .microphone, let processor = noiseCancellationProcessor {
+            processedBuffer = processor.process(sampleBuffer)
+        } else {
+            processedBuffer = sampleBuffer
+        }
+
+        let wrapped = SendableSampleBuffer(buffer: processedBuffer)
         let source = sourceType
         Task { await writer.appendAudio(wrapped.buffer, sourceType: source) }
     }

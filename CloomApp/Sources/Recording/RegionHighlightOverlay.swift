@@ -59,10 +59,10 @@ private struct RegionHighlightView: View {
                     path.addRect(CGRect(origin: .zero, size: geo.size))
                     path.addRect(holeRect)
                 }
-                .fill(Color.black.opacity(0.25), style: FillStyle(eoFill: true))
+                .fill(Color.regionDim, style: FillStyle(eoFill: true))
 
                 Rectangle()
-                    .strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
+                    .strokeBorder(Color.regionBorder, lineWidth: 1)
                     .frame(width: region.width + 2, height: region.height + 2)
                     .position(
                         x: holeRect.midX,

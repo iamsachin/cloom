@@ -1,8 +1,6 @@
 import SwiftUI
 import SwiftData
 import Combine
-import AVFoundation
-@preconcurrency import ScreenCaptureKit
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "AppState")
@@ -57,35 +55,52 @@ final class AppState: ObservableObject {
 
         logger.info("AppState initialized — \(self.rustGreeting), core v\(self.rustVersion)")
 
-        requestPermissions()
+        cleanupOrphanedTempFiles()
+        setupGlobalHotkeys()
     }
 
-    // MARK: - Permissions
+    // MARK: - Global Hotkeys
 
-    private func requestPermissions() {
-        Task {
-            // Camera
-            let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
-            if cameraStatus == .notDetermined {
-                let granted = await AVCaptureDevice.requestAccess(for: .video)
-                logger.info("Camera permission: \(granted ? "granted" : "denied")")
-            }
-
-            // Microphone
-            let micStatus = AVCaptureDevice.authorizationStatus(for: .audio)
-            if micStatus == .notDetermined {
-                let granted = await AVCaptureDevice.requestAccess(for: .audio)
-                logger.info("Microphone permission: \(granted ? "granted" : "denied")")
-            }
-
-            // Screen Recording — requesting SCShareableContent triggers the prompt
-            do {
-                _ = try await SCShareableContent.current
-                logger.info("Screen recording permission: granted")
-            } catch {
-                logger.info("Screen recording permission: not yet granted (\(error.localizedDescription))")
+    private func setupGlobalHotkeys() {
+        let mgr = GlobalHotkeyManager.shared
+        mgr.onToggleRecording = { [weak self] in
+            guard let self else { return }
+            if self.recordingState.isIdle {
+                self.startRecording()
+            } else if self.recordingState.isActiveOrPaused {
+                self.stopRecording()
             }
         }
+        mgr.onTogglePause = { [weak self] in
+            guard let self else { return }
+            if self.recordingState.isRecording {
+                self.pauseRecording()
+            } else if self.recordingState.isPaused {
+                self.resumeRecording()
+            }
+        }
+        mgr.start()
+    }
+
+    // MARK: - Crash Recovery
+
+    private func cleanupOrphanedTempFiles() {
+        let tempDir = FileManager.default.temporaryDirectory
+        guard let contents = try? FileManager.default.contentsOfDirectory(
+            at: tempDir, includingPropertiesForKeys: nil
+        ) else { return }
+
+        let orphaned = contents.filter { url in
+            let name = url.lastPathComponent
+            return name.hasPrefix("cloom_segment_") || name.hasPrefix("cloom_audio_")
+        }
+
+        guard !orphaned.isEmpty else { return }
+
+        for url in orphaned {
+            try? FileManager.default.removeItem(at: url)
+        }
+        logger.info("Cleaned up \(orphaned.count) orphaned temp file(s)")
     }
 
     // MARK: - Recording actions

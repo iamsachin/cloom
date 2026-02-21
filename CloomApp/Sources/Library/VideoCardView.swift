@@ -30,7 +30,7 @@ struct VideoCardView: View {
             .overlay {
                 if isHovered {
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(.white.opacity(0.08))
+                        .fill(Color.cardHoverOverlay)
                         .overlay {
                             Image(systemName: "play.circle.fill")
                                 .font(.system(size: 40))
@@ -86,7 +86,7 @@ struct VideoCardView: View {
         }
         .padding(8)
         .background(.background, in: RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(isHovered ? 0.2 : 0.1), radius: isHovered ? 8 : 4, y: isHovered ? 4 : 2)
+        .shadow(color: isHovered ? .cardShadowHover : .cardShadow, radius: isHovered ? 8 : 4, y: isHovered ? 4 : 2)
         .scaleEffect(isHovered ? 1.02 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isHovered)
         .onHover { hovering in

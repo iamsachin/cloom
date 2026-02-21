@@ -244,6 +244,11 @@ actor AIOrchestrator {
     }
 
     private func showNotification(title: String, message: String) {
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: "notificationsEnabled") != nil {
+            guard defaults.bool(forKey: "notificationsEnabled") else { return }
+        }
+
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = message
