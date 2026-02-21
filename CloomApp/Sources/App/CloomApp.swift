@@ -5,6 +5,13 @@ import SwiftData
 struct CloomApp: App {
     @StateObject private var appState = AppState()
 
+    init() {
+        // Prompt for Accessibility permission at startup so the dialog
+        // appears before the user starts recording, not mid-session.
+        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
+        AXIsProcessTrustedWithOptions(options)
+    }
+
     var body: some Scene {
         MenuBarExtra("Cloom", systemImage: "record.circle") {
             MenuBarView()

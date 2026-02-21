@@ -72,8 +72,10 @@ final class WebcamCompositor: @unchecked Sendable {
         let webcamHeight = CGFloat(CVPixelBufferGetHeight(webcamFrame))
         let scaleFactor = diameter / min(webcamWidth, webcamHeight)
 
+        // Flip horizontally to unmirror the front camera + scale in one step
         let scaledWebcam = webcamImage
-            .transformed(by: CGAffineTransform(scaleX: scaleFactor, y: scaleFactor))
+            .transformed(by: CGAffineTransform(scaleX: -scaleFactor, y: scaleFactor))
+            .transformed(by: CGAffineTransform(translationX: webcamWidth * scaleFactor, y: 0))
 
         // Center-crop the scaled webcam to a square
         let scaledW = webcamWidth * scaleFactor

@@ -22,8 +22,8 @@ final class CursorSpotlightMonitor {
         self.captureArea = captureArea
         stop()
 
-        // Prompt for Accessibility permission if not granted
-        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
+        // Check Accessibility permission silently (prompt happens at app startup)
+        let options = ["AXTrustedCheckOptionPrompt": false] as CFDictionary
         let trusted = AXIsProcessTrustedWithOptions(options)
         if !trusted {
             logger.warning("Accessibility not granted — cursor spotlight may not track in other apps")

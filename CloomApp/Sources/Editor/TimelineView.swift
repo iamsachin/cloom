@@ -87,8 +87,16 @@ struct EditorTimelineView: View {
                 let barWidth = size.width / CGFloat(peaks.count)
                 let midY = size.height / 2
 
+                // Find max peak for relative normalization
+                let maxPeak = peaks.max() ?? 1.0
+                let normFactor: Float = maxPeak > 0 ? 1.0 / maxPeak : 1.0
+
                 for (i, peak) in peaks.enumerated() {
-                    let barHeight = CGFloat(peak) * size.height * 0.9
+                    // Normalize to 0-1 range relative to loudest peak,
+                    // then apply sqrt curve to boost quiet audio visibility
+                    let normalized = min(peak * normFactor, 1.0)
+                    let boosted = CGFloat(sqrt(normalized))
+                    let barHeight = boosted * size.height * 0.9
                     let x = CGFloat(i) * barWidth
                     let rect = CGRect(
                         x: x,

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import AppKit
 
 struct EditorView: View {
     let videoID: String
@@ -12,6 +13,7 @@ struct EditorView: View {
     @State private var showThumbnailPicker = false
     @State private var cutMarkInMs: Int64?
     @State private var showChapterPopover = false
+    @State private var showInfoPanel = false
 
     init(videoID: String) {
         self.videoID = videoID
@@ -88,6 +90,13 @@ struct EditorView: View {
                 Divider()
                 TranscriptPanelView(editorState: state)
             }
+
+            // Info sidebar
+            if showInfoPanel {
+                Divider()
+                videoInfoPanel(state: state)
+                    .frame(width: 260)
+            }
         }
         .navigationTitle(state.videoRecord.title)
         .sheet(isPresented: $showExportSheet) {
@@ -112,6 +121,7 @@ struct EditorView: View {
                     .font(.title3)
             }
             .keyboardShortcut(.space, modifiers: [])
+            .help(state.isPlaying ? "Pause" : "Play")
 
             // Time display
             Text(formatTime(ms: state.currentTimeMs))
@@ -189,6 +199,7 @@ struct EditorView: View {
             Button("Stitch") {
                 showStitchPanel = true
             }
+            .help("Stitch multiple clips together")
 
             // Thumbnail
             Button {
@@ -233,12 +244,84 @@ struct EditorView: View {
             }
             .help("Toggle fullscreen")
 
+            // Info panel toggle
+            Button {
+                showInfoPanel.toggle()
+            } label: {
+                Image(systemName: showInfoPanel ? "info.circle.fill" : "info.circle")
+            }
+            .help("Video info")
+
+            // Copy path
+            Menu {
+                Button("Copy File Path") {
+                    if let path = video?.filePath {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(path, forType: .string)
+                    }
+                }
+                Button("Show in Finder") {
+                    if let path = video?.filePath {
+                        NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
+                    }
+                }
+            } label: {
+                Image(systemName: "doc.on.doc")
+            }
+            .help("Copy path or reveal in Finder")
+
             // Export
             Button("Export") {
                 showExportSheet = true
             }
             .buttonStyle(.borderedProminent)
+            .help("Export video")
         }
+    }
+
+    @ViewBuilder
+    private func videoInfoPanel(state: EditorState) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Info")
+                    .font(.headline)
+                    .padding(.bottom, 4)
+
+                Text(state.videoRecord.title)
+                    .font(.title3.bold())
+
+                if let summary = state.videoRecord.summary, !summary.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Summary")
+                            .font(.caption.bold())
+                            .foregroundStyle(.tertiary)
+                        Text(summary)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(formatTime(ms: state.videoRecord.durationMs), systemImage: "clock")
+                    Label(formattedFileSize(state.videoRecord.fileSizeBytes), systemImage: "doc")
+                    Label("\(state.videoRecord.width)x\(state.videoRecord.height)", systemImage: "rectangle")
+                    Label(state.videoRecord.createdAt.formatted(date: .abbreviated, time: .shortened), systemImage: "calendar")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+        }
+    }
+
+    private func formattedFileSize(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: bytes)
     }
 
     private func setupEditor() {

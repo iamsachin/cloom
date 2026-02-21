@@ -132,15 +132,27 @@
 ---
 
 ## Phase 8: Library & Organization
-**Status:** Not started
+**Status:** Complete
+**Date:** 2026-02-21
 
-- [ ] Task 49 — Folder management (create, rename, move, nest)
-- [ ] Task 50 — Tags/labels (create, assign, color)
-- [ ] Task 51 — Full-text search (SwiftData + GRDB FTS)
-- [ ] Task 52 — Sort/filter + thumbnail previews
-- [ ] Task 53 — Auto-copy file path
+- [x] Task 49 — Folder management (create, rename, move, nest) — LibrarySidebarView with flat folder tree, context menus, move videos
+- [x] Task 50 — Tags/labels (create, assign, color) — TagEditorView with 8-preset color picker, sidebar tag section, tag pills on VideoCardView
+- [x] Task 51 — Full-text search (.searchable modifier, title/summary/transcript filtering)
+- [x] Task 52 — Sort/filter (LibrarySortOrder enum with 7 options, TranscriptFilter, hover preview on cards)
+- [x] Task 53 — Auto-copy file path + Show in Finder (context menus on video cards, Copy Path in editor toolbar)
 
-**Milestone:** Organized library with search, folders, tags.
+**Additional fixes in this session:**
+- Fixed 5 warnings in AIOrchestrator (removed unnecessary `await`, replaced deprecated `AVAssetExportSession` APIs with `export(to:as:) async throws`)
+- Summary tooltip on hover in VideoCardView + summary improved to `.secondary` color and 2-line limit
+- Editor info sidebar panel (title, full summary, metadata) toggled via `(i)` button in right sidebar
+- Webcam unmirrored in both live preview bubble and recorded video (horizontal flip with correct CIImage extent)
+- Accessibility permission prompt moved to app startup (`CloomApp.init`); monitors check silently
+- API key storage switched from Keychain to `~/Library/Application Support/Cloom/api_key` (file-based, `chmod 600`) — eliminates repeated Keychain prompts on debug rebuilds
+- Waveform amplitude boost: peaks normalized relative to loudest peak + `sqrt` curve for quiet speech visibility
+- Audio recording fix: separated audio onto dedicated `audioQueue` so annotation rendering on video queue doesn't stutter/block audio
+- Added `.help()` tooltips to all editor toolbar buttons (Play, Stitch, Export) and recording toolbar (Stop)
+
+**Milestone verified:** Organized library with interactive sidebar (folders + tags), full-text search, 7 sort options, transcript filter, video context menus (copy path, show in Finder, move to folder, tags, delete), bulk operations (move, tag, delete), hover preview effect on cards. Build succeeds with 0 code warnings.
 
 ---
 
@@ -151,10 +163,10 @@
 - [ ] Task 55 — Launch at startup (SMAppService)
 - [ ] Task 56 — Notifications
 - [ ] Task 57 — Noise cancellation
-- [ ] Task 58 — Dark mode polish + onboarding
-- [ ] Task 59 — Crash recovery + temp file cleanup
-- [ ] Task 60 — Disk space monitoring + storage management
-- [ ] Task 61 — Developer ID signing + notarization + DMG packaging
+- [ ] Task 58 — Welcome/onboarding screen (first-launch popup requesting permissions — Screen Recording, Camera, Microphone, Accessibility — with live granted/not-granted status indicators and checkmarks)
+- [ ] Task 59 — Dark mode polish + UI consistency pass
+- [ ] Task 60 — Crash recovery + temp file cleanup
+- [ ] Task 61 — Disk space monitoring + storage management
 
 ---
 
@@ -193,3 +205,12 @@
 - [ ] Task 78 — Local view analytics (track views, watch time)
 - [ ] Task 79 — Timestamped comments
 - [ ] Task 80 — Performance optimization + profiling
+
+---
+
+## Phase 12: Pre-Release
+**Status:** Not started
+
+- [ ] Task 81 — Developer ID signing + notarization + DMG packaging
+- [ ] Task 82 — App icon + branding assets
+- [ ] Task 83 — Release notes + changelog
