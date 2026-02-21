@@ -11,6 +11,7 @@ struct EditorView: View {
     @State private var showStitchPanel = false
     @State private var showThumbnailPicker = false
     @State private var cutMarkInMs: Int64?
+    @State private var showChapterPopover = false
 
     init(videoID: String) {
         self.videoID = videoID
@@ -46,26 +47,47 @@ struct EditorView: View {
 
     @ViewBuilder
     private func editorContent(state: EditorState) -> some View {
-        VStack(spacing: 0) {
-            // Video preview
-            VideoPreviewView(player: state.player) {
-                state.togglePlayPause()
+        HStack(spacing: 0) {
+            // Main editor area
+            VStack(spacing: 0) {
+                // Video preview with caption overlay
+                ZStack(alignment: .bottom) {
+                    VideoPreviewView(
+                        player: state.player,
+                        onTap: { state.togglePlayPause() },
+                        onPiPControllerReady: { controller in
+                            state.pipController = controller
+                        }
+                    )
+
+                    CaptionOverlayView(
+                        words: state.transcriptWords,
+                        currentTimeMs: state.currentTimeMs,
+                        isEnabled: state.captionsEnabled
+                    )
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                Divider()
+
+                // Timeline
+                EditorTimelineView(editorState: state)
+                    .frame(height: 120)
+                    .padding(.horizontal, 8)
+
+                Divider()
+
+                // Toolbar
+                editorToolbar(state: state)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            Divider()
-
-            // Timeline
-            EditorTimelineView(editorState: state)
-                .frame(height: 120)
-                .padding(.horizontal, 8)
-
-            Divider()
-
-            // Toolbar
-            editorToolbar(state: state)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+            // Transcript sidebar
+            if state.showTranscript && state.videoRecord.hasTranscript {
+                Divider()
+                TranscriptPanelView(editorState: state)
+            }
         }
         .navigationTitle(state.videoRecord.title)
         .sheet(isPresented: $showExportSheet) {
@@ -147,6 +169,19 @@ struct EditorView: View {
 
             Spacer()
 
+            // Chapters
+            if !state.chapters.isEmpty {
+                Button {
+                    showChapterPopover.toggle()
+                } label: {
+                    Image(systemName: "list.bullet")
+                }
+                .help("Chapters")
+                .popover(isPresented: $showChapterPopover) {
+                    ChapterNavigationView(editorState: state)
+                }
+            }
+
             // Speed
             SpeedControlView(editorState: state)
 
@@ -162,6 +197,41 @@ struct EditorView: View {
                 Image(systemName: "photo")
             }
             .help("Set custom thumbnail")
+
+            // Captions toggle
+            if state.videoRecord.hasTranscript {
+                Button {
+                    state.toggleCaptions()
+                } label: {
+                    Image(systemName: state.captionsEnabled ? "captions.bubble.fill" : "captions.bubble")
+                }
+                .help("Toggle captions")
+
+                Button {
+                    state.toggleTranscript()
+                } label: {
+                    Image(systemName: state.showTranscript ? "doc.text.fill" : "doc.text")
+                }
+                .help("Toggle transcript")
+            }
+
+            // PiP
+            if state.pipController != nil {
+                Button {
+                    state.togglePiP()
+                } label: {
+                    Image(systemName: "pip")
+                }
+                .help("Picture in Picture")
+            }
+
+            // Fullscreen
+            Button {
+                NSApp.mainWindow?.toggleFullScreen(nil)
+            } label: {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+            }
+            .help("Toggle fullscreen")
 
             // Export
             Button("Export") {

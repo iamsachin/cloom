@@ -1,20 +1,38 @@
 import SwiftUI
 import AVFoundation
+import AVKit
 
 struct VideoPreviewView: NSViewRepresentable {
     let player: AVPlayer
     let onTap: () -> Void
+    var onPiPControllerReady: ((AVPictureInPictureController) -> Void)?
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
 
     func makeNSView(context: Context) -> AVPlayerLayerView {
         let view = AVPlayerLayerView()
         view.playerLayer.player = player
         view.playerLayer.videoGravity = .resizeAspect
         view.onTap = onTap
+
+        // Create PiP controller if supported
+        if AVPictureInPictureController.isPictureInPictureSupported() {
+            let pipController = AVPictureInPictureController(playerLayer: view.playerLayer)
+            context.coordinator.pipController = pipController
+            onPiPControllerReady?(pipController!)
+        }
+
         return view
     }
 
     func updateNSView(_ nsView: AVPlayerLayerView, context: Context) {
         nsView.playerLayer.player = player
+    }
+
+    class Coordinator {
+        var pipController: AVPictureInPictureController?
     }
 }
 
