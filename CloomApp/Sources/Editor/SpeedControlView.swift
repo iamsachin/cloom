@@ -31,6 +31,7 @@ struct SpeedControlView: View {
                     .font(.system(.caption, design: .monospaced))
             }
         }
+        .help("Playback speed")
         .popover(isPresented: $showPopover) {
             VStack(spacing: 4) {
                 Text("Playback Speed")

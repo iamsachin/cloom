@@ -246,6 +246,7 @@ private struct RecordingToolbarContentView: View {
                     .background(.red, in: RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
+            .help("Stop recording")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)

@@ -37,7 +37,7 @@ actor AIOrchestrator {
 
         logger.info("Starting AI pipeline for video \(videoRecordID)")
         await AIProcessingTracker.shared.startProcessing(videoRecordID)
-        await showNotification(title: "AI Processing", message: "Transcribing recording...")
+        showNotification(title: "AI Processing", message: "Transcribing recording...")
 
         // Step 0: Extract audio from MP4 (mic track preferred, falls back to mix)
         let extractedAudioPath: String
@@ -159,7 +159,7 @@ actor AIOrchestrator {
         )
 
         await AIProcessingTracker.shared.stopProcessing(videoRecordID)
-        await showNotification(title: "AI Processing Complete", message: "Transcript and summary ready.")
+        showNotification(title: "AI Processing Complete", message: "Transcript and summary ready.")
         logger.info("AI pipeline complete for video \(videoRecordID)")
     }
 
@@ -228,17 +228,7 @@ actor AIOrchestrator {
             ])
         }
 
-        exportSession.outputURL = outputURL
-        exportSession.outputFileType = .m4a
-
-        await exportSession.export()
-
-        guard exportSession.status == .completed else {
-            let errorMsg = exportSession.error?.localizedDescription ?? "Unknown export error"
-            throw NSError(domain: "AIOrchestrator", code: 3, userInfo: [
-                NSLocalizedDescriptionKey: "Audio export failed: \(errorMsg)"
-            ])
-        }
+        try await exportSession.export(to: outputURL, as: .m4a)
 
         return outputURL.path
     }

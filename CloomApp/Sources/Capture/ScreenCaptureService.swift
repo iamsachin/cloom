@@ -30,6 +30,7 @@ final class ScreenCaptureService: NSObject {
     nonisolated(unsafe) var bufferPool: CVPixelBufferPool?
 
     private let outputQueue = DispatchQueue(label: "com.cloom.capture.output", qos: .userInteractive)
+    private let audioQueue = DispatchQueue(label: "com.cloom.capture.audio", qos: .userInteractive)
 
     func startCapture(outputURL: URL, mode: CaptureMode, micEnabled: Bool, settings: RecordingSettings, compositor: WebcamCompositor?, annotationRenderer: AnnotationRenderer? = nil) async throws {
         let content = try await SCShareableContent.current
@@ -83,10 +84,10 @@ final class ScreenCaptureService: NSObject {
         self.stream = stream
 
         try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: outputQueue)
-        try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: outputQueue)
+        try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: audioQueue)
 
         if config.captureMicrophone {
-            try stream.addStreamOutput(self, type: .microphone, sampleHandlerQueue: outputQueue)
+            try stream.addStreamOutput(self, type: .microphone, sampleHandlerQueue: audioQueue)
         }
 
         // Start the writer, then capture

@@ -81,7 +81,10 @@ final class WebcamBubbleWindow {
             logger.warning("updateFrame called but imageLayer is nil")
             return
         }
-        guard let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) else {
+        // Flip horizontally to unmirror the front camera
+        let flipped = ciImage.transformed(by: CGAffineTransform(scaleX: -1, y: 1)
+            .translatedBy(x: -ciImage.extent.width, y: 0))
+        guard let cgImage = ciContext.createCGImage(flipped, from: flipped.extent) else {
             logger.warning("Failed to create CGImage from CIImage")
             return
         }
