@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import ServiceManagement
 
 struct SettingsView: View {
     @AppStorage("recordingFPS") private var fps: Int = 30
@@ -7,6 +8,10 @@ struct SettingsView: View {
     @AppStorage("recordingMicDeviceID") private var micDeviceID: String = ""
     @AppStorage("recordingCameraDeviceID") private var cameraDeviceID: String = ""
     @AppStorage("aiAutoTranscribe") private var aiAutoTranscribe: Bool = true
+    @AppStorage("launchAtLogin") private var launchAtLogin: Bool = false
+    @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
+    @AppStorage("noiseCancellationEnabled") private var noiseCancellationEnabled: Bool = false
+    @AppStorage("appearanceMode") private var appearanceMode: String = "system"
 
     @State private var microphones: [AVCaptureDevice] = []
     @State private var cameras: [AVCaptureDevice] = []
@@ -23,6 +28,34 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("General") {
+                Toggle("Launch at Login", isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { _, newValue in
+                        do {
+                            if newValue {
+                                try SMAppService.mainApp.register()
+                            } else {
+                                try SMAppService.mainApp.unregister()
+                            }
+                        } catch {
+                            // Revert on failure
+                            launchAtLogin = !newValue
+                        }
+                    }
+
+                Toggle("Show Notifications", isOn: $notificationsEnabled)
+
+                Picker("Appearance", selection: $appearanceMode) {
+                    Text("System").tag("system")
+                    Text("Light").tag("light")
+                    Text("Dark").tag("dark")
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: appearanceMode) { _, newValue in
+                    applyAppearance(newValue)
+                }
+            }
+
             Section("Recording") {
                 Picker("Frame Rate", selection: $fps) {
                     Text("30 FPS").tag(30)
@@ -45,6 +78,9 @@ struct SettingsView: View {
                         Text(device.localizedName).tag(device.uniqueID)
                     }
                 }
+
+                Toggle("Noise Reduction", isOn: $noiseCancellationEnabled)
+                    .help("Reduces background noise from microphone input using a noise gate")
             }
 
             Section("Camera") {
@@ -54,6 +90,21 @@ struct SettingsView: View {
                         Text(device.localizedName).tag(device.uniqueID)
                     }
                 }
+            }
+
+            Section("Shortcuts") {
+                ForEach(HotkeyAction.allCases, id: \.rawValue) { action in
+                    HStack {
+                        Text(action.label)
+                        Spacer()
+                        ShortcutRecorderButton(action: action)
+                    }
+                }
+
+                Button("Reset to Defaults") {
+                    GlobalHotkeyManager.shared.resetToDefaults()
+                }
+                .font(.caption)
             }
 
             Section("AI") {
@@ -101,13 +152,25 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 400, height: 550)
+        .frame(width: 400, height: 650)
         .onAppear {
             refreshDevices()
             if let key = KeychainService.loadAPIKey() {
                 hasAPIKey = true
                 apiKeyPrefix = String(key.prefix(15))
             }
+            launchAtLogin = (SMAppService.mainApp.status == .enabled)
+        }
+    }
+
+    private func applyAppearance(_ mode: String) {
+        switch mode {
+        case "light":
+            NSApp.appearance = NSAppearance(named: .aqua)
+        case "dark":
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        default:
+            NSApp.appearance = nil // system default
         }
     }
 
@@ -128,5 +191,86 @@ struct SettingsView: View {
         microphones = micDiscovery.devices
 
         cameras = CameraService.availableCameras()
+    }
+}
+
+// MARK: - Hotkey Action Labels
+
+extension HotkeyAction {
+    var label: String {
+        switch self {
+        case .toggleRecording: "Start / Stop Recording"
+        case .togglePause: "Pause / Resume"
+        }
+    }
+}
+
+// MARK: - Shortcut Recorder Button
+
+struct ShortcutRecorderButton: View {
+    let action: HotkeyAction
+    @State private var isRecording = false
+    @State private var monitor: Any?
+
+    private var binding: HotkeyBinding? {
+        GlobalHotkeyManager.shared.bindings[action]
+    }
+
+    var body: some View {
+        Button {
+            if isRecording {
+                stopRecording()
+            } else {
+                startRecording()
+            }
+        } label: {
+            if isRecording {
+                Text("Press shortcut...")
+                    .foregroundStyle(.orange)
+                    .frame(minWidth: 120)
+            } else {
+                Text(binding?.displayString ?? "None")
+                    .frame(minWidth: 120)
+            }
+        }
+        .buttonStyle(.bordered)
+        .onDisappear {
+            stopRecording()
+        }
+    }
+
+    private func startRecording() {
+        isRecording = true
+        // Temporarily stop the global event tap so it doesn't intercept
+        GlobalHotkeyManager.shared.stop()
+
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            let keyCode = event.keyCode
+            let flags = CGEventFlags(rawValue: UInt64(event.modifierFlags.rawValue))
+                .intersection([.maskCommand, .maskShift, .maskControl, .maskAlternate])
+
+            // Escape cancels
+            if keyCode == 53 { // kVK_Escape
+                stopRecording()
+                return nil
+            }
+
+            // Require at least one modifier
+            guard flags.rawValue != 0 else { return nil }
+
+            let newBinding = HotkeyBinding(keyCode: keyCode, modifiers: flags.rawValue)
+            GlobalHotkeyManager.shared.updateBinding(action: action, binding: newBinding)
+            stopRecording()
+            return nil
+        }
+    }
+
+    private func stopRecording() {
+        if let monitor {
+            NSEvent.removeMonitor(monitor)
+        }
+        monitor = nil
+        isRecording = false
+        GlobalHotkeyManager.shared.start()
     }
 }

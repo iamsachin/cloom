@@ -58,7 +58,7 @@ private struct CountdownContentView: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.4)
+            Color.dimmingOverlay
 
             Text("\(count)")
                 .font(.system(size: 200, weight: .bold, design: .rounded))
@@ -87,7 +87,7 @@ private struct CountdownRegionContentView: View {
                     path.addRect(CGRect(origin: .zero, size: geo.size))
                     path.addRect(holeRect)
                 }
-                .fill(Color.black.opacity(0.4), style: FillStyle(eoFill: true))
+                .fill(Color.dimmingOverlay, style: FillStyle(eoFill: true))
 
                 Rectangle()
                     .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8, 4]))

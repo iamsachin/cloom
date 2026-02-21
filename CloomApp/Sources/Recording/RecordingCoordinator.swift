@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import AVFoundation
 @preconcurrency import ScreenCaptureKit
+import UserNotifications
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "RecordingCoordinator")
@@ -282,9 +283,21 @@ final class RecordingCoordinator: ObservableObject {
     func toggleCamera() {
         cameraEnabled.toggle()
         if cameraEnabled {
+            // Create compositor if toggling ON mid-recording
+            if state.isRecording && compositor == nil {
+                let comp = WebcamCompositor()
+                self.compositor = comp
+                captureService.updateCompositor(comp)
+            }
             startWebcam()
+            // Seed compositor with current bubble position
+            if let comp = compositor, let bubble = webcamBubble {
+                comp.updateBubbleLayout(bubble.currentLayout())
+            }
         } else {
             stopWebcam()
+            // Remove compositor from capture pipeline
+            captureService.updateCompositor(nil)
         }
     }
 
@@ -506,6 +519,12 @@ final class RecordingCoordinator: ObservableObject {
     // MARK: - Capture
 
     private func beginCapture() {
+        guard checkDiskSpace() else {
+            showLowDiskSpaceAlert()
+            state = .idle
+            return
+        }
+
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
         let timestamp = dateFormatter.string(from: Date())
@@ -638,6 +657,25 @@ final class RecordingCoordinator: ObservableObject {
 
     // MARK: - Alerts
 
+    private func checkDiskSpace() -> Bool {
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
+        guard let attrs = try? FileManager.default.attributesOfFileSystem(forPath: homeDir),
+              let freeSize = attrs[.systemFreeSize] as? Int64 else {
+            return true // If we can't check, allow recording
+        }
+        let oneGB: Int64 = 1_073_741_824
+        return freeSize >= oneGB
+    }
+
+    private func showLowDiskSpaceAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Low Disk Space"
+        alert.informativeText = "Less than 1 GB of free disk space remaining. Free up space before recording."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
     private func showCaptureFailedAlert(error: Error) {
         let alert = NSAlert()
         alert.messageText = "Screen Recording Failed"
@@ -722,7 +760,31 @@ final class RecordingCoordinator: ObservableObject {
             )
         }
 
+        showRecordingCompleteNotification(title: record.title)
         state = .idle
+    }
+
+    private func showRecordingCompleteNotification(title: String) {
+        // Default to true if never set
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: "notificationsEnabled") != nil {
+            guard defaults.bool(forKey: "notificationsEnabled") else { return }
+        }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Recording Complete"
+        content.body = title
+        content.sound = .default
+        content.categoryIdentifier = "RECORDING_COMPLETE"
+
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+        Task {
+            try? await UNUserNotificationCenter.current().add(request)
+        }
     }
 }
 
