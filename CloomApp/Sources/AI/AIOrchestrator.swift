@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import SwiftData
 import AppKit
@@ -38,11 +39,21 @@ actor AIOrchestrator {
         await AIProcessingTracker.shared.startProcessing(videoRecordID)
         await showNotification(title: "AI Processing", message: "Transcribing recording...")
 
+        // Step 0: Extract audio from MP4 (mic track preferred, falls back to mix)
+        let extractedAudioPath: String
+        do {
+            extractedAudioPath = try await extractAudio(from: audioPath)
+            logger.info("Extracted audio to \(extractedAudioPath)")
+        } catch {
+            logger.error("Audio extraction failed: \(error) — falling back to video file")
+            extractedAudioPath = audioPath
+        }
+
         // Step 1: Transcription
         let transcript: Transcript
         do {
             transcript = try transcribeAudio(
-                audioPath: audioPath,
+                audioPath: extractedAudioPath,
                 apiKey: apiKey,
                 provider: .openAi,
                 model: ""
@@ -126,7 +137,7 @@ actor AIOrchestrator {
         var silentRanges: [TimeRange] = []
         do {
             silentRanges = try detectSilence(
-                audioPath: audioPath,
+                audioPath: extractedAudioPath,
                 thresholdDb: -40.0,
                 minDurationMs: 500
             )
@@ -150,6 +161,86 @@ actor AIOrchestrator {
         await AIProcessingTracker.shared.stopProcessing(videoRecordID)
         await showNotification(title: "AI Processing Complete", message: "Transcript and summary ready.")
         logger.info("AI pipeline complete for video \(videoRecordID)")
+    }
+
+    // MARK: - Audio Extraction
+
+    /// Extract audio from MP4 to a temporary .m4a file.
+    /// Prefers the mic audio track (second audio track) over system audio.
+    /// Falls back to mixing all audio tracks if only one exists.
+    private func extractAudio(from videoPath: String) async throws -> String {
+        let videoURL = URL(fileURLWithPath: videoPath)
+        let asset = AVURLAsset(url: videoURL)
+        let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+
+        guard !audioTracks.isEmpty else {
+            throw NSError(domain: "AIOrchestrator", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "No audio tracks found in video"
+            ])
+        }
+
+        // Create a composition with just the desired audio track
+        let composition = AVMutableComposition()
+        let duration = try await asset.load(.duration)
+
+        if audioTracks.count >= 2 {
+            // Multiple audio tracks: use the second one (mic audio)
+            // Track order in VideoWriter: video(0), systemAudio(1), micAudio(2)
+            // But loadTracks(.audio) only returns audio tracks, so mic = index 1
+            let micTrack = audioTracks[1]
+            if let compositionTrack = composition.addMutableTrack(
+                withMediaType: .audio,
+                preferredTrackID: kCMPersistentTrackID_Invalid
+            ) {
+                try compositionTrack.insertTimeRange(
+                    CMTimeRange(start: .zero, duration: duration),
+                    of: micTrack,
+                    at: .zero
+                )
+            }
+            logger.info("Using mic audio track (track 2 of \(audioTracks.count) audio tracks)")
+        } else {
+            // Single audio track — use it directly
+            let track = audioTracks[0]
+            if let compositionTrack = composition.addMutableTrack(
+                withMediaType: .audio,
+                preferredTrackID: kCMPersistentTrackID_Invalid
+            ) {
+                try compositionTrack.insertTimeRange(
+                    CMTimeRange(start: .zero, duration: duration),
+                    of: track,
+                    at: .zero
+                )
+            }
+            logger.info("Using single audio track")
+        }
+
+        // Export to temporary .m4a file
+        let tempDir = FileManager.default.temporaryDirectory
+        let outputURL = tempDir.appendingPathComponent("cloom_audio_\(UUID().uuidString).m4a")
+
+        guard let exportSession = AVAssetExportSession(
+            asset: composition,
+            presetName: AVAssetExportPresetAppleM4A
+        ) else {
+            throw NSError(domain: "AIOrchestrator", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "Failed to create export session"
+            ])
+        }
+
+        exportSession.outputURL = outputURL
+        exportSession.outputFileType = .m4a
+
+        await exportSession.export()
+
+        guard exportSession.status == .completed else {
+            let errorMsg = exportSession.error?.localizedDescription ?? "Unknown export error"
+            throw NSError(domain: "AIOrchestrator", code: 3, userInfo: [
+                NSLocalizedDescriptionKey: "Audio export failed: \(errorMsg)"
+            ])
+        }
+
+        return outputURL.path
     }
 
     @MainActor

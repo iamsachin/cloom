@@ -35,6 +35,9 @@ struct EditorTimelineView: View {
                 // Cut region overlays
                 CutRegionOverlay(editorState: editorState, timelineWidth: width)
 
+                // Chapter markers
+                chapterMarkers(chapters: editorState.chapters, durationMs: durationMs, width: width, height: height)
+
                 // Playhead
                 playhead(currentTimeMs: currentTimeMs, durationMs: durationMs, width: width, height: height)
             }
@@ -97,6 +100,32 @@ struct EditorTimelineView: View {
                 }
             }
             .frame(width: width, height: height)
+        }
+    }
+
+    // MARK: - Chapter Markers
+
+    @ViewBuilder
+    private func chapterMarkers(chapters: [ChapterSnapshot], durationMs: Int64, width: CGFloat, height: CGFloat) -> some View {
+        if !chapters.isEmpty && durationMs > 0 {
+            ForEach(chapters) { chapter in
+                let fraction = CGFloat(chapter.startMs) / CGFloat(durationMs)
+                let x = fraction * width
+
+                Path { path in
+                    path.move(to: CGPoint(x: x, y: 0))
+                    path.addLine(to: CGPoint(x: x - 4, y: -8))
+                    path.addLine(to: CGPoint(x: x + 4, y: -8))
+                    path.closeSubpath()
+                }
+                .fill(Color.accentColor)
+                .offset(y: height * 0.1)
+
+                Rectangle()
+                    .fill(Color.accentColor.opacity(0.4))
+                    .frame(width: 1, height: height)
+                    .offset(x: x)
+            }
         }
     }
 

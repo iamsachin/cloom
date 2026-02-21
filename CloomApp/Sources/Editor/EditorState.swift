@@ -1,4 +1,5 @@
 import AVFoundation
+import AVKit
 import SwiftData
 import SwiftUI
 import os.log
@@ -20,6 +21,15 @@ final class EditorState {
     // Waveform + thumbnail strip data
     private(set) var waveformPeaks: [Float] = []
     private(set) var thumbnailImages: [(timeMs: Int64, image: CGImage)] = []
+
+    // Captions & transcript
+    private(set) var captionsEnabled: Bool = false
+    private(set) var showTranscript: Bool = false
+    private(set) var transcriptWords: [TranscriptWordSnapshot] = []
+    private(set) var chapters: [ChapterSnapshot] = []
+
+    // PiP
+    @ObservationIgnored var pipController: AVPictureInPictureController?
 
     @ObservationIgnored nonisolated(unsafe) var timeObserverToken: Any?
     @ObservationIgnored nonisolated(unsafe) var playerRef: AVPlayer?
@@ -44,6 +54,18 @@ final class EditorState {
         }
 
         self.durationMs = videoRecord.durationMs
+
+        // Load transcript words as value-type snapshots (sorted by startMs)
+        if let transcript = videoRecord.transcript {
+            self.transcriptWords = transcript.words
+                .sorted { $0.startMs < $1.startMs }
+                .map { TranscriptWordSnapshot(word: $0.word, startMs: $0.startMs, endMs: $0.endMs, confidence: $0.confidence, isFillerWord: $0.isFillerWord) }
+        }
+
+        // Load chapters as value-type snapshots (sorted by startMs)
+        self.chapters = videoRecord.chapters
+            .sorted { $0.startMs < $1.startMs }
+            .map { ChapterSnapshot(id: $0.id, title: $0.title, startMs: $0.startMs) }
 
         setupTimeObserver()
         setupEndObserver()
@@ -98,6 +120,27 @@ final class EditorState {
                 player.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero)
                 return
             }
+        }
+    }
+
+    // MARK: - Captions & Transcript
+
+    func toggleCaptions() {
+        captionsEnabled.toggle()
+    }
+
+    func toggleTranscript() {
+        showTranscript.toggle()
+    }
+
+    // MARK: - PiP
+
+    func togglePiP() {
+        guard let pip = pipController else { return }
+        if pip.isPictureInPictureActive {
+            pip.stopPictureInPicture()
+        } else {
+            pip.startPictureInPicture()
         }
     }
 
@@ -230,4 +273,21 @@ final class EditorState {
             logger.error("Failed to generate thumbnail strip: \(error)")
         }
     }
+}
+
+// MARK: - Value-Type Snapshots
+
+struct TranscriptWordSnapshot: Identifiable {
+    let id = UUID()
+    let word: String
+    let startMs: Int64
+    let endMs: Int64
+    let confidence: Float
+    let isFillerWord: Bool
+}
+
+struct ChapterSnapshot: Identifiable {
+    let id: String
+    let title: String
+    let startMs: Int64
 }

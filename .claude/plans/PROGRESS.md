@@ -119,14 +119,15 @@
 ---
 
 ## Phase 7: Player & Transcript
-**Status:** Not started
+**Status:** Complete
+**Date:** 2026-02-21
 
-- [ ] Task 45 — Caption overlay (SRT/VTT rendering)
-- [ ] Task 46 — Transcript panel (scroll, click-to-seek)
-- [ ] Task 47 — Chapter navigation
-- [ ] Task 48 — Speed control + PiP + fullscreen
+- [x] Task 45 — Caption overlay (karaoke-style word-by-word highlight, phrase grouping, binary search lookup)
+- [x] Task 46 — Transcript panel (right sidebar with FlowLayout, auto-scroll, click-to-seek, filler word styling)
+- [x] Task 47 — Chapter navigation (popover list + timeline markers with accent color lines/triangles)
+- [x] Task 48 — PiP + fullscreen (AVPictureInPictureController via VideoPreviewView Coordinator, NSWindow toggleFullScreen)
 
-**Milestone:** Full-featured player with captions, transcript, chapters.
+**Milestone verified:** Enhanced EditorView with captions, transcript sidebar, chapter navigation, PiP, and fullscreen. Captions show karaoke-style word-by-word highlighting synced to playback. Transcript sidebar with click-to-seek and auto-scroll. Chapter markers on timeline + popover navigation. PiP via AVKit. Fullscreen toggle. All buttons conditionally shown (hidden when no transcript/chapters). Build succeeds.
 
 ---
 
@@ -157,9 +158,38 @@
 
 ---
 
-## Phase 10: Advanced
+## Phase 10: Cleanup & Tests
 **Status:** Not started
 
-- [ ] Task 62 — Local view analytics (track views, watch time)
-- [ ] Task 63 — Timestamped comments
-- [ ] Task 64 — Performance optimization + profiling
+### Cleanup
+- [ ] Task 62 — Dead code removal + TODO/FIXME audit across Swift and Rust sources
+- [ ] Task 63 — Consistent error handling (replace force-unwraps, add user-facing error messages)
+- [ ] Task 64 — Code organization (split large files, group related types, consistent naming conventions)
+- [ ] Task 65 — Memory leak audit (Instruments Leaks + Allocations, capture session lifecycle)
+- [ ] Task 66 — Accessibility pass (VoiceOver labels, keyboard navigation, Dynamic Type support)
+
+### Rust Tests
+- [ ] Task 67 — Unit tests for transcription client (mock HTTP, parse responses, error paths)
+- [ ] Task 68 — Unit tests for LLM client (prompt construction, response parsing, provider routing)
+- [ ] Task 69 — Unit tests for filler word detection (edge cases, multi-language, overlapping windows)
+- [ ] Task 70 — Unit tests for silence detection (threshold boundaries, short/long audio, empty input)
+- [ ] Task 71 — Unit tests for GIF export (manifest generation, encoder config, file output)
+
+### Swift Tests
+- [ ] Task 72 — Unit tests for SwiftData models (VideoRecord, EditDecisionList, FolderRecord CRUD)
+- [ ] Task 73 — Unit tests for EditorState (trim, cut, stitch, speed operations, undo/redo)
+- [ ] Task 74 — Unit tests for AIOrchestrator (pipeline sequencing, error propagation, cancellation)
+- [ ] Task 75 — Unit tests for RecordingSettings (defaults, persistence, quality presets)
+- [ ] Task 76 — UI tests for recording flow (start → countdown → stop → library appears)
+- [ ] Task 77 — UI tests for editor (open editor, trim handles, export dialog)
+
+**Milestone:** All dead code removed, TODOs resolved. Rust crate at >80% test coverage. Swift unit tests for core logic. UI tests for critical user flows.
+
+---
+
+## Phase 11: Advanced
+**Status:** Not started
+
+- [ ] Task 78 — Local view analytics (track views, watch time)
+- [ ] Task 79 — Timestamped comments
+- [ ] Task 80 — Performance optimization + profiling

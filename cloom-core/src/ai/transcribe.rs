@@ -99,9 +99,17 @@ fn transcribe_openai(
     rt.block_on(async {
         let client = reqwest::Client::new();
 
+        let mime_type = if file_name.ends_with(".m4a") {
+            "audio/m4a"
+        } else if file_name.ends_with(".wav") {
+            "audio/wav"
+        } else {
+            "audio/mp4"
+        };
+
         let file_part = reqwest::multipart::Part::bytes(file_bytes)
             .file_name(file_name)
-            .mime_str("audio/mp4")
+            .mime_str(mime_type)
             .map_err(|e| CloomError::ApiError {
                 msg: format!("Failed to create multipart: {e}"),
             })?;
