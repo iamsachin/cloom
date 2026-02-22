@@ -49,3 +49,36 @@ targets:
           cd "${PROJECT_DIR}"
           ./build.sh
         basedOnDependencyAnalysis: false
+
+  CloomTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: CloomTests
+    dependencies:
+      - target: Cloom
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cloom.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+        LIBRARY_SEARCH_PATHS:
+          - "$(PROJECT_DIR)/libs"
+        SWIFT_INCLUDE_PATHS:
+          - "$(PROJECT_DIR)/CloomApp/Sources/Bridge/Generated"
+        HEADER_SEARCH_PATHS:
+          - "$(PROJECT_DIR)/CloomApp/Sources/Bridge/Generated"
+        OTHER_LDFLAGS:
+          - "-lcloom_core"
+        SWIFT_ENABLE_EXPLICIT_MODULES: NO
+
+  CloomUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: CloomUITests
+    dependencies:
+      - target: Cloom
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cloom.app.uitests
+        GENERATE_INFOPLIST_FILE: YES

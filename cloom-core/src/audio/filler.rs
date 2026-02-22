@@ -131,4 +131,109 @@ mod tests {
         let fillers = identify_filler_words(vec![]);
         assert!(fillers.is_empty());
     }
+
+    #[test]
+    fn test_punctuation_stripping() {
+        let words = vec![
+            make_word("\"um,\"", 0, 300),
+            make_word("(like)", 300, 600),
+            make_word("so.", 600, 900),
+        ];
+        let fillers = identify_filler_words(words);
+        assert_eq!(fillers.len(), 3);
+        assert_eq!(fillers[0].word, "um");
+        assert_eq!(fillers[1].word, "like");
+        assert_eq!(fillers[2].word, "so");
+    }
+
+    #[test]
+    fn test_all_single_fillers() {
+        let all_fillers = ["um", "uh", "umm", "hmm", "like", "basically", "actually", "right", "so"];
+        let words: Vec<TranscriptWord> = all_fillers
+            .iter()
+            .enumerate()
+            .map(|(i, w)| make_word(w, (i * 500) as i64, ((i + 1) * 500) as i64))
+            .collect();
+        let fillers = identify_filler_words(words);
+        // "so" + "right" may also appear in multi-word checks but single fillers should be 9
+        let single_count = fillers.iter().filter(|f| !f.word.contains(' ')).count();
+        assert_eq!(single_count, 9);
+    }
+
+    #[test]
+    fn test_all_multi_fillers() {
+        let words = vec![
+            make_word("you", 0, 200),
+            make_word("know", 200, 400),
+            make_word("I", 500, 600),
+            make_word("mean", 600, 800),
+            make_word("sort", 900, 1000),
+            make_word("of", 1000, 1100),
+            make_word("kind", 1200, 1300),
+            make_word("of", 1300, 1400),
+        ];
+        let fillers = identify_filler_words(words);
+        let multi_count = fillers.iter().filter(|f| f.word.contains(' ')).count();
+        assert_eq!(multi_count, 4);
+    }
+
+    #[test]
+    fn test_no_fillers_in_clean_speech() {
+        let words = vec![
+            make_word("The", 0, 200),
+            make_word("quick", 200, 400),
+            make_word("brown", 400, 600),
+            make_word("fox", 600, 800),
+            make_word("jumps", 800, 1000),
+        ];
+        let fillers = identify_filler_words(words);
+        assert!(fillers.is_empty());
+    }
+
+    #[test]
+    fn test_consecutive_fillers() {
+        let words = vec![
+            make_word("um", 0, 200),
+            make_word("uh", 200, 400),
+            make_word("like", 400, 600),
+        ];
+        let fillers = identify_filler_words(words);
+        assert_eq!(fillers.len(), 3);
+    }
+
+    #[test]
+    fn test_single_word_input() {
+        let words = vec![make_word("um", 0, 300)];
+        let fillers = identify_filler_words(words);
+        assert_eq!(fillers.len(), 1);
+        assert_eq!(fillers[0].word, "um");
+    }
+
+    #[test]
+    fn test_sorted_by_start_ms() {
+        let words = vec![
+            make_word("hello", 0, 500),
+            make_word("uh", 500, 700),
+            make_word("you", 700, 900),
+            make_word("know", 900, 1100),
+            make_word("um", 1100, 1400),
+        ];
+        let fillers = identify_filler_words(words);
+        for i in 1..fillers.len() {
+            assert!(fillers[i].start_ms >= fillers[i - 1].start_ms);
+        }
+    }
+
+    #[test]
+    fn test_filler_count_always_one() {
+        let words = vec![
+            make_word("um", 0, 300),
+            make_word("um", 300, 600),
+        ];
+        let fillers = identify_filler_words(words);
+        assert_eq!(fillers.len(), 2);
+        for f in &fillers {
+            assert_eq!(f.count, 1);
+        }
+    }
 }
