@@ -21,11 +21,15 @@ enum PermissionKind: String, CaseIterable, Identifiable {
 
     var description: String {
         switch self {
-        case .screenRecording: "Required to capture your screen"
-        case .camera: "Used for webcam overlay during recordings"
-        case .microphone: "Used to record your voice and system audio"
-        case .accessibility: "Enables keyboard shortcuts and click effects"
+        case .screenRecording: "Captures your entire screen, a specific window, or a selected region so Cloom can create the recording."
+        case .camera: "Shows your webcam as a floating bubble overlay on recordings — great for presentations and walkthroughs."
+        case .microphone: "Records your voice narration and system audio so viewers can hear what you're explaining."
+        case .accessibility: "Powers global keyboard shortcuts (start/stop/pause recording from anywhere) and click emphasis effects."
         }
+    }
+
+    var isOptional: Bool {
+        self == .accessibility
     }
 
     var icon: String {
@@ -46,6 +50,12 @@ final class PermissionChecker: ObservableObject {
 
     var allGranted: Bool {
         PermissionKind.allCases.allSatisfy { statuses[$0] == true }
+    }
+
+    var requiredGranted: Bool {
+        PermissionKind.allCases
+            .filter { !$0.isOptional }
+            .allSatisfy { statuses[$0] == true }
     }
 
     init() {

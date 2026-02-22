@@ -41,11 +41,11 @@ struct OnboardingView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .disabled(!permissionChecker.allGranted)
+            .disabled(!permissionChecker.requiredGranted)
             .padding(.bottom, 8)
         }
         .padding(.horizontal, 24)
-        .frame(width: 520, height: 560)
+        .frame(width: 520, height: 620)
         .onAppear {
             if permissionChecker.allGranted {
                 dismissWindow(id: "onboarding")
@@ -70,19 +70,41 @@ struct OnboardingView: View {
     private func permissionRow(for kind: PermissionKind) -> some View {
         let granted = permissionChecker.statuses[kind] == true
 
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: kind.icon)
                 .font(.title2)
                 .foregroundStyle(granted ? .green : .secondary)
                 .frame(width: 28)
+                .padding(.top, 2)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(kind.displayName)
-                    .font(.headline)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(kind.displayName)
+                        .font(.headline)
+
+                    if kind.isOptional {
+                        Text("Optional")
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.quaternary, in: Capsule())
+                    }
+                }
 
                 Text(kind.description)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if kind.isOptional && !granted {
+                    Text("You can grant this later — you'll be prompted when using global hotkeys, click emphasis, or cursor spotlight.")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 1)
+                }
             }
 
             Spacer()
@@ -91,12 +113,14 @@ struct OnboardingView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.title2)
                     .foregroundStyle(.green)
+                    .padding(.top, 2)
             } else {
                 Button("Grant") {
                     permissionChecker.requestPermission(kind)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                .padding(.top, 2)
             }
         }
     }

@@ -16,7 +16,6 @@ final class AppState: ObservableObject {
     @Published var micEnabled: Bool = false
     @Published var cameraEnabled: Bool = false
     @Published var blurEnabled: Bool = false
-    // Content picker is now handled by system SCContentSharingPicker
 
     let recordingCoordinator: RecordingCoordinator
 
@@ -149,5 +148,13 @@ final class AppState: ObservableObject {
 
     func toggleBlur() {
         recordingCoordinator.toggleBlur()
+    }
+
+    func discardRecording() {
+        recordingCoordinator.discardRecording()
+    }
+
+    func startWebcamOnlyRecording() {
+        recordingCoordinator.startWebcamOnlyRecording()
     }
 }
