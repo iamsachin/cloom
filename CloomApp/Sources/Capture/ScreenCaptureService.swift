@@ -163,6 +163,10 @@ final class ScreenCaptureService: NSObject {
                 $0.bundleIdentifier == Bundle.main.bundleIdentifier
             }
             return SCContentFilter(display: display, excludingApplications: selfApp, exceptingWindows: [])
+
+        case .webcamOnly:
+            // Webcam-only mode doesn't use SCStream; this should never be called
+            throw CaptureError.noDisplay
         }
     }
 
@@ -196,6 +200,9 @@ final class ScreenCaptureService: NSObject {
                     height: CGFloat(config.height)
                 )
             )
+
+        case .webcamOnly:
+            break // Webcam-only mode doesn't use SCStream
         }
     }
 

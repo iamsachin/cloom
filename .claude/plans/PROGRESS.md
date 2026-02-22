@@ -172,24 +172,45 @@
 ---
 
 ## Phase 10: Recording Controls & Video Enhancements
-**Status:** Not started
+**Status:** Complete
+**Date:** 2026-02-22
 
 ### Webcam Bubble Controls (Loom-style)
-- [ ] Task 84 — Floating control pill on webcam bubble (stop, timer, pause/resume, discard buttons — capsule-shaped overlay anchored to bottom of bubble)
-- [ ] Task 85 — Webcam bubble background themes (solid colors, gradients, patterns behind the circular webcam — like Loom's colored/patterned backdrops)
-- [ ] Task 86 — Webcam shape options (circle, rounded rectangle, pill) with smooth transition animations
+- [x] Task 84 — Floating control pill on webcam bubble (BubbleControlPill NSPanel, stop/timer/pause/discard, child window attached to bubble)
+- [x] Task 85 — Webcam bubble background themes (8 solid/gradient themes: red, blue, green, purple, sunset, ocean, forest, cosmic — rendered as CAGradientLayer + CIContext ring in compositor)
+- [x] Task 86 — Webcam shape options (circle, roundedRect, pill — WebcamShape enum, shape-aware masking with CGContext cache, right-click to cycle)
 
 ### Video Enhancement Controls
-- [ ] Task 87 — Webcam image adjustments (brightness, contrast, saturation, highlights, shadows — CIFilter pipeline on camera frames)
-- [ ] Task 88 — Beauty / soft-focus filter for webcam (skin smoothing via CIGaussianBlur + person segmentation mask)
-- [ ] Task 89 — Color temperature / white balance adjustment for webcam feed
-- [ ] Task 90 — Screen recording adjustments (brightness, contrast in post-export via editor)
+- [x] Task 87 — Webcam image adjustments (brightness, contrast, saturation, highlights, shadows — WebcamImageAdjuster with CIColorControls + CIHighlightShadowAdjust, thread-safe via OSAllocatedUnfairLock)
+- [ ] Task 88 — Beauty / soft-focus filter — **Deferred to Phase 12** (removed in polish pass)
+- [x] Task 89 — Color temperature / white balance (CITemperatureAndTint filter, 2000–10000K range, integrated into WebcamImageAdjuster pipeline)
+- [x] Task 90 — Screen recording adjustments (brightness/contrast sliders in EditorExportView, AVMutableVideoComposition with CIColorControls filter)
 
 ### Recording UX
-- [ ] Task 91 — Discard recording button (cancel mid-recording, delete temp files, return to idle)
-- [ ] Task 92 — Webcam-only recording mode (no screen, just camera + audio — for intros/outros)
+- [x] Task 91 — Discard recording (DiscardConfirmation alert, performDiscard cleanup, trash button in toolbar + menu bar)
+- [x] Task 92 — Webcam-only recording mode (WebcamRecordingService with AVAssetWriter, HEVC 720p, camera+mic, image adjustments + beauty + blur applied)
 
-**Milestone:** Loom-style floating controls on webcam bubble. Webcam image adjustments (contrast, highlights, saturation). Background themes. Discard recording. Webcam-only mode.
+### New Files
+- `CloomApp/Sources/Recording/DiscardConfirmationWindow.swift`
+- `CloomApp/Sources/Capture/WebcamImageAdjustments.swift`
+- `CloomApp/Sources/Capture/WebcamShape.swift`
+- `CloomApp/Sources/Capture/WebcamBubbleTheme.swift`
+- `CloomApp/Sources/Recording/BubbleControlPill.swift`
+- `CloomApp/Sources/Capture/WebcamRecordingService.swift`
+
+### New @AppStorage Keys
+- `webcamBrightness`, `webcamContrast`, `webcamSaturation`, `webcamHighlights`, `webcamShadows` (image adjustments)
+- `webcamTemperature`, `webcamTint` (color temperature)
+- `webcamShape` (circle/roundedRect/pill)
+- `webcamBubbleTheme` (none/solidRed/.../gradientCosmic)
+**Milestone verified:** Build succeeds (0 errors, 2 warnings). Discard button in toolbar + menu bar. Webcam settings section in Settings (shape, adjustments, temperature, tint, theme swatches). Shape-aware masking in compositor. Floating control pill on webcam bubble. Webcam-only recording mode. Export brightness/contrast adjustments.
+
+### Post-completion polish
+- Fixed pill shape not reflected in Settings preview (now shape-aware dimensions with aspect ratio)
+- Added click-to-reset on individual slider values (accent-colored when non-default, click to restore)
+- Added bubble theme ring to Settings webcam preview (gradient/solid border behind camera preview)
+- Removed beauty filter (BeautyFilter.swift deleted, all references cleaned up) — deferred to Phase 12
+- Improved onboarding: longer permission descriptions, Accessibility made optional with warning
 
 ---
 
@@ -229,6 +250,7 @@
 - [ ] Task 78 — Local view analytics (track views, watch time)
 - [ ] Task 79 — Timestamped comments
 - [ ] Task 80 — Performance optimization + profiling
+- [ ] Task 88 — Beauty / soft-focus filter (person segmentation + CIGaussianBlur skin smoothing, deferred from Phase 10)
 
 ---
 

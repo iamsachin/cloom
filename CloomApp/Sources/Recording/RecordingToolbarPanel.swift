@@ -19,7 +19,8 @@ final class RecordingToolbarPanel {
         onResume: @escaping () -> Void = {},
         onToggleAnnotations: @escaping () -> Void = {},
         onToggleClickEmphasis: @escaping () -> Void = {},
-        onToggleCursorSpotlight: @escaping () -> Void = {}
+        onToggleCursorSpotlight: @escaping () -> Void = {},
+        onDiscard: @escaping () -> Void = {}
     ) {
         self.onStop = onStop
         if panel == nil {
@@ -41,7 +42,8 @@ final class RecordingToolbarPanel {
                 onResume: onResume,
                 onToggleAnnotations: onToggleAnnotations,
                 onToggleClickEmphasis: onToggleClickEmphasis,
-                onToggleCursorSpotlight: onToggleCursorSpotlight
+                onToggleCursorSpotlight: onToggleCursorSpotlight,
+                onDiscard: onDiscard
             )
         )
         let fittingSize = hostingView.fittingSize
@@ -101,6 +103,7 @@ private struct RecordingToolbarContentView: View {
     let onToggleAnnotations: () -> Void
     let onToggleClickEmphasis: () -> Void
     let onToggleCursorSpotlight: () -> Void
+    let onDiscard: () -> Void
 
     init(
         startedAt: Date,
@@ -115,7 +118,8 @@ private struct RecordingToolbarContentView: View {
         onResume: @escaping () -> Void,
         onToggleAnnotations: @escaping () -> Void,
         onToggleClickEmphasis: @escaping () -> Void,
-        onToggleCursorSpotlight: @escaping () -> Void
+        onToggleCursorSpotlight: @escaping () -> Void,
+        onDiscard: @escaping () -> Void
     ) {
         self.startedAt = startedAt
         self.initialPausedDuration = initialPausedDuration
@@ -130,6 +134,7 @@ private struct RecordingToolbarContentView: View {
         self.onToggleAnnotations = onToggleAnnotations
         self.onToggleClickEmphasis = onToggleClickEmphasis
         self.onToggleCursorSpotlight = onToggleCursorSpotlight
+        self.onDiscard = onDiscard
     }
 
     var body: some View {
@@ -237,6 +242,15 @@ private struct RecordingToolbarContentView: View {
 
             Divider()
                 .frame(height: 20)
+
+            // Discard button
+            Button(action: onDiscard) {
+                Image(systemName: "trash")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .help("Discard recording")
 
             // Stop button
             Button(action: onStop) {

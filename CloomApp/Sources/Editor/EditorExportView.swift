@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import CoreImage
 import UniformTypeIdentifiers
 import os.log
 
@@ -22,6 +23,8 @@ struct EditorExportView: View {
     @State private var isExporting = false
     @State private var exportProgress: Double = 0
     @State private var exportError: String?
+    @State private var exportBrightness: Float = 0
+    @State private var exportContrast: Float = 1
 
     var body: some View {
         VStack(spacing: 20) {
@@ -45,6 +48,39 @@ struct EditorExportView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .disabled(isExporting)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Video Adjustments")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    HStack {
+                        Text("Brightness")
+                            .font(.caption)
+                            .frame(width: 70, alignment: .leading)
+                        Slider(value: Binding(
+                            get: { Double(exportBrightness) },
+                            set: { exportBrightness = Float($0) }
+                        ), in: -1...1)
+                        Text(String(format: "%.2f", exportBrightness))
+                            .font(.caption.monospacedDigit())
+                            .frame(width: 40)
+                    }
+
+                    HStack {
+                        Text("Contrast")
+                            .font(.caption)
+                            .frame(width: 70, alignment: .leading)
+                        Slider(value: Binding(
+                            get: { Double(exportContrast) },
+                            set: { exportContrast = Float($0) }
+                        ), in: 0...4)
+                        Text(String(format: "%.2f", exportContrast))
+                            .font(.caption.monospacedDigit())
+                            .frame(width: 40)
+                    }
+                }
                 .disabled(isExporting)
             } else {
                 HStack {
@@ -150,6 +186,27 @@ struct EditorExportView: View {
             presetName: presetForQuality(selectedQuality)
         ) else {
             throw NSError(domain: "EditorExport", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not create export session"])
+        }
+
+        // Apply brightness/contrast adjustments if non-default
+        let needsAdjustment = exportBrightness != 0 || exportContrast != 1
+        if needsAdjustment {
+            let brightness = exportBrightness
+            let contrast = exportContrast
+            let ciContext = CIContext(options: [.useSoftwareRenderer: false])
+
+            let videoComp = try await AVMutableVideoComposition.videoComposition(
+                with: result.composition,
+                applyingCIFiltersWithHandler: { request in
+                    let source = request.sourceImage.clampedToExtent()
+                    let adjusted = source.applyingFilter("CIColorControls", parameters: [
+                        kCIInputBrightnessKey: brightness,
+                        kCIInputContrastKey: contrast,
+                    ]).cropped(to: request.sourceImage.extent)
+                    request.finish(with: adjusted, context: ciContext)
+                }
+            )
+            session.videoComposition = videoComp
         }
 
         try await session.export(to: destURL, as: .mp4)

@@ -17,7 +17,6 @@ final class RecordingCoordinator: ObservableObject {
     @Published var annotationsEnabled: Bool = false
     @Published var clickEmphasisEnabled: Bool = false
     @Published var cursorSpotlightEnabled: Bool = false
-
     private let modelContainer: ModelContainer
     private let captureService = ScreenCaptureService()
     private var countdownTimer: Timer?
@@ -32,6 +31,11 @@ final class RecordingCoordinator: ObservableObject {
     private var webcamBubble: WebcamBubbleWindow?
     private var personSegmenter: PersonSegmenter?
     private var compositor: WebcamCompositor?
+
+    // Webcam enhancements
+    private var imageAdjuster: WebcamImageAdjuster?
+    private var bubbleControlPill: BubbleControlPill?
+    private var webcamRecordingService: WebcamRecordingService?
 
     // Annotations
     private var annotationStore: AnnotationStore?
@@ -91,6 +95,13 @@ final class RecordingCoordinator: ObservableObject {
         beginPreRecordingFlow()
     }
 
+    func startWebcamOnlyRecording() {
+        guard state.isIdle else { return }
+        selectedMode = .webcamOnly
+        cameraEnabled = true
+        beginPreRecordingFlow()
+    }
+
     func startRegionSelection() {
         regionSelector.show(
             onSelection: { [weak self] displayID, rect in
@@ -114,58 +125,76 @@ final class RecordingCoordinator: ObservableObject {
         guard state.isActiveOrPaused else { return }
 
         let wasPaused = state.isPaused
+        let isWebcamOnly = selectedMode == .webcamOnly
         state = .stopping
         recordingToolbar.dismiss()
         regionHighlight.dismiss()
         cleanupAnnotations()
+        bubbleControlPill?.dismiss()
+        bubbleControlPill = nil
 
         Task {
-            stopWebcam()
+            if isWebcamOnly {
+                // Webcam-only: stop the webcam recording service
+                await webcamRecordingService?.stopRecording()
+                webcamRecordingService = nil
+                webcamBubble?.dismiss()
+                webcamBubble = nil
+                imageAdjuster = nil
 
-            // If not paused, stop the current capture to finalize the segment
-            if !wasPaused {
-                do {
-                    try await captureService.stopCapture()
-                } catch {
-                    logger.error("Failed to stop capture: \(error)")
-                }
-            }
-
-            guard let finalURL = currentOutputURL else {
-                state = .idle
-                return
-            }
-
-            if segmentURLs.count <= 1 {
-                // Single segment — move temp file to final destination
-                if let segmentURL = segmentURLs.first {
-                    do {
-                        try FileManager.default.moveItem(at: segmentURL, to: finalURL)
-                    } catch {
-                        logger.error("Failed to move segment to final URL: \(error)")
-                    }
+                guard let finalURL = currentOutputURL else {
+                    state = .idle
+                    return
                 }
                 await handleRecordingFinished(outputURL: finalURL)
             } else {
-                // Multiple segments — stitch into final URL
-                let progressWindow = ExportProgressWindow()
-                self.exportProgressWindow = progressWindow
-                progressWindow.show(message: "Stitching segments...")
+                stopWebcam()
 
-                do {
-                    try await stitcher.stitch(segments: segmentURLs, to: finalURL) { progress in
-                        Task { @MainActor in
-                            progressWindow.updateProgress(progress)
+                // If not paused, stop the current capture to finalize the segment
+                if !wasPaused {
+                    do {
+                        try await captureService.stopCapture()
+                    } catch {
+                        logger.error("Failed to stop capture: \(error)")
+                    }
+                }
+
+                guard let finalURL = currentOutputURL else {
+                    state = .idle
+                    return
+                }
+
+                if segmentURLs.count <= 1 {
+                    // Single segment — move temp file to final destination
+                    if let segmentURL = segmentURLs.first {
+                        do {
+                            try FileManager.default.moveItem(at: segmentURL, to: finalURL)
+                        } catch {
+                            logger.error("Failed to move segment to final URL: \(error)")
                         }
                     }
-                    progressWindow.dismiss()
                     await handleRecordingFinished(outputURL: finalURL)
-                } catch {
-                    progressWindow.dismiss()
-                    logger.error("Failed to stitch segments: \(error)")
-                    state = .idle
+                } else {
+                    // Multiple segments — stitch into final URL
+                    let progressWindow = ExportProgressWindow()
+                    self.exportProgressWindow = progressWindow
+                    progressWindow.show(message: "Stitching segments...")
+
+                    do {
+                        try await stitcher.stitch(segments: segmentURLs, to: finalURL) { progress in
+                            Task { @MainActor in
+                                progressWindow.updateProgress(progress)
+                            }
+                        }
+                        progressWindow.dismiss()
+                        await handleRecordingFinished(outputURL: finalURL)
+                    } catch {
+                        progressWindow.dismiss()
+                        logger.error("Failed to stitch segments: \(error)")
+                        state = .idle
+                    }
+                    self.exportProgressWindow = nil
                 }
-                self.exportProgressWindow = nil
             }
 
             segmentURLs = []
@@ -175,6 +204,12 @@ final class RecordingCoordinator: ObservableObject {
             currentSettings = nil
             currentFilter = nil
         }
+    }
+
+    func discardRecording() {
+        guard state.isActiveOrPaused else { return }
+        guard DiscardConfirmation.show() else { return }
+        performDiscard()
     }
 
     func pauseRecording() {
@@ -363,6 +398,63 @@ final class RecordingCoordinator: ObservableObject {
 
         case .region(_, let rect):
             return rect
+
+        case .webcamOnly:
+            return NSScreen.main?.frame ?? .zero
+        }
+    }
+
+    // MARK: - Discard
+
+    private func performDiscard() {
+        let wasPaused = state.isPaused
+        let isWebcamOnly = selectedMode == .webcamOnly
+        state = .stopping
+        recordingToolbar.dismiss()
+        regionHighlight.dismiss()
+        cleanupAnnotations()
+        bubbleControlPill?.dismiss()
+        bubbleControlPill = nil
+
+        Task {
+            if isWebcamOnly {
+                await webcamRecordingService?.stopRecording()
+                webcamRecordingService = nil
+                webcamBubble?.dismiss()
+                webcamBubble = nil
+                imageAdjuster = nil
+            } else {
+                stopWebcam()
+
+                if !wasPaused {
+                    do {
+                        try await captureService.stopCapture()
+                    } catch {
+                        logger.error("Failed to stop capture during discard: \(error)")
+                    }
+                }
+            }
+
+            // Delete all segment files
+            for url in segmentURLs {
+                try? FileManager.default.removeItem(at: url)
+            }
+            // Delete the final output URL if it exists
+            if let outputURL = currentOutputURL {
+                try? FileManager.default.removeItem(at: outputURL)
+            }
+
+            // Reset state
+            segmentURLs = []
+            segmentIndex = 0
+            pausedDuration = 0
+            recordingStartedAt = nil
+            currentSettings = nil
+            currentFilter = nil
+            currentOutputURL = nil
+
+            state = .idle
+            logger.info("Recording discarded")
         }
     }
 
@@ -451,7 +543,8 @@ final class RecordingCoordinator: ObservableObject {
             onResume: { [weak self] in self?.resumeRecording() },
             onToggleAnnotations: { [weak self] in self?.toggleAnnotations() },
             onToggleClickEmphasis: { [weak self] in self?.toggleClickEmphasis() },
-            onToggleCursorSpotlight: { [weak self] in self?.toggleCursorSpotlight() }
+            onToggleCursorSpotlight: { [weak self] in self?.toggleCursorSpotlight() },
+            onDiscard: { [weak self] in self?.discardRecording() }
         )
     }
 
@@ -525,6 +618,12 @@ final class RecordingCoordinator: ObservableObject {
             return
         }
 
+        // Handle webcam-only mode separately
+        if selectedMode == .webcamOnly {
+            beginWebcamOnlyCapture()
+            return
+        }
+
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
         let timestamp = dateFormatter.string(from: Date())
@@ -552,6 +651,8 @@ final class RecordingCoordinator: ObservableObject {
             let comp = WebcamCompositor()
             self.compositor = comp
             activeCompositor = comp
+            // Pass image adjuster to compositor
+            comp.imageAdjuster = imageAdjuster
             // Seed with current bubble position
             if let bubble = webcamBubble {
                 comp.updateBubbleLayout(bubble.currentLayout())
@@ -598,6 +699,79 @@ final class RecordingCoordinator: ObservableObject {
         }
     }
 
+    private func beginWebcamOnlyCapture() {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
+        let timestamp = dateFormatter.string(from: Date())
+        let filename = "Cloom Webcam \(timestamp).mp4"
+
+        let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
+        let outputURL = desktopURL.appendingPathComponent(filename)
+        self.currentOutputURL = outputURL
+
+        let settings = RecordingSettings.fromDefaults()
+        self.currentSettings = settings
+
+        segmentURLs = []
+        segmentIndex = 0
+        pausedDuration = 0
+
+        let service = WebcamRecordingService()
+        service.imageAdjuster = imageAdjuster
+        if blurEnabled {
+            let segmenter = PersonSegmenter()
+            segmenter.isEnabled = true
+            service.personSegmenter = segmenter
+        }
+        self.webcamRecordingService = service
+
+        // Show bubble for preview
+        if webcamBubble == nil {
+            webcamBubble = WebcamBubbleWindow()
+        }
+        service.onPreviewFrame = { [weak self] image, pixelBuffer in
+            Task { @MainActor in
+                self?.webcamBubble?.updateFrame(image)
+            }
+        }
+
+        Task {
+            do {
+                try await service.startRecording(
+                    outputURL: outputURL,
+                    cameraDeviceID: settings.cameraDeviceID,
+                    micEnabled: micEnabled,
+                    micDeviceID: settings.micDeviceID
+                )
+                let now = Date()
+                state = .recording(startedAt: now)
+                recordingStartedAt = now
+                webcamBubble?.show()
+                showRecordingToolbar(startedAt: now)
+
+                // Show bubble control pill
+                if let bubblePanel = webcamBubble?.windowPanel {
+                    let pill = BubbleControlPill()
+                    pill.show(
+                        bubbleWindow: bubblePanel,
+                        startedAt: now,
+                        pausedDuration: 0,
+                        isPaused: false,
+                        onStop: { [weak self] in self?.stopRecording() },
+                        onPause: { [weak self] in self?.pauseRecording() },
+                        onResume: { [weak self] in self?.resumeRecording() },
+                        onDiscard: { [weak self] in self?.discardRecording() }
+                    )
+                    self.bubbleControlPill = pill
+                }
+            } catch {
+                logger.error("Failed to start webcam-only capture: \(error)")
+                state = .idle
+                showCaptureFailedAlert(error: error)
+            }
+        }
+    }
+
     private func makeSegmentURL() -> URL {
         let tempDir = FileManager.default.temporaryDirectory
         let segmentFilename = "cloom_segment_\(segmentIndex)_\(UUID().uuidString).mp4"
@@ -619,6 +793,11 @@ final class RecordingCoordinator: ObservableObject {
         if webcamBubble == nil {
             webcamBubble = WebcamBubbleWindow()
         }
+
+        // Create image adjuster with current settings
+        let adjuster = WebcamImageAdjuster(adjustments: loadWebcamAdjustments())
+        self.imageAdjuster = adjuster
+        compositor?.imageAdjuster = adjuster
 
         // Wire bubble layout changes to compositor
         webcamBubble?.onLayoutChanged = { [weak self] layout in
@@ -642,17 +821,50 @@ final class RecordingCoordinator: ObservableObject {
     private func stopWebcam() {
         cameraService?.stop()
         webcamBubble?.dismiss()
+        bubbleControlPill?.dismiss()
+        bubbleControlPill = nil
         compositor = nil
+        imageAdjuster = nil
     }
 
     private func handleCameraFrameForPreview(_ image: CIImage, pixelBuffer: CVPixelBuffer) {
         var displayImage = image
+
+        // Apply image adjustments for preview
+        if let adjuster = imageAdjuster {
+            displayImage = adjuster.apply(to: displayImage)
+        }
 
         if blurEnabled, let segmenter = personSegmenter {
             displayImage = segmenter.process(image: displayImage, pixelBuffer: pixelBuffer)
         }
 
         webcamBubble?.updateFrame(displayImage)
+    }
+
+    private func loadWebcamAdjustments() -> WebcamAdjustments {
+        let defaults = UserDefaults.standard
+        return WebcamAdjustments(
+            brightness: Float(defaults.double(forKey: "webcamBrightness")),
+            contrast: {
+                let v = defaults.double(forKey: "webcamContrast")
+                return v == 0 ? 1 : Float(v)
+            }(),
+            saturation: {
+                let v = defaults.double(forKey: "webcamSaturation")
+                return v == 0 ? 1 : Float(v)
+            }(),
+            highlights: {
+                let v = defaults.double(forKey: "webcamHighlights")
+                return v == 0 ? 1 : Float(v)
+            }(),
+            shadows: Float(defaults.double(forKey: "webcamShadows")),
+            temperature: {
+                let v = defaults.double(forKey: "webcamTemperature")
+                return v == 0 ? 6500 : Float(v)
+            }(),
+            tint: Float(defaults.double(forKey: "webcamTint"))
+        )
     }
 
     // MARK: - Alerts
@@ -724,7 +936,14 @@ final class RecordingCoordinator: ObservableObject {
 
         let thumbnailPath = await ThumbnailGenerator.generateThumbnail(for: outputURL) ?? ""
 
-        let recordingType = cameraEnabled ? "screenAndWebcam" : "screenOnly"
+        let recordingType: String
+        if selectedMode == .webcamOnly {
+            recordingType = "webcamOnly"
+        } else if cameraEnabled {
+            recordingType = "screenAndWebcam"
+        } else {
+            recordingType = "screenOnly"
+        }
 
         let context = ModelContext(modelContainer)
         let durationMs = Int64(duration.seconds * 1000)
@@ -801,6 +1020,22 @@ extension RecordingCoordinator: CaptureServiceDelegate {
         }
 
         showRecordingToolbar(startedAt: now)
+
+        // Show bubble control pill if camera is enabled
+        if cameraEnabled, let bubblePanel = webcamBubble?.windowPanel {
+            let pill = BubbleControlPill()
+            pill.show(
+                bubbleWindow: bubblePanel,
+                startedAt: now,
+                pausedDuration: 0,
+                isPaused: false,
+                onStop: { [weak self] in self?.stopRecording() },
+                onPause: { [weak self] in self?.pauseRecording() },
+                onResume: { [weak self] in self?.resumeRecording() },
+                onDiscard: { [weak self] in self?.discardRecording() }
+            )
+            self.bubbleControlPill = pill
+        }
     }
 
     func captureDidFail(error: Error) {
@@ -808,6 +1043,8 @@ extension RecordingCoordinator: CaptureServiceDelegate {
         recordingToolbar.dismiss()
         regionHighlight.dismiss()
         cleanupAnnotations()
+        bubbleControlPill?.dismiss()
+        bubbleControlPill = nil
         stopWebcam()
         state = .idle
     }

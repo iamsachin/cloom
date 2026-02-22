@@ -82,6 +82,12 @@ struct MenuBarView: View {
                     appState.recordingCoordinator.cancelContentSelection()
                     appState.recordingCoordinator.startRegionSelection()
                 }
+
+                Divider()
+
+                Button("Webcam Only") {
+                    appState.startWebcamOnlyRecording()
+                }
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
 
@@ -99,6 +105,12 @@ struct MenuBarView: View {
                 Button("Resume Recording") {
                     appState.resumeRecording()
                 }
+            }
+
+            Divider()
+
+            Button("Discard Recording") {
+                appState.discardRecording()
             }
         } else {
             Text(menuStatusText)
