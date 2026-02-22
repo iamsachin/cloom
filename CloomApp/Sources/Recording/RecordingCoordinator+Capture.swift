@@ -128,6 +128,11 @@ extension RecordingCoordinator {
         let renderer = AnnotationRenderer(store: store)
         self.annotationRenderer = renderer
 
+        // Start webcam bubble + camera feed if camera is enabled
+        if cameraEnabled {
+            startWebcam()
+        }
+
         Task {
             do {
                 if let filter = pendingFilter {

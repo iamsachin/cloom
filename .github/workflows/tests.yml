@@ -40,7 +40,7 @@ jobs:
 
   swift-tests:
     name: Swift Tests
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
@@ -60,7 +60,7 @@ jobs:
           restore-keys: rust-${{ runner.os }}-
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app || sudo xcode-select -s /Applications/Xcode.app
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app || sudo xcode-select -s /Applications/Xcode.app
 
       - name: Build Rust & generate UniFFI bindings
         run: ./build.sh

@@ -118,8 +118,7 @@ fn transcribe_openai(
             .part("file", file_part)
             .text("model", model)
             .text("response_format", "verbose_json")
-            .text("timestamp_granularities[]", "word")
-            .text("prompt", "Hello, welcome. This is a screen recording with proper punctuation, capitalization, and full stops.");
+            .text("timestamp_granularities[]", "word");
 
         let response = client
             .post("https://api.openai.com/v1/audio/transcriptions")

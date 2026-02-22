@@ -141,7 +141,7 @@ final class WebcamCompositor: @unchecked Sendable {
         // Composite theme ring if needed
         var compositeBase = screenImage
         if layout.theme != .none {
-            let themeBorderWidth: CGFloat = 8 * 2 // Retina scale
+            let themeBorderWidth: CGFloat = 6 * 2 // Retina scale (matches bubble's 6pt border)
             let themeWidth = width + themeBorderWidth * 2
             let themeHeight = height + themeBorderWidth * 2
             let themeOriginX = clampedX - themeBorderWidth

@@ -213,10 +213,22 @@ struct WebcamSettingsTab: View {
                     endPoint: .topTrailing
                 ))
                 .frame(width: ringWidth, height: ringHeight)
+                .shadow(color: Color(cgColor: c1).opacity(0.4), radius: 8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: previewCornerRadius + 0.5)
+                        .strokeBorder(.white.opacity(0.4), lineWidth: 1)
+                        .frame(width: previewSize.width + 1, height: previewSize.height + 1)
+                )
         } else if let c = currentTheme.cgColor() {
             RoundedRectangle(cornerRadius: ringRadius)
                 .fill(Color(cgColor: c))
                 .frame(width: ringWidth, height: ringHeight)
+                .shadow(color: Color(cgColor: c).opacity(0.4), radius: 8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: previewCornerRadius + 0.5)
+                        .strokeBorder(.white.opacity(0.4), lineWidth: 1)
+                        .frame(width: previewSize.width + 1, height: previewSize.height + 1)
+                )
         }
     }
 

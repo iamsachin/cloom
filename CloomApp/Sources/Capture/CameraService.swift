@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import CoreImage
 import os.log
@@ -6,13 +7,16 @@ private let logger = Logger(subsystem: "com.cloom.app", category: "CameraService
 
 final class CameraService: NSObject, @unchecked Sendable {
     var onFrame: ((_ pixelBuffer: CVPixelBuffer, _ image: CIImage) -> Void)?
+    var onAuthorizationDenied: (() -> Void)?
 
     private var session: AVCaptureSession?
     private let outputQueue = DispatchQueue(label: "com.cloom.camera", qos: .userInteractive)
     private let preferredDeviceID: String?
 
     init(deviceID: String? = nil) {
-        self.preferredDeviceID = deviceID
+        // Treat empty string as nil so we fall back to the default camera
+        let id = deviceID?.isEmpty == true ? nil : deviceID
+        self.preferredDeviceID = id
         super.init()
     }
 
@@ -31,9 +35,18 @@ final class CameraService: NSObject, @unchecked Sendable {
                     }
                 } else {
                     logger.error("Camera access denied by user")
+                    DispatchQueue.main.async {
+                        self?.onAuthorizationDenied?()
+                    }
                 }
             }
-        default:
+        case .denied, .restricted:
+            logger.error("Camera access \(status == .denied ? "denied" : "restricted") — opening System Settings")
+            onAuthorizationDenied?()
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera") {
+                NSWorkspace.shared.open(url)
+            }
+        @unknown default:
             logger.error("Camera access not authorized (status: \(status.rawValue))")
         }
     }
