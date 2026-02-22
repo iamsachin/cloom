@@ -1,0 +1,86 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-tests:
+    name: Rust Tests
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: cloom-core
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Cache Cargo registry & build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            cloom-core/target
+          key: rust-${{ runner.os }}-${{ hashFiles('cloom-core/Cargo.lock') }}
+          restore-keys: rust-${{ runner.os }}-
+
+      - name: Run tests
+        run: cargo test --verbose
+
+  swift-tests:
+    name: Swift Tests
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Cache Cargo registry & build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            cloom-core/target
+          key: rust-${{ runner.os }}-${{ hashFiles('cloom-core/Cargo.lock') }}
+          restore-keys: rust-${{ runner.os }}-
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app || sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Build Rust & generate UniFFI bindings
+        run: ./build.sh
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen || true
+          xcodegen generate
+
+      - name: Run unit tests
+        run: |
+          xcodebuild test \
+            -scheme Cloom \
+            -destination 'platform=macOS,arch=arm64' \
+            -only-testing:CloomTests \
+            -resultBundlePath TestResults.xcresult \
+            | xcpretty --color || true
+          # Check exit code from xcodebuild (xcpretty masks it)
+          xcodebuild test \
+            -scheme Cloom \
+            -destination 'platform=macOS,arch=arm64' \
+            -only-testing:CloomTests \
+            -quiet

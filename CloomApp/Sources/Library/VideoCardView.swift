@@ -92,6 +92,7 @@ struct VideoCardView: View {
         .onHover { hovering in
             isHovered = hovering
         }
+        .accessibilityLabel("\(video.title), \(formattedDuration)")
     }
 
     // MARK: - Tag Pills

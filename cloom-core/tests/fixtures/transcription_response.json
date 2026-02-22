@@ -1,0 +1,15 @@
+{
+  "text": "Hello, this is a test recording about screen capture.",
+  "language": "en",
+  "words": [
+    {"word": "Hello,", "start": 0.0, "end": 0.5},
+    {"word": "this", "start": 0.5, "end": 0.7},
+    {"word": "is", "start": 0.7, "end": 0.8},
+    {"word": "a", "start": 0.8, "end": 0.9},
+    {"word": "test", "start": 0.9, "end": 1.2},
+    {"word": "recording", "start": 1.2, "end": 1.8},
+    {"word": "about", "start": 1.8, "end": 2.1},
+    {"word": "screen", "start": 2.1, "end": 2.5},
+    {"word": "capture.", "start": 2.5, "end": 3.0}
+  ]
+}

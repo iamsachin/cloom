@@ -50,6 +50,8 @@ final class WebcamBubbleWindow {
     private var themeLayer: CAGradientLayer?
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
     private var moveObserver: NSObjectProtocol?
+    private var themeObserver: NSObjectProtocol?
+    private var shapeObserver: NSObjectProtocol?
 
     private enum BubbleSize: Int, CaseIterable {
         case small = 120
@@ -58,7 +60,7 @@ final class WebcamBubbleWindow {
 
         var next: BubbleSize {
             let all = BubbleSize.allCases
-            let idx = all.firstIndex(of: self)!
+            guard let idx = all.firstIndex(of: self) else { return .medium }
             return all[(idx + 1) % all.count]
         }
     }
@@ -78,6 +80,7 @@ final class WebcamBubbleWindow {
             createPanel()
         }
         panel?.orderFrontRegardless()
+        startObservingDefaults()
         logger.info("Webcam bubble shown")
     }
 
@@ -86,6 +89,7 @@ final class WebcamBubbleWindow {
             NotificationCenter.default.removeObserver(obs)
             moveObserver = nil
         }
+        stopObservingDefaults()
         panel?.orderOut(nil)
         panel = nil
         imageLayer = nil
@@ -131,9 +135,16 @@ final class WebcamBubbleWindow {
 
     func updateTheme(_ theme: BubbleTheme) {
         guard theme != currentTheme else { return }
+        let hadBorder = currentTheme != .none
+        let willHaveBorder = theme != .none
         currentTheme = theme
-        applyTheme()
-        reportLayout()
+        if hadBorder != willHaveBorder {
+            // Panel size changes — full rebuild needed
+            rebuildPanel()
+        } else {
+            applyTheme()
+            reportLayout()
+        }
     }
 
     /// Returns the current bubble layout as normalized coordinates relative to the main screen.
@@ -145,10 +156,11 @@ final class WebcamBubbleWindow {
         let screenFrame = screen.frame
         let centerX = frame.midX - screenFrame.origin.x
         let centerY = frame.midY - screenFrame.origin.y
+        let borderInset: CGFloat = currentTheme != .none ? 16 : 0  // 6 border + 10 glow padding
         return BubbleLayout(
             normalizedX: centerX / screenFrame.width,
             normalizedY: centerY / screenFrame.height,
-            diameterPoints: frame.height,
+            diameterPoints: frame.height - borderInset * 2,
             shape: currentShape,
             theme: currentTheme
         )
@@ -189,16 +201,23 @@ final class WebcamBubbleWindow {
         let height = diameter
         let cornerRadius = currentShape.cornerRadius(forHeight: height)
 
+        // Expand panel to include theme border + outer glow so nothing is clipped
+        let themeBorderWidth: CGFloat = currentTheme != .none ? 6 : 0
+        let glowPadding: CGFloat = currentTheme != .none ? 10 : 0
+        let totalInset = themeBorderWidth + glowPadding
+        let panelWidth = width + totalInset * 2
+        let panelHeight = height + totalInset * 2
+
         let origin: NSPoint
         if let center {
-            origin = NSPoint(x: center.x - width / 2, y: center.y - height / 2)
+            origin = NSPoint(x: center.x - panelWidth / 2, y: center.y - panelHeight / 2)
         } else {
             let margin: CGFloat = 20
             origin = NSPoint(x: margin, y: margin)
         }
 
         let panel = NSPanel(
-            contentRect: NSRect(x: origin.x, y: origin.y, width: width, height: height),
+            contentRect: NSRect(x: origin.x, y: origin.y, width: panelWidth, height: panelHeight),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -211,7 +230,7 @@ final class WebcamBubbleWindow {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.sharingType = .none
 
-        let contentView = BubbleContentView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        let contentView = BubbleContentView(frame: NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight))
         contentView.onClick = { [weak self] in
             self?.cycleSize()
         }
@@ -226,50 +245,69 @@ final class WebcamBubbleWindow {
         rootLayer.masksToBounds = false
         rootLayer.backgroundColor = NSColor.clear.cgColor
 
-        // Shadow layer — soft drop shadow like Loom
-        let shadowLayer = CALayer()
-        shadowLayer.frame = contentView.bounds
-        shadowLayer.cornerRadius = cornerRadius
-        shadowLayer.backgroundColor = NSColor.black.cgColor
-        shadowLayer.shadowColor = NSColor.black.cgColor
-        shadowLayer.shadowOpacity = 0.4
-        shadowLayer.shadowRadius = 12
-        shadowLayer.shadowOffset = CGSize(width: 0, height: -4)
-        rootLayer.addSublayer(shadowLayer)
-
-        // Theme layer (between shadow and clip) for border ring
-        let themeBorder = CAGradientLayer()
-        let themeBorderWidth: CGFloat = currentTheme != .none ? 8 : 0
-        themeBorder.frame = NSRect(
-            x: -themeBorderWidth, y: -themeBorderWidth,
+        // Inner rect for the video content (inset by border + glow padding)
+        let innerRect = NSRect(x: totalInset, y: totalInset, width: width, height: height)
+        // Theme border rect (inset only by glow padding)
+        let borderRect = NSRect(
+            x: glowPadding, y: glowPadding,
             width: width + themeBorderWidth * 2,
             height: height + themeBorderWidth * 2
         )
-        themeBorder.cornerRadius = currentShape.cornerRadius(forHeight: height + themeBorderWidth * 2)
+        let borderCornerRadius = currentShape.cornerRadius(forHeight: borderRect.height)
+
+        // Shadow layer — soft drop shadow
+        let shadowLayer = CALayer()
+        shadowLayer.frame = innerRect
+        shadowLayer.cornerRadius = cornerRadius
+        shadowLayer.backgroundColor = NSColor.black.cgColor
+        shadowLayer.shadowColor = NSColor.black.cgColor
+        shadowLayer.shadowOpacity = 0.35
+        shadowLayer.shadowRadius = 10
+        shadowLayer.shadowOffset = CGSize(width: 0, height: -3)
+        rootLayer.addSublayer(shadowLayer)
+
+        // Theme border ring with subtle colored glow
+        let themeBorder = CAGradientLayer()
+        themeBorder.frame = borderRect
+        themeBorder.cornerRadius = borderCornerRadius
         themeBorder.isHidden = currentTheme == .none
+        themeBorder.masksToBounds = false
         rootLayer.addSublayer(themeBorder)
         self.themeLayer = themeBorder
 
+        // Bright inner edge between border and video for depth
+        if currentTheme != .none {
+            let innerGlow = CALayer()
+            innerGlow.frame = NSRect(
+                x: totalInset - 1, y: totalInset - 1,
+                width: width + 2, height: height + 2
+            )
+            innerGlow.cornerRadius = cornerRadius + 1
+            innerGlow.borderWidth = 1.5
+            innerGlow.borderColor = NSColor.white.withAlphaComponent(0.5).cgColor
+            rootLayer.addSublayer(innerGlow)
+        }
+
         // Clipping container for the video feed
         let clipLayer = CALayer()
-        clipLayer.frame = contentView.bounds
+        clipLayer.frame = innerRect
         clipLayer.cornerRadius = cornerRadius
         clipLayer.masksToBounds = true
-        clipLayer.backgroundColor = NSColor.black.cgColor
+        clipLayer.backgroundColor = NSColor.darkGray.cgColor
         rootLayer.addSublayer(clipLayer)
 
         // Video image layer
         let imgLayer = CALayer()
-        imgLayer.frame = contentView.bounds
+        imgLayer.frame = NSRect(x: 0, y: 0, width: width, height: height)
         imgLayer.contentsGravity = .resizeAspectFill
         clipLayer.addSublayer(imgLayer)
 
         // Subtle inner border — thin ring for definition
         let borderLayer = CALayer()
-        borderLayer.frame = contentView.bounds
+        borderLayer.frame = NSRect(x: 0, y: 0, width: width, height: height)
         borderLayer.cornerRadius = cornerRadius
-        borderLayer.borderWidth = 1.5
-        borderLayer.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        borderLayer.borderWidth = 1
+        borderLayer.borderColor = NSColor.white.withAlphaComponent(0.15).cgColor
         clipLayer.addSublayer(borderLayer)
 
         panel.contentView = contentView
@@ -306,24 +344,77 @@ final class WebcamBubbleWindow {
         }
 
         themeLayer.isHidden = false
-        let height = CGFloat(currentSize.rawValue)
-        let width = height * currentShape.aspectRatio
-        let themeBorderWidth: CGFloat = 8
-        themeLayer.frame = NSRect(
-            x: -themeBorderWidth, y: -themeBorderWidth,
+        let diameter = CGFloat(currentSize.rawValue)
+        let width = diameter * currentShape.aspectRatio
+        let height = diameter
+        let themeBorderWidth: CGFloat = 6
+        let glowPadding: CGFloat = 10
+        let borderRect = NSRect(
+            x: glowPadding, y: glowPadding,
             width: width + themeBorderWidth * 2,
             height: height + themeBorderWidth * 2
         )
-        themeLayer.cornerRadius = currentShape.cornerRadius(forHeight: height + themeBorderWidth * 2)
+        themeLayer.frame = borderRect
+        themeLayer.cornerRadius = currentShape.cornerRadius(forHeight: borderRect.height)
 
+        // Determine the primary glow color for the shadow
+        let glowColor: CGColor
         if let gradientColors = currentTheme.gradientNSColors() {
             themeLayer.colors = [gradientColors.0.cgColor, gradientColors.1.cgColor]
             themeLayer.startPoint = CGPoint(x: 0, y: 1)
             themeLayer.endPoint = CGPoint(x: 1, y: 0)
             themeLayer.backgroundColor = nil
+            // Blend glow from the first gradient color
+            glowColor = gradientColors.0.cgColor
         } else if let solidColor = currentTheme.cgColor() {
             themeLayer.colors = nil
             themeLayer.backgroundColor = solidColor
+            glowColor = solidColor
+        } else {
+            glowColor = NSColor.clear.cgColor
+        }
+
+        // Subtle colored outer glow
+        themeLayer.shadowColor = glowColor
+        themeLayer.shadowOpacity = 0.45
+        themeLayer.shadowRadius = 8
+        themeLayer.shadowOffset = .zero
+    }
+
+    // MARK: - UserDefaults Observers
+
+    private func startObservingDefaults() {
+        stopObservingDefaults()
+
+        themeObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let newThemeRaw = UserDefaults.standard.string(forKey: "webcamBubbleTheme") ?? "none"
+                let newTheme = BubbleTheme(rawValue: newThemeRaw) ?? .none
+                if newTheme != self.currentTheme {
+                    self.updateTheme(newTheme)
+                }
+                let newShapeRaw = UserDefaults.standard.string(forKey: "webcamShape") ?? "circle"
+                let newShape = WebcamShape(rawValue: newShapeRaw) ?? .circle
+                if newShape != self.currentShape {
+                    self.updateShape(newShape)
+                }
+            }
+        }
+    }
+
+    private func stopObservingDefaults() {
+        if let obs = themeObserver {
+            NotificationCenter.default.removeObserver(obs)
+            themeObserver = nil
+        }
+        if let obs = shapeObserver {
+            NotificationCenter.default.removeObserver(obs)
+            shapeObserver = nil
         }
     }
 }

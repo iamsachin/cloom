@@ -62,6 +62,7 @@ struct AnnotationToolbarContentView: View {
             }
             .buttonStyle(.plain)
             .help("Undo")
+            .accessibilityLabel("Undo")
 
             // Clear all
             Button(action: onClearAll) {
@@ -71,6 +72,7 @@ struct AnnotationToolbarContentView: View {
             }
             .buttonStyle(.plain)
             .help("Clear all")
+            .accessibilityLabel("Clear all annotations")
 
             Divider().frame(height: 20)
 
@@ -82,6 +84,7 @@ struct AnnotationToolbarContentView: View {
             }
             .buttonStyle(.plain)
             .help("Close annotations")
+            .accessibilityLabel("Close annotations")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -100,6 +103,7 @@ struct AnnotationToolbarContentView: View {
         }
         .buttonStyle(.plain)
         .help(label)
+        .accessibilityLabel("\(label) tool")
     }
 
     private func colorSwatch(_ color: StrokeColor) -> some View {
@@ -119,5 +123,6 @@ struct AnnotationToolbarContentView: View {
                 }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(color.displayName) color")
     }
 }

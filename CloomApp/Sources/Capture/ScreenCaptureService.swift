@@ -12,6 +12,7 @@ private struct SendableSampleBuffer: @unchecked Sendable {
 }
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "ScreenCaptureService")
+private let sRGBColorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
 
 @MainActor
 protocol CaptureServiceDelegate: AnyObject {
@@ -24,6 +25,7 @@ final class ScreenCaptureService: NSObject {
     weak var delegate: CaptureServiceDelegate?
 
     private var stream: SCStream?
+    private var currentConfig: SCStreamConfiguration?
     nonisolated(unsafe) var videoWriter: VideoWriter?
     nonisolated(unsafe) var compositor: WebcamCompositor?
     nonisolated(unsafe) var annotationRenderer: AnnotationRenderer?
@@ -84,6 +86,7 @@ final class ScreenCaptureService: NSObject {
         )
         self.videoWriter = writer
 
+        self.currentConfig = config
         let stream = SCStream(filter: filter, configuration: config, delegate: self)
         self.stream = stream
 
@@ -113,6 +116,7 @@ final class ScreenCaptureService: NSObject {
 
         logger.info("Capture stopped")
         self.stream = nil
+        self.currentConfig = nil
         self.videoWriter = nil
         self.compositor = nil
         self.annotationRenderer = nil
@@ -125,13 +129,21 @@ final class ScreenCaptureService: NSObject {
     }
 
     func updateConfiguration(micEnabled: Bool) async throws {
-        guard let stream else { return }
+        guard let stream, let base = currentConfig else { return }
         let config = SCStreamConfiguration()
+        config.width = base.width
+        config.height = base.height
+        config.minimumFrameInterval = base.minimumFrameInterval
+        config.showsCursor = base.showsCursor
+        config.capturesAudio = base.capturesAudio
+        config.sourceRect = base.sourceRect
+        config.destinationRect = base.destinationRect
         config.captureMicrophone = micEnabled
         if micEnabled, let defaultMic = AVCaptureDevice.default(for: .audio) {
             config.microphoneCaptureDeviceID = defaultMic.uniqueID
         }
         try await stream.updateConfiguration(config)
+        currentConfig = config
     }
 
     // MARK: - Filter builder
@@ -266,7 +278,7 @@ extension ScreenCaptureService: SCStreamOutput {
                 let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &poolBuffer)
                 if status == kCVReturnSuccess, let output = poolBuffer {
                     let extent = CGRect(x: 0, y: 0, width: screenWidth, height: screenHeight)
-                    renderer.ciContext.render(final, to: output, bounds: extent, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)
+                    renderer.ciContext.render(final, to: output, bounds: extent, colorSpace: sRGBColorSpace)
                     outputBuffer = output
                 } else {
                     outputBuffer = afterWebcam

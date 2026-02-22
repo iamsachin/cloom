@@ -3,6 +3,7 @@ import CoreGraphics
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "AnnotationRenderer")
+private let sRGBColorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
 
 /// Renders annotation overlays as CIImage for video burn-in.
 /// Called from SCStreamOutput queue — must be thread-safe.
@@ -13,9 +14,9 @@ final class AnnotationRenderer: @unchecked Sendable {
     init(store: AnnotationStore) {
         self.store = store
         if let device = MTLCreateSystemDefaultDevice() {
-            self.ciContext = CIContext(mtlDevice: device, options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB)!])
+            self.ciContext = CIContext(mtlDevice: device, options: [.workingColorSpace: sRGBColorSpace])
         } else {
-            self.ciContext = CIContext(options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB)!])
+            self.ciContext = CIContext(options: [.workingColorSpace: sRGBColorSpace])
         }
     }
 
@@ -65,7 +66,7 @@ final class AnnotationRenderer: @unchecked Sendable {
     // MARK: - Stroke Rendering
 
     private func renderStrokes(_ strokes: [AnnotationStroke], width: Int, height: Int) -> CIImage? {
-        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
+        let colorSpace = sRGBColorSpace
         guard let context = CGContext(
             data: nil,
             width: width,

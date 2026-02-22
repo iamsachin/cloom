@@ -3,6 +3,7 @@ import CoreImage
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "WebcamRecordingService")
+private let sRGBColorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
 
 final class WebcamRecordingService: NSObject, @unchecked Sendable {
     // Properties accessed from capture queue — protected by isRecording flag
@@ -25,9 +26,9 @@ final class WebcamRecordingService: NSObject, @unchecked Sendable {
 
     override init() {
         if let device = MTLCreateSystemDefaultDevice() {
-            self.ciContext = CIContext(mtlDevice: device, options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB)!])
+            self.ciContext = CIContext(mtlDevice: device, options: [.workingColorSpace: sRGBColorSpace])
         } else {
-            self.ciContext = CIContext(options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB)!])
+            self.ciContext = CIContext(options: [.workingColorSpace: sRGBColorSpace])
         }
         super.init()
     }
@@ -211,7 +212,7 @@ extension WebcamRecordingService: AVCaptureVideoDataOutputSampleBufferDelegate, 
                 var outputBuffer: CVPixelBuffer?
                 let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &outputBuffer)
                 if status == kCVReturnSuccess, let outBuf = outputBuffer {
-                    ciContext.render(flipped, to: outBuf, bounds: flipped.extent, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)
+                    ciContext.render(flipped, to: outBuf, bounds: flipped.extent, colorSpace: sRGBColorSpace)
                     pixelBufferAdaptor?.append(outBuf, withPresentationTime: timestamp)
                 }
             }

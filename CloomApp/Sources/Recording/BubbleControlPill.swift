@@ -122,6 +122,7 @@ private struct BubbleControlPillContentView: View {
             }
             .buttonStyle(.plain)
             .help("Stop recording")
+            .accessibilityLabel("Stop recording")
 
             // Timer
             if isPaused {
@@ -154,6 +155,7 @@ private struct BubbleControlPillContentView: View {
             }
             .buttonStyle(.plain)
             .help(isPaused ? "Resume" : "Pause")
+            .accessibilityLabel(isPaused ? "Resume recording" : "Pause recording")
 
             // Discard
             Button(action: onDiscard) {
@@ -164,6 +166,7 @@ private struct BubbleControlPillContentView: View {
             }
             .buttonStyle(.plain)
             .help("Discard recording")
+            .accessibilityLabel("Discard recording")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)

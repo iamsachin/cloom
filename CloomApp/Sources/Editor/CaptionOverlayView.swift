@@ -76,11 +76,11 @@ struct CaptionOverlayView: View {
         }
 
         // Remaining words
-        if !current.isEmpty {
+        if !current.isEmpty, let lastWord = current.last {
             phrases.append(CaptionPhrase(
                 words: current,
                 startMs: phraseStartMs,
-                endMs: current.last!.endMs
+                endMs: lastWord.endMs
             ))
         }
 

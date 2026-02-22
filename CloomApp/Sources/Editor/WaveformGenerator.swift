@@ -49,7 +49,8 @@ actor WaveformGenerator {
             let length = CMBlockBufferGetDataLength(blockBuffer)
             var data = Data(count: length)
             _ = data.withUnsafeMutableBytes { ptr in
-                CMBlockBufferCopyDataBytes(blockBuffer, atOffset: 0, dataLength: length, destination: ptr.baseAddress!)
+                guard let baseAddress = ptr.baseAddress else { return noErr }
+                return CMBlockBufferCopyDataBytes(blockBuffer, atOffset: 0, dataLength: length, destination: baseAddress)
             }
             let samples = data.withUnsafeBytes { raw in
                 Array(raw.bindMemory(to: Int16.self))

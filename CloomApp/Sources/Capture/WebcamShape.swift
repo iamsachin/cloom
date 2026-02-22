@@ -33,7 +33,7 @@ enum WebcamShape: String, CaseIterable, Codable, Sendable {
 
     var next: WebcamShape {
         let all = WebcamShape.allCases
-        let idx = all.firstIndex(of: self)!
+        guard let idx = all.firstIndex(of: self) else { return .circle }
         return all[(idx + 1) % all.count]
     }
 }

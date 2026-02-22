@@ -166,7 +166,9 @@ private func keyCodeToString(_ keyCode: UInt16) -> String {
     }
 
     let layoutData = unsafeBitCast(layoutDataRef, to: CFData.self)
-    let keyLayoutPtr = CFDataGetBytePtr(layoutData)!
+    guard let keyLayoutPtr = CFDataGetBytePtr(layoutData) else {
+        return specialKeyName(keyCode) ?? "Key\(keyCode)"
+    }
 
     var deadKeyState: UInt32 = 0
     var chars = [UniChar](repeating: 0, count: 4)

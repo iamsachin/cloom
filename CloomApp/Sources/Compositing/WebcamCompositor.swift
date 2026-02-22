@@ -5,6 +5,7 @@ import CoreGraphics
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "WebcamCompositor")
+private let sRGBColorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
 
 struct BubbleLayout: Sendable {
     /// Normalized X position (0 = left edge, 1 = right edge) of the bubble center.
@@ -44,9 +45,9 @@ final class WebcamCompositor: @unchecked Sendable {
         self.maskCache = OSAllocatedUnfairLock(initialState: ShapeMaskCache())
 
         if let device = MTLCreateSystemDefaultDevice() {
-            self.ciContext = CIContext(mtlDevice: device, options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB)!])
+            self.ciContext = CIContext(mtlDevice: device, options: [.workingColorSpace: sRGBColorSpace])
         } else {
-            self.ciContext = CIContext(options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB)!])
+            self.ciContext = CIContext(options: [.workingColorSpace: sRGBColorSpace])
         }
     }
 
@@ -140,7 +141,7 @@ final class WebcamCompositor: @unchecked Sendable {
         // Composite theme ring if needed
         var compositeBase = screenImage
         if layout.theme != .none {
-            let themeBorderWidth: CGFloat = 8 * 2 // Retina scale
+            let themeBorderWidth: CGFloat = 6 * 2 // Retina scale (matches bubble's 6pt border)
             let themeWidth = width + themeBorderWidth * 2
             let themeHeight = height + themeBorderWidth * 2
             let themeOriginX = clampedX - themeBorderWidth
@@ -168,7 +169,7 @@ final class WebcamCompositor: @unchecked Sendable {
         }
 
         let outputExtent = CGRect(x: 0, y: 0, width: screenWidth, height: screenHeight)
-        ciContext.render(finalImage, to: output, bounds: outputExtent, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)
+        ciContext.render(finalImage, to: output, bounds: outputExtent, colorSpace: sRGBColorSpace)
 
         return output
     }
@@ -210,7 +211,7 @@ final class WebcamCompositor: @unchecked Sendable {
         let height = Int(extent.height)
         let cornerRadius = shape.cornerRadius(forHeight: extent.height)
 
-        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
+        let colorSpace = sRGBColorSpace
         guard let ctx = CGContext(
             data: nil, width: width, height: height,
             bitsPerComponent: 8, bytesPerRow: width * 4,
@@ -240,7 +241,7 @@ final class WebcamCompositor: @unchecked Sendable {
         let height = Int(size.height)
         let cornerRadius = shape.cornerRadius(forHeight: size.height)
 
-        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
+        let colorSpace = sRGBColorSpace
         guard let ctx = CGContext(
             data: nil, width: width, height: height,
             bitsPerComponent: 8, bytesPerRow: width * 4,
@@ -252,11 +253,11 @@ final class WebcamCompositor: @unchecked Sendable {
         let path = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
 
         if let gradientColors = theme.gradientCGColors() {
-            let gradient = CGGradient(
+            guard let gradient = CGGradient(
                 colorsSpace: colorSpace,
                 colors: [gradientColors.0, gradientColors.1] as CFArray,
                 locations: [0, 1]
-            )!
+            ) else { return nil }
             ctx.addPath(path)
             ctx.clip()
             ctx.drawLinearGradient(

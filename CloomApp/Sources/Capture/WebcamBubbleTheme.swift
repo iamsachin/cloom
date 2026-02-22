@@ -55,16 +55,18 @@ enum BubbleTheme: String, CaseIterable, Codable, Sendable {
     }
 
     func gradientNSColors() -> (NSColor, NSColor)? {
-        guard let (c1, c2) = gradientCGColors() else { return nil }
-        return (NSColor(cgColor: c1)!, NSColor(cgColor: c2)!)
+        guard let (c1, c2) = gradientCGColors(),
+              let ns1 = NSColor(cgColor: c1),
+              let ns2 = NSColor(cgColor: c2) else { return nil }
+        return (ns1, ns2)
     }
 
     func swatchColor() -> NSColor {
         if let color = cgColor() {
-            return NSColor(cgColor: color)!
+            return NSColor(cgColor: color) ?? .clear
         }
         if let (c1, _) = gradientCGColors() {
-            return NSColor(cgColor: c1)!
+            return NSColor(cgColor: c1) ?? .clear
         }
         return .clear
     }
