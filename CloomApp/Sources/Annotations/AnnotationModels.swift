@@ -51,6 +51,18 @@ struct StrokeColor: Sendable, Equatable {
     static let black = StrokeColor(r: 0, g: 0, b: 0, a: 1)
 
     static let palette: [StrokeColor] = [.red, .blue, .green, .orange, .white, .black]
+
+    var displayName: String {
+        switch self {
+        case .red: return "Red"
+        case .blue: return "Blue"
+        case .green: return "Green"
+        case .orange: return "Orange"
+        case .white: return "White"
+        case .black: return "Black"
+        default: return "Custom"
+        }
+    }
 }
 
 struct AnnotationStroke: Sendable, Identifiable {

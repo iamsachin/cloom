@@ -41,6 +41,7 @@ final class CameraService: NSObject, @unchecked Sendable {
     func stop() {
         session?.stopRunning()
         session = nil
+        onFrame = nil
         logger.info("Camera stopped")
     }
 

@@ -122,6 +122,7 @@ struct EditorView: View {
             }
             .keyboardShortcut(.space, modifiers: [])
             .help(state.isPlaying ? "Pause" : "Play")
+            .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
 
             // Time display
             Text(formatTime(ms: state.currentTimeMs))
@@ -200,6 +201,7 @@ struct EditorView: View {
                 showStitchPanel = true
             }
             .help("Stitch multiple clips together")
+            .accessibilityLabel("Stitch clips")
 
             // Thumbnail
             Button {
@@ -208,6 +210,7 @@ struct EditorView: View {
                 Image(systemName: "photo")
             }
             .help("Set custom thumbnail")
+            .accessibilityLabel("Set custom thumbnail")
 
             // Captions toggle
             if state.videoRecord.hasTranscript {
@@ -217,6 +220,7 @@ struct EditorView: View {
                     Image(systemName: state.captionsEnabled ? "captions.bubble.fill" : "captions.bubble")
                 }
                 .help("Toggle captions")
+                .accessibilityLabel(state.captionsEnabled ? "Disable captions" : "Enable captions")
 
                 Button {
                     state.toggleTranscript()
@@ -224,6 +228,7 @@ struct EditorView: View {
                     Image(systemName: state.showTranscript ? "doc.text.fill" : "doc.text")
                 }
                 .help("Toggle transcript")
+                .accessibilityLabel(state.showTranscript ? "Hide transcript" : "Show transcript")
             }
 
             // PiP
@@ -234,6 +239,7 @@ struct EditorView: View {
                     Image(systemName: "pip")
                 }
                 .help("Picture in Picture")
+                .accessibilityLabel("Picture in Picture")
             }
 
             // Fullscreen
@@ -243,6 +249,7 @@ struct EditorView: View {
                 Image(systemName: "arrow.up.left.and.arrow.down.right")
             }
             .help("Toggle fullscreen")
+            .accessibilityLabel("Toggle fullscreen")
 
             // Info panel toggle
             Button {
@@ -251,6 +258,7 @@ struct EditorView: View {
                 Image(systemName: showInfoPanel ? "info.circle.fill" : "info.circle")
             }
             .help("Video info")
+            .accessibilityLabel(showInfoPanel ? "Hide video info" : "Show video info")
 
             // Copy path
             Menu {
@@ -276,6 +284,7 @@ struct EditorView: View {
             }
             .buttonStyle(.borderedProminent)
             .help("Export video")
+            .accessibilityLabel("Export video")
         }
     }
 

@@ -26,8 +26,11 @@ enum ThumbnailGenerator {
                 return nil
             }
 
-            let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
-                .appendingPathComponent("com.cloom.app/thumbnails", isDirectory: true)
+            guard let cacheBase = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+                logger.error("Failed to locate caches directory")
+                return nil
+            }
+            let cacheDir = cacheBase.appendingPathComponent("com.cloom.app/thumbnails", isDirectory: true)
             try FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
             let thumbnailURL = cacheDir.appendingPathComponent(
                 videoURL.deletingPathExtension().lastPathComponent + ".jpg"

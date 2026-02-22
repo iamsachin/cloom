@@ -58,7 +58,7 @@ final class WebcamBubbleWindow {
 
         var next: BubbleSize {
             let all = BubbleSize.allCases
-            let idx = all.firstIndex(of: self)!
+            guard let idx = all.firstIndex(of: self) else { return .medium }
             return all[(idx + 1) % all.count]
         }
     }

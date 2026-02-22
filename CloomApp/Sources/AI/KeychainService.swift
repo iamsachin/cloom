@@ -1,8 +1,8 @@
 import Foundation
 
 enum KeychainService {
-    private static var storageURL: URL {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+    private static var storageURL: URL? {
+        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
         let dir = appSupport.appendingPathComponent("Cloom", isDirectory: true)
         if !FileManager.default.fileExists(atPath: dir.path) {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -11,17 +11,19 @@ enum KeychainService {
     }
 
     static func saveAPIKey(_ key: String) {
-        guard let data = key.data(using: .utf8) else { return }
-        try? data.write(to: storageURL, options: [.atomic, .completeFileProtection])
+        guard let data = key.data(using: .utf8),
+              let url = storageURL else { return }
+        try? data.write(to: url, options: [.atomic, .completeFileProtection])
         // Restrict file permissions to owner only (read/write)
         try? FileManager.default.setAttributes(
             [.posixPermissions: 0o600],
-            ofItemAtPath: storageURL.path
+            ofItemAtPath: url.path
         )
     }
 
     static func loadAPIKey() -> String? {
-        guard let data = try? Data(contentsOf: storageURL),
+        guard let url = storageURL,
+              let data = try? Data(contentsOf: url),
               let key = String(data: data, encoding: .utf8),
               !key.isEmpty
         else {
@@ -31,6 +33,7 @@ enum KeychainService {
     }
 
     static func deleteAPIKey() {
-        try? FileManager.default.removeItem(at: storageURL)
+        guard let url = storageURL else { return }
+        try? FileManager.default.removeItem(at: url)
     }
 }

@@ -173,6 +173,7 @@ private struct RecordingToolbarContentView: View {
             }
             .buttonStyle(.plain)
             .help(isPaused ? "Resume recording" : "Pause recording")
+            .accessibilityLabel(isPaused ? "Resume recording" : "Pause recording")
 
             Divider()
                 .frame(height: 20)
@@ -188,6 +189,7 @@ private struct RecordingToolbarContentView: View {
             }
             .buttonStyle(.plain)
             .help(micEnabled ? "Mute microphone" : "Unmute microphone")
+            .accessibilityLabel(micEnabled ? "Mute microphone" : "Unmute microphone")
 
             // Camera toggle
             Button {
@@ -200,6 +202,7 @@ private struct RecordingToolbarContentView: View {
             }
             .buttonStyle(.plain)
             .help(cameraEnabled ? "Turn off camera" : "Turn on camera")
+            .accessibilityLabel(cameraEnabled ? "Turn off camera" : "Turn on camera")
 
             Divider()
                 .frame(height: 20)
@@ -215,6 +218,7 @@ private struct RecordingToolbarContentView: View {
             }
             .buttonStyle(.plain)
             .help(annotationsEnabled ? "Stop drawing" : "Draw on screen")
+            .accessibilityLabel(annotationsEnabled ? "Stop drawing" : "Draw on screen")
 
             // Click emphasis toggle
             Button {
@@ -227,6 +231,7 @@ private struct RecordingToolbarContentView: View {
             }
             .buttonStyle(.plain)
             .help(clickEmphasisEnabled ? "Disable click emphasis" : "Enable click emphasis")
+            .accessibilityLabel(clickEmphasisEnabled ? "Disable click emphasis" : "Enable click emphasis")
 
             // Cursor spotlight toggle
             Button {
@@ -239,6 +244,7 @@ private struct RecordingToolbarContentView: View {
             }
             .buttonStyle(.plain)
             .help(spotlightEnabled ? "Disable cursor spotlight" : "Enable cursor spotlight")
+            .accessibilityLabel(spotlightEnabled ? "Disable cursor spotlight" : "Enable cursor spotlight")
 
             Divider()
                 .frame(height: 20)
@@ -251,6 +257,7 @@ private struct RecordingToolbarContentView: View {
             }
             .buttonStyle(.plain)
             .help("Discard recording")
+            .accessibilityLabel("Discard recording")
 
             // Stop button
             Button(action: onStop) {
@@ -261,10 +268,12 @@ private struct RecordingToolbarContentView: View {
             }
             .buttonStyle(.plain)
             .help("Stop recording")
+            .accessibilityLabel("Stop recording")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(.ultraThinMaterial, in: Capsule())
+        .accessibilityValue(isPaused ? "Recording paused" : "Recording in progress")
     }
 
     private func formatElapsed(_ seconds: TimeInterval) -> String {
