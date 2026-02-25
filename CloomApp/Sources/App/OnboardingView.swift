@@ -8,11 +8,9 @@ struct OnboardingView: View {
         VStack(spacing: 24) {
             // Header
             VStack(spacing: 12) {
-                if let appIcon = NSApp.applicationIconImage {
-                    Image(nsImage: appIcon)
-                        .resizable()
-                        .frame(width: 80, height: 80)
-                }
+                Image(nsImage: NSImage(named: "AppIcon") ?? NSApp.applicationIconImage ?? NSImage())
+                    .resizable()
+                    .frame(width: 80, height: 80)
 
                 Text("Welcome to Cloom")
                     .font(.largeTitle)

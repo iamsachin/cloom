@@ -311,11 +311,22 @@ Split large files into focused, single-responsibility modules following best pra
 ---
 
 ## Phase 14: App Icon & Branding
-**Status:** Not started
+**Status:** Complete
+**Date:** 2026-02-25
 
-- [ ] Task 82 — App icon (1024x1024 master + all required sizes for Assets.xcassets/AppIcon.appiconset)
-- [ ] Task 82b — Menu bar icon (16x16, 32x32 template images for MenuBarExtra)
-- [ ] Task 82c — DMG background / installer branding assets
+- [x] Task 82 — App icon (1024x1024 master + all required sizes for Assets.xcassets/AppIcon.appiconset)
+- [x] Task 82b — Menu bar icon (18x18 + 36x36 template images for MenuBarExtra, play triangle + record dot)
+- [ ] Task 82c — DMG background / installer branding assets — **Deferred to Phase 15** (requires DMG packaging workflow)
+
+### Details
+- Source icon: user-provided 1024x1024 PNG (play button with gradient border + record dot)
+- Trimmed white background, centered on transparent canvas with slight padding
+- Generated 7 icon PNGs (16, 32, 64, 128, 256, 512, 1024px) via ImageMagick resize
+- Updated `AppIcon.appiconset/Contents.json` with all 10 macOS icon slots mapped
+- Created `MenuBarIcon.imageset` with template rendering intent (black-on-transparent play+dot)
+- Switched `MenuBarExtra` from `systemImage: "record.circle"` to custom `image: "MenuBarIcon"`
+
+**Milestone verified:** Build succeeds (0 errors, 2 pre-existing warnings). App icon set complete with all macOS sizes. Custom menu bar icon with template rendering.
 
 ---
 

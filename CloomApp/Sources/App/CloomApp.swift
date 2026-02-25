@@ -9,7 +9,7 @@ struct CloomApp: App {
     @StateObject private var permissionChecker = PermissionChecker()
 
     var body: some Scene {
-        MenuBarExtra("Cloom", systemImage: "record.circle") {
+        MenuBarExtra("Cloom", image: "MenuBarIcon") {
             MenuBarView()
                 .environmentObject(appState)
                 .environmentObject(permissionChecker)
