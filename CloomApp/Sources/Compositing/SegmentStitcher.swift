@@ -22,8 +22,8 @@ actor SegmentStitcher {
         guard !segments.isEmpty else { throw StitchError.noSegments }
 
         if segments.count == 1 {
-            // Single segment — just move it
-            try FileManager.default.moveItem(at: segments[0], to: outputURL)
+            // Single segment — mixdown audio for web player compatibility
+            try await mixdownAudio(inputURL: segments[0], to: outputURL)
             progress(1.0)
             return
         }
@@ -35,11 +35,7 @@ actor SegmentStitcher {
             preferredTrackID: kCMPersistentTrackID_Invalid
         ) else { throw StitchError.noVideoTrack }
 
-        let audioTrack = composition.addMutableTrack(
-            withMediaType: .audio,
-            preferredTrackID: kCMPersistentTrackID_Invalid
-        )
-
+        var compAudioTracks: [AVMutableCompositionTrack] = []
         var insertTime = CMTime.zero
         let trackProgress = 0.7 // 70% for track insertion
 
@@ -66,12 +62,20 @@ actor SegmentStitcher {
                 logger.error("Failed to insert video track for segment \(index): \(error)")
             }
 
-            // Insert audio track(s)
+            // Insert all audio tracks (grow composition tracks as needed)
             do {
                 let audioTracks = try await asset.loadTracks(withMediaType: .audio)
-                for sourceAudioTrack in audioTracks {
-                    if let audioTrack {
-                        try audioTrack.insertTimeRange(timeRange, of: sourceAudioTrack, at: insertTime)
+                for (i, sourceAudioTrack) in audioTracks.enumerated() {
+                    while i >= compAudioTracks.count {
+                        if let t = composition.addMutableTrack(
+                            withMediaType: .audio,
+                            preferredTrackID: kCMPersistentTrackID_Invalid
+                        ) {
+                            compAudioTracks.append(t)
+                        }
+                    }
+                    if i < compAudioTracks.count {
+                        try compAudioTracks[i].insertTimeRange(timeRange, of: sourceAudioTrack, at: insertTime)
                     }
                 }
             } catch {
@@ -90,6 +94,17 @@ actor SegmentStitcher {
             throw StitchError.exportFailed("Could not create export session")
         }
 
+        // Apply audio mix for multi-track mixdown
+        if compAudioTracks.count > 1 {
+            let mix = AVMutableAudioMix()
+            mix.inputParameters = compAudioTracks.map { track in
+                let params = AVMutableAudioMixInputParameters(track: track)
+                params.setVolume(1.0, at: .zero)
+                return params
+            }
+            exportSession.audioMix = mix
+        }
+
         do {
             try await exportSession.export(to: outputURL, as: .mp4)
             progress(1.0)
@@ -101,5 +116,61 @@ actor SegmentStitcher {
         } catch {
             throw StitchError.exportFailed(error.localizedDescription)
         }
+    }
+
+    /// Mix down multiple audio tracks into a single stereo output for web player compatibility.
+    /// If the file has <=1 audio track, just moves the file (no re-encode needed).
+    func mixdownAudio(inputURL: URL, to outputURL: URL) async throws {
+        let asset = AVURLAsset(url: inputURL)
+        let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+
+        if audioTracks.count <= 1 {
+            try FileManager.default.moveItem(at: inputURL, to: outputURL)
+            return
+        }
+
+        let composition = AVMutableComposition()
+        let duration = try await asset.load(.duration)
+        let timeRange = CMTimeRange(start: .zero, duration: duration)
+
+        // Copy video track
+        let videoTracks = try await asset.loadTracks(withMediaType: .video)
+        if let srcVideo = videoTracks.first,
+           let compVideo = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) {
+            try compVideo.insertTimeRange(timeRange, of: srcVideo, at: .zero)
+        }
+
+        // Copy all audio tracks separately
+        var compAudioTracks: [AVMutableCompositionTrack] = []
+        for srcAudio in audioTracks {
+            if let compAudio = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) {
+                try compAudio.insertTimeRange(timeRange, of: srcAudio, at: .zero)
+                compAudioTracks.append(compAudio)
+            }
+        }
+
+        guard let session = AVAssetExportSession(
+            asset: composition,
+            presetName: AVAssetExportPresetHighestQuality
+        ) else {
+            // Fallback: just move the file
+            try FileManager.default.moveItem(at: inputURL, to: outputURL)
+            return
+        }
+
+        // Mix all tracks to stereo
+        let mix = AVMutableAudioMix()
+        mix.inputParameters = compAudioTracks.map { track in
+            let params = AVMutableAudioMixInputParameters(track: track)
+            params.setVolume(1.0, at: .zero)
+            return params
+        }
+        session.audioMix = mix
+
+        try await session.export(to: outputURL, as: .mp4)
+
+        // Clean up input file
+        try? FileManager.default.removeItem(at: inputURL)
+        logger.info("Mixed down \(audioTracks.count) audio tracks → \(outputURL.lastPathComponent)")
     }
 }

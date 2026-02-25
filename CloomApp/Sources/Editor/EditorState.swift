@@ -290,7 +290,7 @@ final class EditorState {
 
 // MARK: - Value-Type Snapshots
 
-struct TranscriptWordSnapshot: Identifiable {
+struct TranscriptWordSnapshot: Identifiable, Sendable {
     let id = UUID()
     let word: String
     let startMs: Int64
