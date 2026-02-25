@@ -12,7 +12,7 @@ struct BubbleLayout: Sendable {
     var normalizedY: CGFloat
     var diameterPoints: CGFloat
     var shape: WebcamShape = .circle
-    var theme: BubbleTheme = .none
+    var decoration: WebcamFrame = .none
 
     static let `default` = BubbleLayout(normalizedX: 0.1, normalizedY: 0.1, diameterPoints: 180)
 }
@@ -41,12 +41,16 @@ final class WebcamCompositor: @unchecked Sendable {
     // Shape mask cache (accessed from extension)
     let maskCache: OSAllocatedUnfairLock<ShapeMaskCache>
 
+    // Emoji frame cache (accessed from extension)
+    let frameImageCache: OSAllocatedUnfairLock<FrameImageCache>
+
     init(borderWidth: CGFloat = 3.0) {
         self.borderWidth = borderWidth
         self._imageAdjuster = OSAllocatedUnfairLock(initialState: SendableAdjuster())
         self.latestFrame = OSAllocatedUnfairLock(initialState: SendablePixelBuffer(buffer: nil))
         self.latestLayout = OSAllocatedUnfairLock(initialState: .default)
         self.maskCache = OSAllocatedUnfairLock(initialState: ShapeMaskCache())
+        self.frameImageCache = OSAllocatedUnfairLock(initialState: FrameImageCache())
 
         if let device = MTLCreateSystemDefaultDevice() {
             self.ciContext = CIContext(mtlDevice: device, options: [.workingColorSpace: sRGBColorSpace])
@@ -124,26 +128,21 @@ final class WebcamCompositor: @unchecked Sendable {
         let translateY = clampedY - cropOriginY
         let positionedWebcam = maskedWebcam.transformed(by: CGAffineTransform(translationX: translateX, y: translateY))
 
-        // Theme ring
-        var compositeBase = screenImage
-        if layout.theme != .none {
-            let themeBorderWidth: CGFloat = 3 * 2
-            let themeWidth = width + themeBorderWidth * 2
-            let themeHeight = height + themeBorderWidth * 2
-            let themeOriginX = clampedX - themeBorderWidth
-            let themeOriginY = clampedY - themeBorderWidth
+        // Webcam over screen
+        var finalImage = positionedWebcam.composited(over: screenImage)
 
-            if let themeRing = makeThemeRing(
-                theme: layout.theme,
-                shape: layout.shape,
-                size: CGSize(width: themeWidth, height: themeHeight),
-                origin: CGPoint(x: themeOriginX, y: themeOriginY)
-            ) {
-                compositeBase = themeRing.composited(over: compositeBase)
+        // Emoji frame on top of everything
+        if layout.decoration != .none {
+            if let frameCIImage = cachedFrameImage(for: layout) {
+                let pad = EmojiFrameRenderer.framePadding(for: min(width, height))
+                let frameOriginX = clampedX - pad
+                let frameOriginY = clampedY - pad
+                let positioned = frameCIImage.transformed(
+                    by: CGAffineTransform(translationX: frameOriginX, y: frameOriginY)
+                )
+                finalImage = positioned.composited(over: finalImage)
             }
         }
-
-        let finalImage = positionedWebcam.composited(over: compositeBase)
 
         // Render to pool buffer
         var outputBuffer: CVPixelBuffer?

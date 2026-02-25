@@ -34,7 +34,7 @@ Status indicators: **Done** = implemented, **Deferred** = planned for later phas
 | B4 | Background blur | Person segmentation via VNGeneratePersonSegmentationRequest + CIFilter blur | Done |
 | B5 | Webcam shapes | Circle, roundedRect, pill — shape-aware masking via CGContext cache | Done |
 | B6 | Virtual backgrounds | Replace background using segmentation mask | Deferred |
-| B7 | Bubble themes | 8 themes: solid colors (red/blue/green/purple) + gradients (sunset/ocean/forest/cosmic) | Done |
+| B7 | Bubble frames | Emoji frame decorations: none, geometric (💎✨💠), tropical (🌴🌺☀️), celebration (🎉🎊🥳) | Done |
 | B8 | Image adjustments | Brightness, contrast, saturation, highlights, shadows via CIColorControls + CIHighlightShadowAdjust | Done |
 | B9 | Color temperature | CITemperatureAndTint filter, 2000–10000K range | Done |
 | B10 | Webcam unmirroring | Horizontal flip with correct CIImage extent handling | Done |

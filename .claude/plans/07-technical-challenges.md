@@ -20,7 +20,7 @@
 **Solution:** Real-time compositing during recording (NOT post-process as originally planned):
 - `WebcamCompositor` uses Metal-backed `CIContext` to composite webcam CIImage onto screen frame
 - Shape-aware masking (circle, roundedRect, pill) via CGContext cache
-- Theme border rendering (solid colors / gradients) as CIImage ring
+- Emoji frame rendering (positioned stickers around bubble perimeter) via CoreText + CGContext cache
 - Image adjustments (brightness, contrast, saturation, highlights, shadows, temperature, tint) applied via CIFilter pipeline
 - Webcam unmirroring via CIImage scale with correct extent handling
 - Composited into each frame by ScreenCaptureService on the outputQueue

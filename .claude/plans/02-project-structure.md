@@ -50,7 +50,8 @@ cloom/
 │   │   │   ├── WebcamBubbleWindow.swift       # Circular/shaped draggable NSPanel
 │   │   │   ├── WebcamRecordingService.swift   # Webcam-only AVAssetWriter recording
 │   │   │   ├── WebcamShape.swift              # enum: circle, roundedRect, pill
-│   │   │   ├── WebcamBubbleTheme.swift        # 8 themes: solid + gradient
+│   │   │   ├── WebcamFrame.swift               # Emoji frame decorations (geometric/tropical/celebration)
+│   │   │   ├── EmojiFrameRenderer.swift       # Shared sticker positioning + CGImage rendering
 │   │   │   ├── WebcamImageAdjustments.swift   # CIColorControls + CIHighlightShadowAdjust + CITemperatureAndTint
 │   │   │   └── NoiseCancellationProcessor.swift  # RMS noise gate on mic samples
 │   │   ├── Compositing/

@@ -180,7 +180,7 @@
 | # | Task | Module | Features |
 |---|------|--------|----------|
 | 84 | Floating control pill on webcam bubble (BubbleControlPill: stop/timer/pause/discard) | Recording/ | C1 |
-| 85 | Webcam bubble background themes (8 solid/gradient themes, CAGradientLayer + CIContext ring) | Capture/ | B7 |
+| 85 | Webcam bubble emoji frames (3 decorative frames: geometric/tropical/celebration, CATextLayer + CGContext cache) | Capture/ | B7 |
 | 86 | Webcam shape options (circle, roundedRect, pill — shape-aware masking, right-click cycle) | Capture/ | B5 |
 | 87 | Webcam image adjustments (brightness/contrast/saturation/highlights/shadows, CIColorControls) | Capture/ | B8 |
 | 88 | Beauty / soft-focus filter | — | **Deferred to Phase 12** |
@@ -249,7 +249,7 @@ UI tests were removed — MenuBarExtra apps aren't hittable by XCUIApplication, 
 | 96 | Split EditorView — extract toolbar, sidebar toggle, sub-view sections | Editor/ | 354 lines, 6 funcs |
 | 97 | Split ScreenCaptureService — extract stream config, filter, delegate | Capture/ | 337 lines, 16 funcs |
 | 98 | Split WebcamSettingsTab — extract preview and setting groups | Settings/ | 312 lines, 4 funcs |
-| 99 | Split WebcamCompositor — extract shape masking, theme border rendering | Compositing/ | 305 lines, 9 funcs |
+| 99 | Split WebcamCompositor — extract shape masking, emoji frame rendering | Compositing/ | 305 lines, 9 funcs |
 | 100 | Split RecordingCoordinator+UI — further decompose window management | Recording/ | 302 lines, 13 funcs |
 
 ### Rust — Medium Priority
