@@ -48,7 +48,8 @@
 - `WebcamBubbleWindow` — circular/rounded/pill NSPanel, draggable, click-to-cycle size
 - `WebcamRecordingService` — webcam-only AVAssetWriter (HEVC 720p, camera+mic)
 - `WebcamShape` (enum) — circle, roundedRect, pill with aspectRatio and cornerRadius
-- `BubbleTheme` (enum) — 8 themes: 4 solid colors + 4 gradients
+- `WebcamFrame` (enum) — emoji frame decorations: none, geometric, tropical, celebration
+- `EmojiFrameRenderer` — shared sticker positioning (polar→Cartesian) + CGImage rendering via CoreText
 - `WebcamImageAdjuster` — CIColorControls + CIHighlightShadowAdjust + CITemperatureAndTint, thread-safe via OSAllocatedUnfairLock
 - `NoiseCancellationProcessor` — RMS noise gate (-40dB threshold) on mic CMSampleBuffers
 

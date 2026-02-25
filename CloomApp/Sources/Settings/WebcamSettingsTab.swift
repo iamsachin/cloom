@@ -10,7 +10,7 @@ struct WebcamSettingsTab: View {
     @AppStorage("webcamTemperature") private var webcamTemperature: Double = 6500
     @AppStorage("webcamTint") private var webcamTint: Double = 0
     @AppStorage("webcamShape") private var webcamShapeRaw: String = "circle"
-    @AppStorage("webcamBubbleTheme") private var webcamThemeRaw: String = "none"
+    @AppStorage("webcamFrame") private var webcamFrameRaw: String = "none"
 
     @State private var previewImage: NSImage?
     @State private var cameraService: CameraService?
@@ -21,8 +21,8 @@ struct WebcamSettingsTab: View {
         WebcamShape(rawValue: webcamShapeRaw) ?? .circle
     }
 
-    private var currentTheme: BubbleTheme {
-        BubbleTheme(rawValue: webcamThemeRaw) ?? .none
+    private var currentFrame: WebcamFrame {
+        WebcamFrame(rawValue: webcamFrameRaw) ?? .none
     }
 
     /// Preview dimensions: fits inside the left panel while respecting shape aspect ratio.
@@ -45,13 +45,13 @@ struct WebcamSettingsTab: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
-            // Left: live preview + shape/theme
+            // Left: live preview + shape/frame
             VStack(spacing: 16) {
-                // Live camera preview with theme ring
+                // Live camera preview with emoji frame
                 ZStack {
-                    // Theme border ring (behind preview)
-                    if currentTheme != .none {
-                        themeRingView
+                    // Emoji frame stickers (behind preview)
+                    if currentFrame != .none {
+                        emojiFrameView
                     }
 
                     // Camera preview
@@ -77,7 +77,7 @@ struct WebcamSettingsTab: View {
                     }
                 }
                 .animation(.easeInOut(duration: 0.3), value: webcamShapeRaw)
-                .animation(.easeInOut(duration: 0.2), value: webcamThemeRaw)
+                .animation(.easeInOut(duration: 0.2), value: webcamFrameRaw)
 
                 // Shape picker
                 VStack(alignment: .leading, spacing: 4) {
@@ -95,43 +95,50 @@ struct WebcamSettingsTab: View {
                     .accessibilityLabel("Webcam shape")
                 }
 
-                // Theme swatches
+                // Emoji frame picker
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Bubble Theme")
+                    Text("Frame")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(28), spacing: 4), count: 5), spacing: 4) {
-                        ForEach(BubbleTheme.allCases, id: \.rawValue) { theme in
+                    HStack(spacing: 6) {
+                        ForEach(WebcamFrame.allCases, id: \.rawValue) { frame in
                             Button {
-                                webcamThemeRaw = theme.rawValue
+                                webcamFrameRaw = frame.rawValue
                             } label: {
-                                if theme == .none {
-                                    Circle()
-                                        .strokeBorder(Color.secondary, lineWidth: 1)
-                                        .frame(width: 22, height: 22)
-                                        .overlay {
-                                            if webcamThemeRaw == theme.rawValue {
-                                                Image(systemName: "checkmark")
-                                                    .font(.system(size: 8, weight: .bold))
-                                            }
-                                        }
-                                } else {
-                                    Circle()
-                                        .fill(Color(nsColor: theme.swatchColor()))
-                                        .frame(width: 22, height: 22)
-                                        .overlay {
-                                            if webcamThemeRaw == theme.rawValue {
-                                                Image(systemName: "checkmark")
-                                                    .font(.system(size: 8, weight: .bold))
-                                                    .foregroundStyle(.white)
-                                            }
-                                        }
+                                VStack(spacing: 2) {
+                                    if frame == .none {
+                                        Image(systemName: "circle.dashed")
+                                            .font(.system(size: 20))
+                                            .frame(width: 32, height: 32)
+                                    } else {
+                                        Text(frame.representativeEmoji)
+                                            .font(.system(size: 20))
+                                            .frame(width: 32, height: 32)
+                                    }
+                                    Text(frame.displayName)
+                                        .font(.system(size: 9))
+                                        .lineLimit(1)
                                 }
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(webcamFrameRaw == frame.rawValue
+                                              ? Color.accentColor.opacity(0.15)
+                                              : Color.clear)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .strokeBorder(webcamFrameRaw == frame.rawValue
+                                                      ? Color.accentColor
+                                                      : Color.secondary.opacity(0.3),
+                                                      lineWidth: 1)
+                                )
                             }
                             .buttonStyle(.plain)
-                            .help(theme.displayName)
-                            .accessibilityLabel("\(theme.displayName) theme")
+                            .help(frame.displayName)
+                            .accessibilityLabel("\(frame.displayName) frame")
                         }
                     }
                 }
@@ -196,38 +203,35 @@ struct WebcamSettingsTab: View {
         currentShape.cornerRadius(forHeight: previewSize.height)
     }
 
-    // MARK: - Theme Ring
+    // MARK: - Emoji Frame Preview
 
     @ViewBuilder
-    private var themeRingView: some View {
-        let borderWidth: CGFloat = 3
-        let ringWidth = previewSize.width + borderWidth * 2
-        let ringHeight = previewSize.height + borderWidth * 2
-        let ringRadius = previewCornerRadius + borderWidth
+    private var emojiFrameView: some View {
+        let stickers = EmojiFrameRenderer.positionStickers(
+            frame: currentFrame,
+            bubbleWidth: previewSize.width,
+            bubbleHeight: previewSize.height
+        )
+        let pad = EmojiFrameRenderer.framePadding(for: min(previewSize.width, previewSize.height))
+        let totalW = previewSize.width + pad * 2
+        let totalH = previewSize.height + pad * 2
 
-        if let (c1, c2) = currentTheme.gradientCGColors() {
-            RoundedRectangle(cornerRadius: ringRadius)
-                .fill(LinearGradient(
-                    colors: [Color(cgColor: c1), Color(cgColor: c2)],
-                    startPoint: .bottomLeading,
-                    endPoint: .topTrailing
-                ))
-                .frame(width: ringWidth, height: ringHeight)
-                .overlay(
-                    RoundedRectangle(cornerRadius: previewCornerRadius + 0.5)
-                        .strokeBorder(.white.opacity(0.4), lineWidth: 1)
-                        .frame(width: previewSize.width + 1, height: previewSize.height + 1)
-                )
-        } else if let c = currentTheme.cgColor() {
-            RoundedRectangle(cornerRadius: ringRadius)
-                .fill(Color(cgColor: c))
-                .frame(width: ringWidth, height: ringHeight)
-                .overlay(
-                    RoundedRectangle(cornerRadius: previewCornerRadius + 0.5)
-                        .strokeBorder(.white.opacity(0.4), lineWidth: 1)
-                        .frame(width: previewSize.width + 1, height: previewSize.height + 1)
-                )
+        ZStack(alignment: .topLeading) {
+            Color.clear.frame(width: totalW, height: totalH)
+
+            ForEach(Array(stickers.enumerated()), id: \.offset) { _, sticker in
+                Text(sticker.emoji)
+                    .font(.system(size: sticker.fontSize))
+                    // SwiftUI Y-axis is flipped relative to CG: negate Y offset from center
+                    .position(
+                        x: sticker.x,
+                        y: totalH - sticker.y
+                    )
+                    .rotationEffect(.degrees(sticker.rotationDegrees))
+            }
         }
+        .frame(width: totalW, height: totalH)
+        .allowsHitTesting(false)
     }
 
     private func startPreview() {
@@ -275,4 +279,3 @@ struct WebcamSettingsTab: View {
         webcamTint = 0
     }
 }
-

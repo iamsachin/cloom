@@ -14,11 +14,11 @@ final class WebcamBubbleWindow {
 
     var panel: NSPanel?
     var imageLayer: CALayer?
-    var themeLayer: CAGradientLayer?
+    var emojiFrameLayer: CALayer?
     let ciContext = CIContext(options: [.useSoftwareRenderer: false])
     var moveObserver: NSObjectProtocol?
     nonisolated(unsafe) var lastLayoutReport: CFTimeInterval = 0
-    private var themeObserver: NSObjectProtocol?
+    private var decorationObserver: NSObjectProtocol?
 
     enum BubbleSize: Int, CaseIterable {
         case small = 120
@@ -37,15 +37,15 @@ final class WebcamBubbleWindow {
         let raw = UserDefaults.standard.string(forKey: "webcamShape") ?? "circle"
         return WebcamShape(rawValue: raw) ?? .circle
     }()
-    var currentTheme: BubbleTheme = {
-        let raw = UserDefaults.standard.string(forKey: "webcamBubbleTheme") ?? "none"
-        return BubbleTheme(rawValue: raw) ?? .none
+    var currentDecoration: WebcamFrame = {
+        let raw = UserDefaults.standard.string(forKey: "webcamFrame") ?? "none"
+        return WebcamFrame(rawValue: raw) ?? .none
     }()
 
     func show() {
         // Re-sync from UserDefaults in case settings changed while bubble wasn't showing
-        let themeRaw = UserDefaults.standard.string(forKey: "webcamBubbleTheme") ?? "none"
-        currentTheme = BubbleTheme(rawValue: themeRaw) ?? .none
+        let decorationRaw = UserDefaults.standard.string(forKey: "webcamFrame") ?? "none"
+        currentDecoration = WebcamFrame(rawValue: decorationRaw) ?? .none
         let shapeRaw = UserDefaults.standard.string(forKey: "webcamShape") ?? "circle"
         currentShape = WebcamShape(rawValue: shapeRaw) ?? .circle
 
@@ -66,7 +66,7 @@ final class WebcamBubbleWindow {
         panel?.orderOut(nil)
         panel = nil
         imageLayer = nil
-        themeLayer = nil
+        emojiFrameLayer = nil
         onLayoutChanged = nil
         logger.info("Webcam bubble dismissed")
     }
@@ -106,19 +106,10 @@ final class WebcamBubbleWindow {
         rebuildPanel()
     }
 
-    func updateTheme(_ theme: BubbleTheme) {
-        guard theme != currentTheme else { return }
-        let hadBorder = currentTheme != .none
-        let willHaveBorder = theme != .none
-        currentTheme = theme
-        if !hadBorder && willHaveBorder {
-            // Panel needs to grow to accommodate border — rebuild
-            rebuildPanel()
-        } else {
-            // Removing border or switching between themes — just update layer visuals
-            applyTheme()
-            reportLayout()
-        }
+    func updateDecoration(_ decoration: WebcamFrame) {
+        guard decoration != currentDecoration else { return }
+        currentDecoration = decoration
+        rebuildPanel()
     }
 
     /// Returns the current bubble layout as normalized coordinates relative to the main screen.
@@ -130,13 +121,18 @@ final class WebcamBubbleWindow {
         let screenFrame = screen.frame
         let centerX = frame.midX - screenFrame.origin.x
         let centerY = frame.midY - screenFrame.origin.y
-        let borderInset: CGFloat = currentTheme != .none ? 7 : 0
+        let diameter = CGFloat(currentSize.rawValue)
+        let width = diameter * currentShape.aspectRatio
+        let height = diameter
+        let framePad: CGFloat = currentDecoration != .none
+            ? EmojiFrameRenderer.framePadding(for: min(width, height))
+            : 0
         return BubbleLayout(
             normalizedX: centerX / screenFrame.width,
             normalizedY: centerY / screenFrame.height,
-            diameterPoints: frame.height - borderInset * 2,
+            diameterPoints: frame.height - framePad * 2,
             shape: currentShape,
-            theme: currentTheme
+            decoration: currentDecoration
         )
     }
 
@@ -150,17 +146,17 @@ final class WebcamBubbleWindow {
     private func startObservingDefaults() {
         stopObservingDefaults()
 
-        themeObserver = NotificationCenter.default.addObserver(
+        decorationObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                let newThemeRaw = UserDefaults.standard.string(forKey: "webcamBubbleTheme") ?? "none"
-                let newTheme = BubbleTheme(rawValue: newThemeRaw) ?? .none
-                if newTheme != self.currentTheme {
-                    self.updateTheme(newTheme)
+                let newDecorationRaw = UserDefaults.standard.string(forKey: "webcamFrame") ?? "none"
+                let newDecoration = WebcamFrame(rawValue: newDecorationRaw) ?? .none
+                if newDecoration != self.currentDecoration {
+                    self.updateDecoration(newDecoration)
                 }
                 let newShapeRaw = UserDefaults.standard.string(forKey: "webcamShape") ?? "circle"
                 let newShape = WebcamShape(rawValue: newShapeRaw) ?? .circle
@@ -172,9 +168,9 @@ final class WebcamBubbleWindow {
     }
 
     private func stopObservingDefaults() {
-        if let obs = themeObserver {
+        if let obs = decorationObserver {
             NotificationCenter.default.removeObserver(obs)
-            themeObserver = nil
+            decorationObserver = nil
         }
     }
 }

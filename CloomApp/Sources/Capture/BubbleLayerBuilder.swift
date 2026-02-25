@@ -3,7 +3,7 @@ import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "WebcamBubble")
 
-// MARK: - Panel Creation & Theme
+// MARK: - Panel Creation & Emoji Frame
 
 extension WebcamBubbleWindow {
 
@@ -13,12 +13,12 @@ extension WebcamBubbleWindow {
         let height = diameter
         let cornerRadius = currentShape.cornerRadius(forHeight: height)
 
-        // Expand panel to include theme border + shadow padding so nothing is clipped
-        let themeBorderWidth: CGFloat = currentTheme != .none ? 3 : 0
-        let glowPadding: CGFloat = currentTheme != .none ? 4 : 0
-        let totalInset = themeBorderWidth + glowPadding
-        let panelWidth = width + totalInset * 2
-        let panelHeight = height + totalInset * 2
+        // Expand panel to include emoji frame padding
+        let framePad: CGFloat = currentDecoration != .none
+            ? EmojiFrameRenderer.framePadding(for: min(width, height))
+            : 0
+        let panelWidth = width + framePad * 2
+        let panelHeight = height + framePad * 2
 
         let origin: NSPoint
         if let center {
@@ -57,52 +57,7 @@ extension WebcamBubbleWindow {
         rootLayer.masksToBounds = false
         rootLayer.backgroundColor = NSColor.clear.cgColor
 
-        // Inner rect for the video content (inset by border + glow padding)
-        let innerRect = NSRect(x: totalInset, y: totalInset, width: width, height: height)
-        // Theme border rect (inset only by glow padding)
-        let borderRect = NSRect(
-            x: glowPadding, y: glowPadding,
-            width: width + themeBorderWidth * 2,
-            height: height + themeBorderWidth * 2
-        )
-        let borderCornerRadius = currentShape.cornerRadius(forHeight: borderRect.height)
-
-        // Shadow layer — soft drop shadow (skip for "none" theme for a clean bubble)
-        if currentTheme != .none {
-            let shadowLayer = CALayer()
-            shadowLayer.frame = innerRect
-            shadowLayer.cornerRadius = cornerRadius
-            shadowLayer.backgroundColor = NSColor.black.cgColor
-            shadowLayer.shadowColor = NSColor.black.cgColor
-            shadowLayer.shadowOpacity = 0.35
-            shadowLayer.shadowRadius = 10
-            shadowLayer.shadowOffset = CGSize(width: 0, height: -3)
-            shadowLayer.shouldRasterize = true
-            shadowLayer.rasterizationScale = NSScreen.main?.backingScaleFactor ?? 2.0
-            rootLayer.addSublayer(shadowLayer)
-        }
-
-        // Theme border ring with subtle colored glow
-        let themeBorder = CAGradientLayer()
-        themeBorder.frame = borderRect
-        themeBorder.cornerRadius = borderCornerRadius
-        themeBorder.isHidden = currentTheme == .none
-        themeBorder.masksToBounds = false
-        rootLayer.addSublayer(themeBorder)
-        self.themeLayer = themeBorder
-
-        // Bright inner edge between border and video for depth
-        if currentTheme != .none {
-            let innerGlow = CALayer()
-            innerGlow.frame = NSRect(
-                x: totalInset - 1, y: totalInset - 1,
-                width: width + 2, height: height + 2
-            )
-            innerGlow.cornerRadius = cornerRadius + 1
-            innerGlow.borderWidth = 1.5
-            innerGlow.borderColor = NSColor.white.withAlphaComponent(0.5).cgColor
-            rootLayer.addSublayer(innerGlow)
-        }
+        let innerRect = NSRect(x: framePad, y: framePad, width: width, height: height)
 
         // Clipping container for the video feed
         let clipLayer = CALayer()
@@ -126,11 +81,52 @@ extension WebcamBubbleWindow {
         borderLayer.borderColor = NSColor.white.withAlphaComponent(0.15).cgColor
         clipLayer.addSublayer(borderLayer)
 
+        // Emoji frame stickers (above the video clip layer)
+        if currentDecoration != .none {
+            let emojiContainer = CALayer()
+            emojiContainer.frame = NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight)
+            emojiContainer.masksToBounds = false
+
+            let stickers = EmojiFrameRenderer.positionStickers(
+                frame: currentDecoration,
+                bubbleWidth: width,
+                bubbleHeight: height
+            )
+
+            for sticker in stickers {
+                let textLayer = CATextLayer()
+                textLayer.string = sticker.emoji
+                textLayer.fontSize = sticker.fontSize
+                textLayer.alignmentMode = .center
+                textLayer.contentsScale = NSScreen.main?.backingScaleFactor ?? 2.0
+
+                // Flip Y: positionStickers uses math convention (Y-up) but
+                // CALayer Y-up means visually "top of screen". Flip to match SwiftUI preview.
+                let flippedY = panelHeight - sticker.y
+                let layerSize = sticker.fontSize * 1.3
+                textLayer.frame = CGRect(
+                    x: sticker.x - layerSize / 2,
+                    y: flippedY - layerSize / 2,
+                    width: layerSize,
+                    height: layerSize
+                )
+
+                if sticker.rotationDegrees != 0 {
+                    textLayer.transform = CATransform3DMakeRotation(
+                        sticker.rotationDegrees * .pi / 180.0, 0, 0, 1
+                    )
+                }
+
+                emojiContainer.addSublayer(textLayer)
+            }
+
+            rootLayer.addSublayer(emojiContainer)
+            self.emojiFrameLayer = emojiContainer
+        }
+
         panel.contentView = contentView
         self.panel = panel
         self.imageLayer = imgLayer
-
-        applyTheme()
 
         // Observe window move to update compositor layout (throttled to ~15Hz)
         moveObserver = NotificationCenter.default.addObserver(
@@ -154,42 +150,6 @@ extension WebcamBubbleWindow {
         reportLayout()
     }
 
-    func applyTheme() {
-        guard let themeLayer else { return }
-
-        if currentTheme == .none {
-            // Make border transparent instead of hiding — avoids rebuild issues
-            themeLayer.colors = nil
-            themeLayer.backgroundColor = NSColor.clear.cgColor
-            return
-        }
-
-        themeLayer.isHidden = false
-        let diameter = CGFloat(currentSize.rawValue)
-        let width = diameter * currentShape.aspectRatio
-        let height = diameter
-        let themeBorderWidth: CGFloat = 3
-        let glowPadding: CGFloat = 4
-        let borderRect = NSRect(
-            x: glowPadding, y: glowPadding,
-            width: width + themeBorderWidth * 2,
-            height: height + themeBorderWidth * 2
-        )
-        themeLayer.frame = borderRect
-        themeLayer.cornerRadius = currentShape.cornerRadius(forHeight: borderRect.height)
-
-        if let gradientColors = currentTheme.gradientNSColors() {
-            themeLayer.colors = [gradientColors.0.cgColor, gradientColors.1.cgColor]
-            themeLayer.startPoint = CGPoint(x: 0, y: 1)
-            themeLayer.endPoint = CGPoint(x: 1, y: 0)
-            themeLayer.backgroundColor = nil
-        } else if let solidColor = currentTheme.cgColor() {
-            themeLayer.colors = nil
-            themeLayer.backgroundColor = solidColor
-        }
-
-    }
-
     func rebuildPanel() {
         guard let panel else { return }
 
@@ -204,7 +164,7 @@ extension WebcamBubbleWindow {
         panel.orderOut(nil)
         self.panel = nil
         self.imageLayer = nil
-        self.themeLayer = nil
+        self.emojiFrameLayer = nil
 
         createPanel(centeredAt: center)
         self.panel?.orderFrontRegardless()

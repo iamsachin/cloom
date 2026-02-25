@@ -177,7 +177,7 @@
 
 ### Webcam Bubble Controls (Loom-style)
 - [x] Task 84 — Floating control pill on webcam bubble (BubbleControlPill NSPanel, stop/timer/pause/discard, child window attached to bubble)
-- [x] Task 85 — Webcam bubble background themes (8 solid/gradient themes: red, blue, green, purple, sunset, ocean, forest, cosmic — rendered as CAGradientLayer + CIContext ring in compositor)
+- [x] Task 85 — Webcam bubble emoji frames (3 decorative emoji frames: geometric/tropical/celebration — rendered as CATextLayer in live bubble + cached CGImage in compositor; replaced old solid/gradient color themes)
 - [x] Task 86 — Webcam shape options (circle, roundedRect, pill — WebcamShape enum, shape-aware masking with CGContext cache, right-click to cycle)
 
 ### Video Enhancement Controls
@@ -194,7 +194,8 @@
 - `CloomApp/Sources/Recording/DiscardConfirmationWindow.swift`
 - `CloomApp/Sources/Capture/WebcamImageAdjustments.swift`
 - `CloomApp/Sources/Capture/WebcamShape.swift`
-- `CloomApp/Sources/Capture/WebcamBubbleTheme.swift`
+- `CloomApp/Sources/Capture/WebcamFrame.swift`
+- `CloomApp/Sources/Capture/EmojiFrameRenderer.swift`
 - `CloomApp/Sources/Recording/BubbleControlPill.swift`
 - `CloomApp/Sources/Capture/WebcamRecordingService.swift`
 
@@ -202,13 +203,13 @@
 - `webcamBrightness`, `webcamContrast`, `webcamSaturation`, `webcamHighlights`, `webcamShadows` (image adjustments)
 - `webcamTemperature`, `webcamTint` (color temperature)
 - `webcamShape` (circle/roundedRect/pill)
-- `webcamBubbleTheme` (none/solidRed/.../gradientCosmic)
+- `webcamFrame` (none/geometric/tropical/celebration)
 **Milestone verified:** Build succeeds (0 errors, 2 warnings). Discard button in toolbar + menu bar. Webcam settings section in Settings (shape, adjustments, temperature, tint, theme swatches). Shape-aware masking in compositor. Floating control pill on webcam bubble. Webcam-only recording mode. Export brightness/contrast adjustments.
 
 ### Post-completion polish
 - Fixed pill shape not reflected in Settings preview (now shape-aware dimensions with aspect ratio)
 - Added click-to-reset on individual slider values (accent-colored when non-default, click to restore)
-- Added bubble theme ring to Settings webcam preview (gradient/solid border behind camera preview)
+- Added emoji frame preview to Settings webcam tab (positioned emoji stickers around camera preview)
 - Removed beauty filter (BeautyFilter.swift deleted, all references cleaned up) — deferred to Phase 12
 - Improved onboarding: longer permission descriptions, Accessibility made optional with warning
 
@@ -259,14 +260,14 @@ Split large files into focused, single-responsibility modules following best pra
 - [x] Task 93 — Split `LibraryView.swift` (454→~230 lines) — extracted `LibraryFilterModels.swift` (enums), `LibraryVideoGrid.swift` (grid item, context menu, selection badge)
 - [x] Task 93b — Split `RecordingCoordinator.swift` (383→~210 lines) — extracted `RecordingCoordinator+Toggles.swift` (6 toggle methods), `RecordingCoordinator+PauseResume.swift` (pause/resume/segment management)
 - [x] Task 93c — Split `AIOrchestrator.swift` (344→~275 lines) — extracted `AudioExtractor.swift` (audio extraction from MP4)
-- [x] Task 94 — Split `WebcamBubbleWindow.swift` (420→~160 lines) — extracted `BubbleContentView.swift` (NSView click/drag), `BubbleLayerBuilder.swift` (panel creation, theme, rebuild)
+- [x] Task 94 — Split `WebcamBubbleWindow.swift` (420→~160 lines) — extracted `BubbleContentView.swift` (NSView click/drag), `BubbleLayerBuilder.swift` (panel creation, emoji frame, rebuild)
 - [x] Task 95 — Split `AnnotationCanvasView.swift` (417→~95 lines) — extracted `AnnotationCanvasRenderer.swift` (all drawing), `AnnotationInputHandler.swift` (mouse events, eraser)
 
 ### Group 2: Swift — Medium Priority (300–400 lines) — COMPLETE
 - [x] Task 96 — Split `EditorView.swift` (354→~120 lines) — extracted `EditorToolbarView.swift` (playback/cut/chapter/export controls), `EditorInfoPanel.swift` (info sidebar)
 - [x] Task 97 — Split `ScreenCaptureService.swift` (337→~115 lines) — extracted `ScreenCaptureService+Configuration.swift` (filter builder, stream config, CaptureError), `ScreenCaptureService+StreamOutput.swift` (SCStreamOutput/Delegate)
 - [x] Task 98 — Split `WebcamSettingsTab.swift` (312→~280 lines) — extracted `LabeledSlider.swift` to `Shared/` as reusable component
-- [x] Task 99 — Split `WebcamCompositor.swift` (305→~155 lines) — extracted `WebcamCompositor+ShapeMask.swift` (shape mask generation + cache), `WebcamCompositor+ThemeRing.swift` (theme ring rendering)
+- [x] Task 99 — Split `WebcamCompositor.swift` (305→~155 lines) — extracted `WebcamCompositor+ShapeMask.swift` (shape mask generation + cache), `WebcamCompositor+EmojiFrame.swift` (emoji frame rendering + cache)
 - [x] Task 100 — Split `RecordingCoordinator+UI.swift` (302→~105 lines) — extracted `RecordingCoordinator+Annotations.swift` (canvas/toolbar management), `RecordingCoordinator+Webcam.swift` (webcam start/stop/preview/adjustments)
 
 ### Group 3: Rust — Test Extraction — COMPLETE

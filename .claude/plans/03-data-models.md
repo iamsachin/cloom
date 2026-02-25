@@ -222,13 +222,21 @@ enum WebcamShape: String, Codable, CaseIterable {
     func cornerRadius(for size: CGFloat) -> CGFloat { /* ... */ }
 }
 
-enum BubbleTheme: String, Codable, CaseIterable {
+enum WebcamFrame: String, Codable, CaseIterable {
     case none
-    case solidRed, solidBlue, solidGreen, solidPurple
-    case gradientSunset, gradientOcean, gradientForest, gradientCosmic
+    case geometric    // 💎✨💠🔷
+    case tropical     // 🌴🌺☀️🏖️🌊🐚
+    case celebration  // 🎉🎊✨🥳🎈
 
-    func cgColor() -> CGColor { /* ... */ }
-    func gradientCGColors() -> [CGColor] { /* ... */ }
+    var stickers: [FrameSticker] { /* ... */ }
+}
+
+struct FrameSticker {
+    let emoji: String
+    let angleDegrees: CGFloat    // position around bubble perimeter
+    let offsetFromEdge: CGFloat  // distance beyond bubble edge
+    let baseFontSize: CGFloat    // size at 180pt diameter baseline
+    let rotationDegrees: CGFloat // visual rotation
 }
 
 struct WebcamAdjustments {
