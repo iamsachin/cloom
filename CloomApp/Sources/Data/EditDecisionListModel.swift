@@ -38,7 +38,7 @@ final class EditDecisionList {
 
 // MARK: - CutRange
 
-struct CutRange: Codable, Identifiable, Equatable {
+struct CutRange: Codable, Identifiable, Equatable, Sendable {
     var id: String
     var startMs: Int64
     var endMs: Int64

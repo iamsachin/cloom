@@ -167,9 +167,10 @@ final class RecordingCoordinator: ObservableObject {
                 if segmentURLs.count <= 1 {
                     if let segmentURL = segmentURLs.first {
                         do {
-                            try FileManager.default.moveItem(at: segmentURL, to: finalURL)
+                            try await stitcher.mixdownAudio(inputURL: segmentURL, to: finalURL)
                         } catch {
-                            logger.error("Failed to move segment to final URL: \(error)")
+                            logger.error("Failed to mixdown audio: \(error), falling back to move")
+                            try? FileManager.default.moveItem(at: segmentURL, to: finalURL)
                         }
                     }
                     await handleRecordingFinished(outputURL: finalURL)

@@ -25,6 +25,7 @@ struct EditorExportView: View {
     @State private var exportError: String?
     @State private var exportBrightness: Float = 0
     @State private var exportContrast: Float = 1
+    @State private var subtitleMode: SubtitleMode = .none
 
     var body: some View {
         VStack(spacing: 20) {
@@ -82,6 +83,15 @@ struct EditorExportView: View {
                     }
                 }
                 .disabled(isExporting)
+
+                if editorState.videoRecord.hasTranscript {
+                    Picker("Subtitles", selection: $subtitleMode) {
+                        ForEach(SubtitleMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .disabled(isExporting)
+                }
             } else {
                 HStack {
                     Text("Width:")
@@ -188,28 +198,87 @@ struct EditorExportView: View {
             throw NSError(domain: "EditorExport", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not create export session"])
         }
 
-        // Apply brightness/contrast adjustments if non-default
+        // Apply audio mix for multi-track audio
+        if let audioMix = result.audioMix {
+            session.audioMix = audioMix
+        }
+
+        // Build subtitle phrases if needed
+        var subtitlePhrases: [SubtitlePhrase] = []
+        if subtitleMode.needsHardBurn || subtitleMode.needsSRT {
+            let subtitleService = SubtitleExportService()
+            subtitlePhrases = await subtitleService.buildPhrases(
+                from: editorState.transcriptWords,
+                edl: snapshot,
+                totalDurationMs: editorState.durationMs
+            )
+        }
+
+        // Apply video composition if brightness/contrast or hard-burn subtitles needed
         let needsAdjustment = exportBrightness != 0 || exportContrast != 1
-        if needsAdjustment {
+        let needsHardBurn = subtitleMode.needsHardBurn && !subtitlePhrases.isEmpty
+
+        if needsAdjustment || needsHardBurn {
             let brightness = exportBrightness
             let contrast = exportContrast
+            let phrases = subtitlePhrases
             let ciContext = CIContext(options: [.useSoftwareRenderer: false])
+
+            // Pre-render all subtitle images once (instead of per-frame)
+            var subtitleCache: [CIImage?] = []
+            if needsHardBurn {
+                let videoTracks = try await result.composition.loadTracks(withMediaType: .video)
+                if let videoTrack = videoTracks.first {
+                    let size = try await videoTrack.load(.naturalSize)
+                    subtitleCache = SubtitleExportService.prerenderImages(
+                        phrases: phrases,
+                        videoWidth: size.width,
+                        videoHeight: size.height
+                    )
+                    logger.info("Pre-rendered \(subtitleCache.count) subtitle images")
+                }
+            }
 
             let videoComp = try await AVMutableVideoComposition.videoComposition(
                 with: result.composition,
                 applyingCIFiltersWithHandler: { request in
-                    let source = request.sourceImage.clampedToExtent()
-                    let adjusted = source.applyingFilter("CIColorControls", parameters: [
-                        kCIInputBrightnessKey: brightness,
-                        kCIInputContrastKey: contrast,
-                    ]).cropped(to: request.sourceImage.extent)
-                    request.finish(with: adjusted, context: ciContext)
+                    var image = request.sourceImage.clampedToExtent()
+
+                    // Apply brightness/contrast
+                    if needsAdjustment {
+                        image = image.applyingFilter("CIColorControls", parameters: [
+                            kCIInputBrightnessKey: brightness,
+                            kCIInputContrastKey: contrast,
+                        ])
+                    }
+
+                    image = image.cropped(to: request.sourceImage.extent)
+
+                    // Burn pre-rendered subtitle overlay
+                    if needsHardBurn {
+                        let frameTimeMs = Int64(request.compositionTime.seconds * 1000)
+                        image = SubtitleExportService.burnSubtitle(
+                            onto: image,
+                            phrases: phrases,
+                            cache: subtitleCache,
+                            frameTimeMs: frameTimeMs
+                        )
+                    }
+
+                    request.finish(with: image, context: ciContext)
                 }
             )
             session.videoComposition = videoComp
         }
 
         try await session.export(to: destURL, as: .mp4)
+
+        // Generate SRT sidecar if requested
+        if subtitleMode.needsSRT && !subtitlePhrases.isEmpty {
+            let srtURL = destURL.deletingPathExtension().appendingPathExtension("srt")
+            let subtitleService = SubtitleExportService()
+            try await subtitleService.generateSRT(phrases: subtitlePhrases, outputURL: srtURL)
+        }
     }
 
     private func exportGIF(to destURL: URL) async throws {

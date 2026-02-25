@@ -6,6 +6,7 @@ private let logger = Logger(subsystem: "com.cloom.app", category: "EditorComposi
 struct CompositionResult: @unchecked Sendable {
     let composition: AVMutableComposition
     let duration: CMTime
+    let audioMix: AVMutableAudioMix?
 }
 
 /// Value type snapshot of EDL data for cross-actor use.
@@ -52,27 +53,34 @@ actor EditorCompositionBuilder {
             preferredTrackID: kCMPersistentTrackID_Invalid
         ) else { throw BuildError.noVideoTrack }
 
-        let audioTrack = composition.addMutableTrack(
-            withMediaType: .audio,
-            preferredTrackID: kCMPersistentTrackID_Invalid
-        )
-
         // Build time ranges from trim + cuts
         let sourceAsset = AVURLAsset(url: sourceURL)
         let sourceDuration = try await sourceAsset.load(.duration)
         let timeRanges = buildTimeRanges(edl: edl, totalDuration: sourceDuration)
 
-        // Insert source segments
-        var insertTime = CMTime.zero
+        // Load ALL source audio tracks (e.g. Track 0 = system, Track 1 = mic)
         let sourceVideoTracks = try await sourceAsset.loadTracks(withMediaType: .video)
         let sourceAudioTracks = try await sourceAsset.loadTracks(withMediaType: .audio)
 
+        // Create one composition audio track per source audio track
+        var compAudioTracks: [AVMutableCompositionTrack] = []
+        for _ in sourceAudioTracks {
+            if let t = composition.addMutableTrack(
+                withMediaType: .audio,
+                preferredTrackID: kCMPersistentTrackID_Invalid
+            ) {
+                compAudioTracks.append(t)
+            }
+        }
+
+        // Insert source segments
+        var insertTime = CMTime.zero
         for range in timeRanges {
             if let srcVideo = sourceVideoTracks.first {
                 try videoTrack.insertTimeRange(range, of: srcVideo, at: insertTime)
             }
-            if let srcAudio = sourceAudioTracks.first, let audioTrack {
-                try audioTrack.insertTimeRange(range, of: srcAudio, at: insertTime)
+            for (i, srcAudio) in sourceAudioTracks.enumerated() where i < compAudioTracks.count {
+                try compAudioTracks[i].insertTimeRange(range, of: srcAudio, at: insertTime)
             }
             insertTime = CMTimeAdd(insertTime, range.duration)
         }
@@ -89,8 +97,19 @@ actor EditorCompositionBuilder {
             if let srcVideo = stitchVideoTracks.first {
                 try videoTrack.insertTimeRange(range, of: srcVideo, at: insertTime)
             }
-            if let srcAudio = stitchAudioTracks.first, let audioTrack {
-                try audioTrack.insertTimeRange(range, of: srcAudio, at: insertTime)
+            for (i, srcAudio) in stitchAudioTracks.enumerated() {
+                // Grow composition audio tracks if stitched clip has more tracks
+                while i >= compAudioTracks.count {
+                    if let t = composition.addMutableTrack(
+                        withMediaType: .audio,
+                        preferredTrackID: kCMPersistentTrackID_Invalid
+                    ) {
+                        compAudioTracks.append(t)
+                    }
+                }
+                if i < compAudioTracks.count {
+                    try compAudioTracks[i].insertTimeRange(range, of: srcAudio, at: insertTime)
+                }
             }
             insertTime = CMTimeAdd(insertTime, duration)
         }
@@ -103,11 +122,24 @@ actor EditorCompositionBuilder {
             composition.scaleTimeRange(fullRange, toDuration: scaledDuration)
         }
 
-        logger.info("Built composition: \(timeRanges.count) ranges, \(stitchURLs.count) stitched, speed=\(edl.speedMultiplier)x")
+        // Build audio mix if multiple audio tracks (mixes down to stereo on export)
+        var audioMix: AVMutableAudioMix?
+        if compAudioTracks.count > 1 {
+            let mix = AVMutableAudioMix()
+            mix.inputParameters = compAudioTracks.map { track in
+                let params = AVMutableAudioMixInputParameters(track: track)
+                params.setVolume(1.0, at: .zero)
+                return params
+            }
+            audioMix = mix
+        }
+
+        logger.info("Built composition: \(timeRanges.count) ranges, \(compAudioTracks.count) audio tracks, \(stitchURLs.count) stitched, speed=\(edl.speedMultiplier)x")
 
         return CompositionResult(
             composition: composition,
-            duration: composition.duration
+            duration: composition.duration,
+            audioMix: audioMix
         )
     }
 

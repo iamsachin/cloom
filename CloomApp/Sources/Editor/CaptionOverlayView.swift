@@ -49,7 +49,7 @@ struct CaptionOverlayView: View {
         return result
     }
 
-    static func buildPhrases(from words: [TranscriptWordSnapshot]) -> [CaptionPhrase] {
+    nonisolated static func buildPhrases(from words: [TranscriptWordSnapshot]) -> [CaptionPhrase] {
         guard !words.isEmpty else { return [] }
         var phrases: [CaptionPhrase] = []
         var current: [TranscriptWordSnapshot] = []
@@ -83,7 +83,7 @@ struct CaptionOverlayView: View {
     }
 }
 
-struct CaptionPhrase: Identifiable {
+struct CaptionPhrase: Identifiable, Sendable {
     let id = UUID()
     let words: [TranscriptWordSnapshot]
     let startMs: Int64
