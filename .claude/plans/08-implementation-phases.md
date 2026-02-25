@@ -232,7 +232,42 @@
 
 ---
 
-## Phase 12: Advanced — Not Started
+## Phase 12: Code Quality & File Splitting — Not Started
+
+**Goal:** Split large files into focused, single-responsibility modules. Target: no file over ~300 lines, no file with more than ~10 functions.
+
+### Swift — High Priority (400+ lines)
+| # | Task | File | Lines/Funcs |
+|---|------|------|-------------|
+| 93 | Split LibraryView — extract toolbar/filter, video grid, context menus | Library/ | 454 lines, 8 funcs |
+| 94 | Split WebcamBubbleWindow — extract shape rendering, drag, size cycling | Capture/ | 420 lines, 17 funcs |
+| 95 | Split AnnotationCanvasView — extract per-tool drawing, gesture handling | Annotations/ | 417 lines, 16 funcs |
+
+### Swift — Medium Priority (300–400 lines)
+| # | Task | File | Lines/Funcs |
+|---|------|------|-------------|
+| 96 | Split EditorView — extract toolbar, sidebar toggle, sub-view sections | Editor/ | 354 lines, 6 funcs |
+| 97 | Split ScreenCaptureService — extract stream config, filter, delegate | Capture/ | 337 lines, 16 funcs |
+| 98 | Split WebcamSettingsTab — extract preview and setting groups | Settings/ | 312 lines, 4 funcs |
+| 99 | Split WebcamCompositor — extract shape masking, theme border rendering | Compositing/ | 305 lines, 9 funcs |
+| 100 | Split RecordingCoordinator+UI — further decompose window management | Recording/ | 302 lines, 13 funcs |
+
+### Rust — Medium Priority
+| # | Task | File | Lines/Funcs |
+|---|------|------|-------------|
+| 101 | Split gif_export.rs — separate manifest, frame decoding, encoding | export/ | 371 lines, 11 fns |
+| 102 | Split silence.rs — separate detection from WAV parsing, merging | audio/ | 335 lines, 8 fns |
+| 103 | Split llm.rs — separate prompts, API client, response parsers | ai/ | 302 lines, 18 fns |
+
+### General Cleanup
+| # | Task | Description |
+|---|------|-------------|
+| 104 | Review unused imports, dead helpers, overly broad responsibilities | All modules |
+| 105 | Ensure consistent error handling patterns across services | All modules |
+
+---
+
+## Phase 13: Advanced — Not Started
 
 | # | Task | Module | Features |
 |---|------|--------|----------|
@@ -243,7 +278,7 @@
 
 ---
 
-## Phase 13: Pre-Release — Not Started
+## Phase 14: Pre-Release — Not Started
 
 | # | Task | Module | Features |
 |---|------|--------|----------|
