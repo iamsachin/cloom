@@ -68,7 +68,7 @@ struct VideoCardView: View {
 
                     Spacer()
 
-                    Text(video.createdAt, style: .relative)
+                    Text(relativeTime(from: video.createdAt))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -156,5 +156,16 @@ struct VideoCardView: View {
         let minutes = totalSeconds / 60
         let seconds = totalSeconds % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    private func relativeTime(from date: Date) -> String {
+        let seconds = Int(-date.timeIntervalSinceNow)
+        if seconds < 60 { return "<1 min" }
+        let minutes = seconds / 60
+        if minutes < 60 { return "\(minutes) min" }
+        let hours = minutes / 60
+        if hours < 24 { return "\(hours) hr" }
+        let days = hours / 24
+        return "\(days) day\(days == 1 ? "" : "s")"
     }
 }

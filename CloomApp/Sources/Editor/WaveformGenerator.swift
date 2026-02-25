@@ -20,11 +20,29 @@ actor WaveformGenerator {
         let asset = AVURLAsset(url: url)
         let audioTracks = try await asset.loadTracks(withMediaType: .audio)
 
-        guard let audioTrack = audioTracks.first else {
+        guard !audioTracks.isEmpty else {
             logger.info("No audio track — returning empty waveform")
             return Array(repeating: 0, count: peakCount)
         }
 
+        // Read samples from all audio tracks and combine them.
+        // VideoWriter creates system audio (track 0) and mic audio (track 1).
+        // If system audio is silent, we still get the mic waveform this way.
+        var combinedPeaks = [Float](repeating: 0, count: peakCount)
+
+        for audioTrack in audioTracks {
+            let trackPeaks = try readTrackPeaks(asset: asset, track: audioTrack, peakCount: peakCount)
+            for i in 0..<peakCount {
+                combinedPeaks[i] = max(combinedPeaks[i], trackPeaks[i])
+            }
+        }
+
+        let totalEnergy = combinedPeaks.reduce(0, +)
+        logger.info("Generated \(combinedPeaks.count) waveform peaks from \(audioTracks.count) audio tracks (energy: \(totalEnergy))")
+        return combinedPeaks
+    }
+
+    private func readTrackPeaks(asset: AVURLAsset, track: AVAssetTrack, peakCount: Int) throws -> [Float] {
         let reader = try AVAssetReader(asset: asset)
 
         let outputSettings: [String: Any] = [
@@ -35,11 +53,12 @@ actor WaveformGenerator {
             AVLinearPCMIsNonInterleaved: false,
         ]
 
-        let output = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: outputSettings)
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: outputSettings)
         reader.add(output)
 
         guard reader.startReading() else {
-            throw WaveformError.readerFailed(reader.error?.localizedDescription ?? "Unknown")
+            logger.warning("Failed to read audio track: \(reader.error?.localizedDescription ?? "Unknown")")
+            return [Float](repeating: 0, count: peakCount)
         }
 
         // Collect all samples
@@ -59,7 +78,7 @@ actor WaveformGenerator {
         }
 
         guard !allSamples.isEmpty else {
-            return Array(repeating: 0, count: peakCount)
+            return [Float](repeating: 0, count: peakCount)
         }
 
         // Downsample to peakCount peaks
@@ -82,7 +101,11 @@ actor WaveformGenerator {
             peaks.append(Float(maxVal) / Float(Int16.max))
         }
 
-        logger.info("Generated \(peaks.count) waveform peaks from \(allSamples.count) samples")
-        return peaks
+        // Adaptive noise floor: use the median peak as the background noise level,
+        // then zero out anything below 2x the median to suppress fan/hum while keeping speech
+        let sorted = peaks.sorted()
+        let median = sorted[sorted.count / 2]
+        let noiseFloor = median * 2
+        return peaks.map { $0 < noiseFloor ? 0 : $0 }
     }
 }

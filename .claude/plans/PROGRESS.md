@@ -330,7 +330,14 @@ Split large files into focused, single-responsibility modules following best pra
 
 ---
 
-## Phase 15: Pre-Release
+## Phase 15: Mic Sensitivity Setting
+**Status:** Not started
+
+- [ ] Task 106 — Mic sensitivity slider in Settings > Microphone (configurable waveform noise floor threshold, @AppStorage persistence, applies to WaveformGenerator adaptive noise floor)
+
+---
+
+## Phase 16: Pre-Release
 **Status:** Not started
 
 - [ ] Task 81 — Developer ID signing + notarization + DMG packaging
