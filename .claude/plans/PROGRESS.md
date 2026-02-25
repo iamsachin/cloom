@@ -247,7 +247,35 @@
 
 ---
 
-## Phase 12: Advanced
+## Phase 12: Code Quality & File Splitting
+**Status:** Not started
+
+Split large files into focused, single-responsibility modules following best practices. Target: no file over ~300 lines, no file with more than ~10 functions.
+
+### Swift — High Priority (400+ lines)
+- [ ] Task 93 — Split `LibraryView.swift` (454 lines) — extract toolbar/filter bar, video grid, context menu logic into separate views/helpers
+- [ ] Task 94 — Split `WebcamBubbleWindow.swift` (420 lines, 17 funcs) — extract shape rendering, drag handling, and size cycling into helpers
+- [ ] Task 95 — Split `AnnotationCanvasView.swift` (417 lines, 16 funcs) — extract per-tool drawing logic and gesture handling into separate files
+
+### Swift — Medium Priority (300–400 lines)
+- [ ] Task 96 — Split `EditorView.swift` (354 lines) — extract toolbar, sidebar toggle, and sub-view sections
+- [ ] Task 97 — Split `ScreenCaptureService.swift` (337 lines, 16 funcs) — extract stream configuration, filter building, and delegate handling
+- [ ] Task 98 — Split `WebcamSettingsTab.swift` (312 lines) — extract preview section and individual setting groups
+- [ ] Task 99 — Split `WebcamCompositor.swift` (305 lines) — extract shape masking and theme border rendering
+- [ ] Task 100 — Split `RecordingCoordinator+UI.swift` (302 lines, 13 funcs) — further decompose window management
+
+### Rust — Medium Priority
+- [ ] Task 101 — Split `gif_export.rs` (371 lines, 11 fns) — separate manifest loading, frame decoding, and encoding logic
+- [ ] Task 102 — Split `silence.rs` (335 lines) — separate detection algorithm from WAV parsing and segment merging
+- [ ] Task 103 — Split `llm.rs` (302 lines, 18 fns) — separate prompt builders, API client, and response parsers
+
+### General Cleanup
+- [ ] Task 104 — Review all files for unused imports, dead helper functions, or overly broad responsibilities
+- [ ] Task 105 — Ensure consistent error handling patterns across services
+
+---
+
+## Phase 13: Advanced
 **Status:** Not started
 
 - [ ] Task 78 — Local view analytics (track views, watch time)
@@ -257,7 +285,7 @@
 
 ---
 
-## Phase 13: Pre-Release
+## Phase 14: Pre-Release
 **Status:** Not started
 
 - [ ] Task 81 — Developer ID signing + notarization + DMG packaging

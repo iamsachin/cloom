@@ -1,271 +1,281 @@
 # Swift Modules Detail
 
-## App/ — Application Lifecycle & Menu Bar
+## App/ — Application Lifecycle & Menu Bar (6 files)
 
 **Responsibilities:**
-- `@main` SwiftUI App with `MenuBarExtra` + `WindowGroup`
-- Window management (library window, floating panels, settings)
-- Global keyboard shortcut registration via Carbon `RegisterEventHotKey`
+- `@main` SwiftUI App with `MenuBarExtra` + `WindowGroup` scenes
+- Window management (library, editor, floating panels, settings)
+- Global keyboard shortcuts via CGEvent tap
 - Launch-at-startup via `SMAppService`
 - Notification scheduling via `UNUserNotificationCenter`
+- Permission checking and onboarding flow
+- Dark mode theme management
 
 **Key Types:**
-- `CloomApp: App` — top-level
-- `AppState: ObservableObject` — global state (current recording, library selection)
-- `PermissionsManager` — TCC permission handling (screen capture, camera, mic)
-- `KeyboardShortcutManager` — registers/listens global hotkeys
+- `CloomApp: App` — top-level, MenuBarExtra + WindowGroup
+- `AppState: @MainActor ObservableObject` — global state (recording, mic/camera toggles, modelContainer, crash recovery, disk monitoring)
+- `PermissionChecker: @MainActor ObservableObject` — live polling for Screen Recording, Camera, Mic, Accessibility TCC permissions
+- `OnboardingView` — step-by-step permission setup with live status indicators
+- `GlobalHotkeyManager` — singleton, CGEvent tap for Cmd+Shift+R (toggle recording) and Cmd+Shift+P (toggle pause), ShortcutRecorderButton for customization, UserDefaults persistence
+- `Theme` — semantic Color extensions with NSColor dynamic provider, 9 adaptive colors, System/Light/Dark picker
 
-**macOS APIs:** `MenuBarExtra`, `Settings` scene, `WindowGroup`, `SMAppService`, Carbon `RegisterEventHotKey`
+**macOS APIs:** `MenuBarExtra`, `Settings` scene, `WindowGroup`, `SMAppService`, `CGEvent` tap, `UNUserNotificationCenter`, `NSAppearance`
 
 ---
 
-## Capture/ — Screen Capture Engine
+## Capture/ — Screen Capture + Camera + Webcam UI (13 files)
 
 **Responsibilities:**
-- Enumerate screens/windows/apps via `SCShareableContent`
-- Build `SCContentFilter` for full-screen, window, or region capture
+- SCStreamOutput per-frame pipeline (not SCRecordingOutput)
+- Build `SCContentFilter` for full-screen, window, or region capture via `SCContentSharingPicker`
 - Configure `SCStreamConfiguration` (resolution, FPS, pixel format, cursor, audio)
-- Manage `SCStream` lifecycle (start, pause, resume, stop)
-- Use `SCRecordingOutput` (macOS 15+) for direct-to-file recording
-- Region selection UI via transparent full-screen overlay
+- Manage `SCStream` lifecycle with separate outputQueue (video) and audioQueue (audio/mic)
+- Camera management via AVCaptureSession with frame callback
+- Person segmentation for background blur via Vision
+- Region selection UI via transparent NSPanel
+- Webcam bubble window (draggable, resizable, shape-aware)
+- Webcam-only recording mode via dedicated AVAssetWriter
+- Webcam shape, theme, and image adjustment configuration
+- Noise cancellation on microphone samples
 
 **Key Types:**
-- `ScreenCaptureService` (protocol) — abstraction
-- `DefaultScreenCaptureService` — concrete SCKit implementation
-- `CaptureConfiguration` — value type wrapping filter + config
-- `RegionSelectionWindow` — transparent overlay with drag-to-select
+- `CaptureMode` (enum) — fullScreen(displayID), window(windowID), region(displayID, rect), webcamOnly
+- `ScreenCaptureService: @MainActor` — SCStreamOutput pipeline, integrates WebcamCompositor + AnnotationRenderer + NoiseCancellationProcessor
+- `CameraService: @unchecked Sendable` — AVCaptureSession wrapper, device selection, frame delivery via onFrame callback
+- `PersonSegmenter` — VNGeneratePersonSegmentationRequest + CIFilter blur
+- `ContentPicker` — SCContentSharingPicker wrapper for window/display selection
+- `RegionSelectionWindow` — transparent NSPanel with rubber-band selection
+- `WebcamBubbleWindow` — circular/rounded/pill NSPanel, draggable, click-to-cycle size
+- `WebcamRecordingService` — webcam-only AVAssetWriter (HEVC 720p, camera+mic)
+- `WebcamShape` (enum) — circle, roundedRect, pill with aspectRatio and cornerRadius
+- `BubbleTheme` (enum) — 8 themes: 4 solid colors + 4 gradients
+- `WebcamImageAdjuster` — CIColorControls + CIHighlightShadowAdjust + CITemperatureAndTint, thread-safe via OSAllocatedUnfairLock
+- `NoiseCancellationProcessor` — RMS noise gate (-40dB threshold) on mic CMSampleBuffers
 
-**macOS APIs:** `SCShareableContent`, `SCStream`, `SCStreamConfiguration`, `SCContentFilter`, `SCRecordingOutput`
+**macOS APIs:** `SCShareableContent`, `SCStream`, `SCStreamOutput`, `SCContentSharingPicker`, `AVCaptureSession`, `AVCaptureDevice`, Vision (`VNGeneratePersonSegmentationRequest`), `CoreImage`, `NSPanel`
 
 ---
 
-## Camera/ — Webcam Capture
+## Recording/ — Recording State Machine & Coordination (11 files)
 
 **Responsibilities:**
-- Enumerate cameras via `AVCaptureDevice.DiscoverySession`
-- Manage `AVCaptureSession` with video input
-- Camera flip/mirror
-- Person segmentation for background blur/virtual backgrounds via Vision
-- Deliver camera frames as `CVPixelBuffer`
-
-**Key Types:**
-- `CameraService` (protocol)
-- `DefaultCameraService` — AVCaptureSession implementation
-- `PersonSegmentation` — Vision `VNGeneratePersonSegmentationRequest`, CoreImage blur
-
-**macOS APIs:** `AVCaptureSession`, `AVCaptureDevice`, Vision (`VNGeneratePersonSegmentationRequest`), `CoreImage`
-
----
-
-## Recording/ — Recording State Machine & Coordination
-
-**Responsibilities:**
-- Central state machine: `idle → countdown → recording → paused → recording → stopped`
+- Central state machine: `idle → selectingContent → countdown → recording → paused → stopping`
 - Countdown timer (3-2-1 overlay)
-- Pause/Resume with timestamp gap management
-- Recording timer display (elapsed time)
-- Coordinates Capture + Camera + Audio into single session
-- Mic mute/unmute without stopping recording
+- Pause/Resume with segment-based recording
+- Coordinates Capture + Camera + Compositing + Annotations into single session
+- Mic/camera/blur/annotation/click emphasis/cursor spotlight toggles
+- Webcam-only recording mode
+- Discard recording with confirmation
+- Floating control pill on webcam bubble
+- Post-recording pipeline (AI orchestration, library save)
 
 **Key Types:**
-- `RecordingCoordinator: ObservableObject` — THE source of truth for recording lifecycle
-- `RecordingState` (enum) — all possible states
-- `RecordingMode` — screen+cam, screen-only, cam-only
-- `CountdownView` — visual countdown overlay
+- `RecordingCoordinator: @MainActor ObservableObject` — THE source of truth (~350 lines + 4 extension files)
+  - `+Capture.swift` — capture setup and stream configuration
+  - `+CaptureDelegate.swift` — nonisolated AVCaptureVideoDataOutputSampleBufferDelegate
+  - `+PostRecording.swift` — AI pipeline, segment stitching, library save
+  - `+UI.swift` — window management (bubble, toolbar, annotation, countdown)
+- `RecordingState` (enum) — idle, selectingContent, countdown, recording, paused, stopping
+- `RecordingToolbarPanel` — NSPanel with mode selection, mic/camera/blur toggles, draw/click/spotlight controls
+- `BubbleControlPill: @MainActor` — NSPanel child of webcam bubble (stop, timer, pause, discard)
+- `DiscardConfirmationWindow` — confirmation dialog
+- `CountdownOverlayWindow` — 3-2-1 countdown overlay
+- `RegionHighlightOverlay` — visual feedback for selected region
 
-**This is the HEART of the app.** Gets all recording signals flowing.
+**This is the HEART of the app.** All recording signals flow through RecordingCoordinator.
 
 ---
 
-## Compositing/ — Post-Recording Video Composition
+## Compositing/ — Real-Time Video Compositing (4 files)
 
 **Responsibilities:**
-- Compose screen recording + webcam overlay into single video during export
-- Apply webcam bubble (circular crop, position, size) via custom `AVVideoCompositing`
-- Burn drawing annotations into frames via `CoreImage`/`CoreGraphics`
-- Hardware-accelerated compositing via Metal/GPU
+- Real-time webcam overlay onto screen frames during recording (not post-process)
+- AVAssetWriter encoding (HEVC primary, H.264 fallback)
+- Dual audio input (system audio + microphone on separate writer inputs)
+- Segment stitching for pause/resume via AVMutableComposition
+- Export progress UI
 
 **Key Types:**
-- `CompositingService` (protocol) — abstraction for testing
-- `DefaultCompositingService` — `AVMutableComposition` + `AVMutableVideoComposition`
-- `WebcamCompositor: AVVideoCompositing` — custom compositor that overlays circular webcam onto screen frames
-- `AnnotationRenderer` — renders `DrawingStroke` array into `CIImage` overlays keyed by timestamp
+- `VideoWriter` (actor) — AVAssetWriter wrapper, HEVC encoding, PTS normalization, pixel buffer pool, actor isolation for thread safety
+- `WebcamCompositor: @unchecked Sendable` — Metal-backed CIContext, composites webcam frame onto screen frame as circular/rounded/pill overlay with shape masking, theme border, brightness/contrast/saturation adjustments. Thread-safe via OSAllocatedUnfairLock
+- `SegmentStitcher` — AVMutableComposition concatenation of pause/resume segments
+- `ExportProgressWindow` — progress modal for export and stitching operations
 
-**macOS APIs:** `AVMutableComposition`, `AVMutableVideoComposition`, `AVVideoCompositing`, `CoreImage`, `CoreGraphics`, `Metal`
+**macOS APIs:** `AVAssetWriter`, `AVAssetWriterInput`, `CoreImage` (`CIContext`, `CIFilter`), `Metal`, `AVMutableComposition`
 
 ---
 
-## Export/ — Video Export Pipeline
+## Annotations/ — Drawing & Click Effects (9 files)
 
 **Responsibilities:**
-- Apply `EditDecisionList` to produce final MP4 output
-- Use `AVMutableComposition` for trims, cuts, speed changes
-- Invoke `CompositingService` for webcam overlay + annotation burn-in
-- Export via `AVAssetExportSession` with `VideoToolbox` hardware encoding
-- Progress reporting to UI
+- Drawing tools: pen, highlighter, arrow, line, rectangle, ellipse, eraser
+- Color palette (6 colors) and stroke width selection
+- Transparent NSPanel overlay for drawing during recording
+- Undo stack, clear all, Escape to exit draw mode
+- Mouse click emphasis (expanding ripple via CGEvent tap)
+- Cursor spotlight (radial gradient dim overlay)
+- Real-time burn-in of all annotations into recorded video frames via CIImage
 
 **Key Types:**
-- `ExportService` (protocol)
-- `MP4ExportService` — reads source MP4, applies EDL via `AVMutableComposition`, writes output
-- `ExportProgressReporter` — wraps `AVAssetExportSession.progress` for UI
+- `AnnotationModels` — AnnotationTool, StrokePoint, StrokeColor, AnnotationStroke, ClickRipple, SpotlightState, AnnotationSnapshot
+- `AnnotationStore: @Observable` — real-time stroke editing, snapshot generation
+- `AnnotationRenderer: @unchecked Sendable` — renders annotations as CIImage overlay for burn-in (called from SCStreamOutput queue)
+- `AnnotationCanvasWindow` — transparent NSPanel overlay at CGShieldingWindowLevel
+- `AnnotationCanvasView` — SwiftUI Canvas with mouse down/drag/up tracking, pressure via NSEvent
+- `AnnotationToolbarPanel` — NSPanel above canvas for tool/color/width controls
+- `AnnotationToolbarContentView` — SwiftUI content for toolbar
+- `ClickEmphasisMonitor` — CGEvent tap for mouse clicks → ClickRipple
+- `CursorSpotlightMonitor` — cursor position tracking → SpotlightState
 
-**macOS APIs:** `AVMutableComposition`, `AVAssetExportSession`, `VideoToolbox`
-
-**Note:** GIF export is handled by Rust (see 06-rust-modules.md). Swift extracts/resamples frames first, then Rust handles quantization + GIF encoding.
-
----
-
-## Overlay/ — Webcam Bubble, Drawing Canvas, Control Bar
-
-### Webcam Bubble
-- Circular `NSPanel` (floating, non-activating) with camera preview
-- Draggable, corner-snapping, resizable (small/medium/large)
-- Clips to circle, optional background blur/virtual bg
-
-### Drawing Canvas
-- Transparent `NSPanel` layered above capture region
-- Tools: pen, highlighter, arrow, rectangle, ellipse, eraser
-- Color picker, stroke width, undo/redo stack
-- Mouse click emphasis: detects clicks via `CGEvent` tap, draws expanding ripple
-- Cursor spotlight: radial gradient around cursor
-
-### Floating Control Bar
-- Compact `NSPanel` with stop, pause, mute, draw, timer
-- Draggable, stays on top, auto-hides on inactivity
-
-**macOS APIs:** `NSPanel`, `CGEvent` taps, SwiftUI `Canvas`, `CoreImage`
+**macOS APIs:** `NSPanel`, `CGEvent` taps, SwiftUI `Canvas`, `CoreImage`, `CoreGraphics`
 
 ---
 
-## Editor/ — Post-Recording Video Editing
+## Editor/ — Post-Recording Video Editing (17 files)
 
 **Responsibilities:**
-- Timeline scrubber with frame-accurate seeking
+- Non-destructive editing with EditDecisionList (SwiftData @Model)
+- Timeline scrubber with frame-accurate seeking + audio waveform + thumbnail strip
 - Trim from start/end via drag handles
 - Cut out middle sections via split-and-delete
-- Stitch multiple clips
-- Speed adjustment
+- Stitch multiple clips with drag-to-reorder
+- Speed adjustment (0.25x–4x)
 - Thumbnail selection
-- All edits produce an `EditDecisionList` (non-destructive)
+- Caption overlay (karaoke-style word-by-word highlighting)
+- Transcript panel (right sidebar, click-to-seek, auto-scroll, filler word styling)
+- Chapter navigation (popover list + timeline markers)
+- PiP and fullscreen playback
+- MP4 export with quality selection + brightness/contrast adjustments
+- GIF export via gifski (Rust FFI)
 
 **Key Types:**
-- `EditorView` — main UI
-- `TimelineView` — horizontal scrolling timeline + waveform
-- `TrimHandleView` — draggable trim controls
-- `EditDecisionList` — ordered list of operations
+- `EditorView` — main editor UI (1000x700 window)
+- `EditorState: @MainActor ObservableObject` — editing state, current video, EDL, playback position
+- `EditorCompositionBuilder` — transforms EditDecisionList → AVMutableComposition (trim, cuts, stitch, speed)
+- `EditorTimelineView` — Canvas-based waveform + thumbnail strip + red playhead (renamed from TimelineView to avoid SwiftUI collision)
+- `TrimHandlesView` — yellow drag handles + grayed-out overlay
+- `CutRegionOverlay` — red hatched cut regions + context menu
+- `VideoPreviewView` — AVPlayer wrapper + AVPictureInPictureController coordinator
+- `CaptionOverlayView` — karaoke-style word-by-word highlight with phrase grouping + binary search lookup
+- `TranscriptPanelView` — FlowLayout right sidebar, auto-scroll, click-to-seek, filler word styling
+- `ChapterNavigationView` — popover list + accent color timeline markers/triangles
+- `StitchPanelView` — multi-clip drag-to-reorder
+- `SpeedControlView` — 0.25x–4x presets popover
+- `ThumbnailPickerView` — slider + "Use Current Frame" + PNG save
+- `ThumbnailStripGenerator` — generates preview thumbnails for timeline
+- `WaveformGenerator` — AVAssetReader-based audio waveform peak extraction with sqrt normalization
+- `EditorExportView` — quality picker + brightness/contrast sliders, AVAssetExportSession with CIColorControls
+- `GifExportService` (actor) — PNG frame extraction + Rust gifski FFI bridge
 
-**macOS APIs:** `AVFoundation` (`AVAsset`, `AVAssetImageGenerator`)
+**macOS APIs:** `AVFoundation` (`AVAsset`, `AVAssetImageGenerator`, `AVAssetReader`, `AVMutableComposition`, `AVAssetExportSession`), `AVPictureInPictureController`
 
 ---
 
-## Player/ — Video Playback
+## Library/ — Video Library Browser (6 files)
 
 **Responsibilities:**
-- AVPlayer playback with custom transport controls
-- Speed control: 0.5x, 1x, 1.5x, 2x
-- Full-screen, Picture-in-Picture
-- Caption overlay (SRT/VTT from transcript)
-- Transcript panel synced to playback position
-- Chapter navigation (jump between AI-detected chapters)
+- Grid view of all recordings with hover preview effect
+- Folder management (create, rename, move, nest) via sidebar
+- Tags/labels (create, assign, 8-preset color picker, bulk tagging)
+- Full-text search (.searchable, title/summary/transcript SwiftData predicate filtering)
+- Sort/filter (7 sort options, transcript filter)
+- Video context menus (copy path, show in Finder, move to folder, tags, delete)
+- Info sidebar panel (title, full summary, metadata)
+- Storage summary in toolbar ("{count} videos · {size}")
 
 **Key Types:**
-- `VideoPlayerView` — AVPlayer wrapper
-- `CaptionOverlay` — timed text rendering
-- `TranscriptPanel` — scrolling transcript with click-to-seek
-- `ChapterNavigation` — chapter list + jump
+- `LibraryView` — main browser grid with `@Query` from SwiftData, hover scale effect on cards
+- `LibrarySidebarView` — flat folder tree + tag section
+- `VideoCardView` — thumbnail + metadata + summary tooltip + tag pills + context menu
+- `TagEditorView` — 8-preset color picker + tag CRUD
+- `BulkTagSheet` — bulk tag assignment
+- `FolderPickerSheet` — move videos to folders
 
-**macOS APIs:** `AVPlayer`, `AVPictureInPictureController`
+**Data source:** SwiftData `@Query` for metadata. Search uses SwiftData predicates (no external FTS library).
 
 ---
 
-## Library/ — Video Library Browser
+## Player/ — Video Playback (1 file)
 
-**Responsibilities:**
-- Grid/list view of all recordings
-- Search by title, tags, transcript content
-- Folder/workspace organization
-- Tags and labels
-- Thumbnail previews
-- Sorting (date, name, duration)
+**Note:** Most player functionality was integrated into the Editor module. The standalone Player is a legacy wrapper.
 
 **Key Types:**
-- `LibraryView` — main browser (uses `@Query` from SwiftData for reactive data)
-- `VideoCardView` — thumbnail card with metadata
-- `FolderSidebar` — folder tree
-- `SearchBar`
-
-**Data source:** SwiftData `@Query` for metadata + local SQLite FTS (via GRDB) for transcript search. No FFI calls for library operations.
+- `PlayerView` — AVPlayer wrapper with basic playback controls
 
 ---
 
-## Data/ — SwiftData Persistence
+## Data/ — SwiftData Persistence (8 files)
 
 **Responsibilities:**
-- Define all `@Model` classes (VideoRecord, FolderRecord, TagRecord, TranscriptRecord, etc.)
-- `ModelContainer` setup and configuration
-- Schema versioning and migrations
-- Cloud sync field management (syncStatus, remoteID, lastSyncedAt)
+- Define all `@Model` classes (VideoRecord, FolderRecord, TagRecord, TranscriptRecord, TranscriptWordRecord, ChapterRecord, EditDecisionList, VideoComment, ViewEvent)
+- `ModelContainer` setup in AppState with all schemas registered
+- No schema versioning/migration implemented yet
 
 **Key Types:**
-- `VideoModel`, `FolderModel`, `TagModel`, `TranscriptModel`, `CommentModel`, `ViewEventModel` — `@Model` classes
-- `DataManager` — `ModelContainer` factory, migration logic
+- `VideoRecord`, `FolderRecord`, `TagRecord`, `TranscriptRecord`, `TranscriptWordRecord`, `ChapterRecord`, `EditDecisionList`, `VideoComment`, `ViewEvent`
 
 **macOS APIs:** `SwiftData` (`@Model`, `@Query`, `ModelContainer`, `ModelContext`)
 
 ---
 
-## Settings/ — Preferences
+## Settings/ — Preferences (7 files)
 
 **Responsibilities:**
-- Tabbed preferences window
-- Video quality / frame rate / codec selection
-- Camera and microphone device selection
-- Keyboard shortcut customization
-- Dark mode follows system or forced
-- Noise cancellation toggle
-- API key management (stored in Keychain)
-- All settings persisted via `UserDefaults` (wrapped by `PreferencesManager`)
+- Tabbed preferences window (5 tabs)
+- General: launch at startup, notifications, dark mode appearance
+- Recording: FPS, quality, mic/camera device pickers
+- Webcam: shape picker, image adjustments (brightness/contrast/saturation/highlights/shadows), theme swatches, temperature/tint, live preview
+- AI: API key input (file-based storage), auto-transcribe toggle
+- Shortcuts: global hotkey recorder with UCKeyTranslate display strings
+- All settings persisted via `@AppStorage` (UserDefaults)
 
 **Key Types:**
-- `PreferencesManager` — `UserDefaults` wrapper with typed accessors for all settings
+- `SettingsView` — TabView shell (~24 lines)
+- `GeneralSettingsTab`, `RecordingSettingsTab`, `WebcamSettingsTab`, `AISettingsTab`, `ShortcutsSettingsTab`
+- `RecordingSettings` — @AppStorage backing types + VideoQuality enum
 
-**macOS APIs:** `Settings` scene, `Security.framework` (Keychain for API keys), `UserDefaults`
+**macOS APIs:** `Settings` scene, `UserDefaults` / `@AppStorage`
 
-**Note:** Config is NOT in Rust. Swift owns all settings. API keys are passed to Rust as function parameters when calling AI functions.
+**Note:** API keys stored in file at `~/Library/Application Support/Cloom/api_key` with `chmod 600` (not Keychain — avoids repeated prompts on debug rebuilds). Values passed to Rust as function parameters.
 
 ---
 
-## AI/ — AI Feature Integration
+## AI/ — AI Feature Integration (3 files)
 
 **Responsibilities:**
-- Orchestrate post-recording AI pipeline
-- Send audio file path to Rust for transcription (via FFI; v1 default model `gpt-4o-mini-transcribe`)
-- Request title/summary/chapters from Rust LLM client (via FFI)
-- Pass API keys from Keychain to Rust as parameters
-- Display progress and results in UI
-- Store results in SwiftData
+- Orchestrate post-recording AI pipeline (runs as Task.detached after recording)
+- Extract audio from MP4 (prefers mic track, falls back to mix)
+- Send audio file path to Rust for transcription (OpenAI whisper-1 via FFI)
+- Detect filler words from transcript (Rust FFI)
+- Request title/summary/chapters from Rust LLM client (gpt-4o-mini via FFI)
+- Detect silence regions (Rust FFI)
+- Store all results in SwiftData
+- Track processing state for library card spinners
+- Error alerts for pipeline failures
 
 **Key Types:**
-- `AIOrchestrator` — sequences AI operations after recording
-- `TranscriptionService` — wraps Rust bridge calls
+- `AIOrchestrator` (actor) — sequences all AI operations
+- `AIProcessingTracker` — tracks which videos are being processed (spinner state)
+- `KeychainService` — file-based API key storage (migrated from Keychain)
 
 ---
 
-## Bridge/ — Swift-Rust FFI
+## Bridge/ — Swift-Rust FFI (3 generated files + 1 bridging header)
 
 **Responsibilities:**
-- Contains UniFFI-generated Swift bindings (auto-generated, do not edit)
+- Contains UniFFI-generated Swift bindings (auto-generated, gitignored)
+- Bridging header includes generated C header (workaround for Xcode 26 explicit modules)
 - Small surface area: audio processing + AI + GIF export only
-- Thread safety: Rust calls dispatched off main thread
-- Memory management: cleanup of Rust-allocated resources
+- Thread safety: Rust calls dispatched off main thread via actors
+
+**Files:**
+- `Cloom-Bridging-Header.h` — bridging header (checked in)
+- `Generated/cloom_core.swift` — auto-generated Swift bindings
+- `Generated/cloom_coreFFI.h` — auto-generated C header
+- `Generated/cloom_coreFFI.modulemap` — auto-generated modulemap
 
 ---
 
-## Shared/ — Models, Utilities, Extensions
+## Shared/ — Utilities (1 file)
 
-- All shared value types (see 03-data-models.md "Swift Models — Value Types")
-- SwiftUI view extensions
-- Date/time formatters
-- File path utilities
-- Logging via `os.Logger`
-- Error types
+- `ThumbnailGenerator` — shared thumbnail extraction utility using AVAssetImageGenerator

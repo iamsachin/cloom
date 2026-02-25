@@ -1,11 +1,10 @@
 # Data Models
 
-> Note: All model snippets in this document are conceptual pseudocode for architecture planning, not compile-ready source.
+> Note: All model snippets in this document reflect the actual implementation (conceptual pseudocode for reference, not compile-ready source).
 
 ## Swift Models — SwiftData (@Model)
 
-These are the persistent data models stored via SwiftData. They replace the previous Rust SQLite approach.
-Cloud collaboration/sync features are out of scope for v1.
+These are the persistent data models stored via SwiftData. Cloud/sync features are out of scope.
 
 ### Video
 
@@ -23,23 +22,19 @@ final class VideoRecord {
     var height: Int32
     var fileSizeBytes: Int64
     var recordingType: String  // "screenAndWebcam" | "screenOnly" | "webcamOnly"
+    var webcamFilePath: String?  // Legacy: separate webcam file (no longer used with real-time compositing)
 
     // Relationships
     @Relationship var folder: FolderRecord?
     @Relationship(inverse: \TagRecord.videos) var tags: [TagRecord]
-    @Relationship(cascade: .delete) var transcript: TranscriptRecord?
-    @Relationship(cascade: .delete) var chapters: [ChapterRecord]
-    @Relationship(cascade: .delete) var comments: [VideoComment]
-    @Relationship(cascade: .delete) var viewEvents: [ViewEvent]
+    @Relationship(deleteRule: .cascade) var transcript: TranscriptRecord?
+    @Relationship(deleteRule: .cascade) var chapters: [ChapterRecord]
+    @Relationship(deleteRule: .cascade) var comments: [VideoComment]
+    @Relationship(deleteRule: .cascade) var viewEvents: [ViewEvent]
 
     // AI-generated
     var hasTranscript: Bool
     var summary: String?
-
-    // Optional future fields (disabled in v1 local-only scope)
-    var syncStatus: String  // "local" | "synced" | "pendingUpload" | "pendingDelete"
-    var remoteID: String?
-    var lastSyncedAt: Date?
 }
 ```
 
@@ -53,13 +48,8 @@ final class FolderRecord {
     var createdAt: Date
 
     @Relationship var parent: FolderRecord?
-    @Relationship(cascade: .delete, inverse: \FolderRecord.parent) var children: [FolderRecord]
+    @Relationship(deleteRule: .cascade, inverse: \FolderRecord.parent) var children: [FolderRecord]
     @Relationship(inverse: \VideoRecord.folder) var videos: [VideoRecord]
-
-    // Optional future fields (disabled in v1 local-only scope)
-    var syncStatus: String
-    var remoteID: String?
-    var lastSyncedAt: Date?
 
     var videoCount: Int { videos.count }
 }
@@ -72,7 +62,7 @@ final class FolderRecord {
 final class TagRecord {
     @Attribute(.unique) var id: String
     var name: String
-    var color: String  // Hex color
+    var color: String  // Hex color from 8-preset palette
 
     @Relationship var videos: [VideoRecord]
 }
@@ -88,7 +78,7 @@ final class TranscriptRecord {
     var fullText: String
     var language: String
 
-    @Relationship(cascade: .delete) var words: [TranscriptWordRecord]
+    @Relationship(deleteRule: .cascade) var words: [TranscriptWordRecord]
     @Relationship(inverse: \VideoRecord.transcript) var video: VideoRecord?
 }
 
@@ -117,7 +107,30 @@ final class ChapterRecord {
 }
 ```
 
-### Comment & Analytics
+### EditDecisionList
+
+```swift
+@Model
+final class EditDecisionList {
+    @Attribute(.unique) var id: String
+    var videoID: String
+    var trimStartMs: Int64
+    var trimEndMs: Int64
+    var cutsJSON: String        // JSON-encoded [CutRange] array
+    var stitchVideoIDsJSON: String  // JSON-encoded [String] array
+    var speedMultiplier: Double
+    var thumbnailTimeMs: Int64
+
+    var hasEdits: Bool { /* computed */ }
+}
+
+struct CutRange: Codable {
+    var startMs: Int64
+    var endMs: Int64
+}
+```
+
+### Comment & Analytics (models exist, UI not yet built)
 
 ```swift
 @Model
@@ -141,189 +154,157 @@ final class ViewEvent {
 
 ---
 
-## Swift Models — Value Types (Shared/Models.swift)
+## Swift Models — Value Types
 
 These are non-persistent value types used by UI, recording, and editing.
 
-### Recording Configuration
+### Capture Mode
+
+```swift
+enum CaptureMode {
+    case fullScreen(displayID: CGDirectDisplayID)
+    case window(windowID: CGWindowID)
+    case region(displayID: CGDirectDisplayID, rect: CGRect)
+    case webcamOnly
+}
+```
+
+### Recording State
 
 ```swift
 enum RecordingState: Equatable {
     case idle
-    case preparingCapture
-    case countdown(remaining: Int)
-    case recording(elapsed: TimeInterval, isPaused: Bool)
+    case selectingContent
+    case countdown(Int)
+    case recording(startedAt: Date)
+    case paused(startedAt: Date, pausedAt: Date)
     case stopping
-    case stopped(videoID: String)
-    case error(String)
-}
 
-enum RecordingMode: String, Codable, CaseIterable {
-    case screenAndWebcam
-    case screenOnly
-    case webcamOnly
-}
-
-enum CaptureSource: Codable {
-    case fullScreen(displayID: CGDirectDisplayID)
-    case window(windowID: CGWindowID, appName: String)
-    case region(rect: CGRect, displayID: CGDirectDisplayID)
-}
-
-enum VideoQuality: String, Codable, CaseIterable {
-    case low      // 720p, 2 Mbps
-    case medium   // 1080p, 5 Mbps
-    case high     // 1440p, 10 Mbps
-    case ultra    // Native, 20 Mbps
-}
-
-enum FrameRate: Int, Codable, CaseIterable {
-    case fps24 = 24
-    case fps30 = 30
-    case fps60 = 60
-}
-
-enum VideoCodec: String, Codable, CaseIterable {
-    case h264
-    case h265
-}
-
-struct RecordingConfiguration: Codable {
-    var mode: RecordingMode
-    var captureSource: CaptureSource?
-    var quality: VideoQuality
-    var frameRate: FrameRate
-    var codec: VideoCodec
-    var captureSystemAudio: Bool
-    var captureMicrophone: Bool
-    var selectedMicrophoneID: String?
-    var selectedCameraID: String?
-    var countdownSeconds: Int  // 0 = no countdown
-    var showCursorInRecording: Bool
+    var isRecording: Bool { /* ... */ }
+    var isPaused: Bool { /* ... */ }
+    var isActiveOrPaused: Bool { /* ... */ }
+    var isIdle: Bool { /* ... */ }
+    var isSelectingContent: Bool { /* ... */ }
+    var isBusy: Bool { /* ... */ }
 }
 ```
 
-### Webcam Bubble
+### Video Quality & Recording Settings
 
 ```swift
-enum BubbleSize: String, Codable, CaseIterable {
-    case small   // 120pt diameter
-    case medium  // 180pt
-    case large   // 280pt
+enum VideoQuality: String, Codable, CaseIterable, Identifiable {
+    case low      // 2 Mbps
+    case medium   // 5 Mbps
+    case high     // 10 Mbps
 
-    var diameter: CGFloat {
-        switch self {
-        case .small: return 120
-        case .medium: return 180
-        case .large: return 280
-        }
-    }
+    var bitrate: Int { /* ... */ }
+    var label: String { /* ... */ }
 }
 
-enum BubblePosition: Codable {
-    case preset(corner: Corner)
-    case custom(point: CGPoint)
+struct RecordingSettings {
+    var fps: Int                  // 24, 30, or 60 (via @AppStorage)
+    var quality: VideoQuality     // low, medium, high
+    var micDeviceID: String?
+    var cameraDeviceID: String?
+    var noiseCancellationEnabled: Bool
+}
+```
 
-    enum Corner: String, Codable, CaseIterable {
-        case topLeft, topRight, bottomLeft, bottomRight
-    }
+### Webcam Configuration
+
+```swift
+enum WebcamShape: String, Codable, CaseIterable {
+    case circle
+    case roundedRect
+    case pill
+
+    var aspectRatio: CGFloat { /* ... */ }
+    func cornerRadius(for size: CGFloat) -> CGFloat { /* ... */ }
 }
 
-struct WebcamBubbleConfig: Codable {
-    var size: BubbleSize
-    var position: BubblePosition
-    var isMirrored: Bool
-    var backgroundMode: BackgroundMode
-}
-
-enum BackgroundMode: Codable {
+enum BubbleTheme: String, Codable, CaseIterable {
     case none
-    case blur(radius: Float)
-    case virtualBackground(imagePath: String)
+    case solidRed, solidBlue, solidGreen, solidPurple
+    case gradientSunset, gradientOcean, gradientForest, gradientCosmic
+
+    func cgColor() -> CGColor { /* ... */ }
+    func gradientCGColors() -> [CGColor] { /* ... */ }
+}
+
+struct WebcamAdjustments {
+    var brightness: Float    // -1.0 to 1.0
+    var contrast: Float      // 0.25 to 4.0
+    var saturation: Float    // 0.0 to 2.0
+    var highlights: Float    // -1.0 to 1.0
+    var shadows: Float       // -1.0 to 1.0
+    var temperature: Float   // 2000 to 10000 (Kelvin)
+    var tint: Float          // -150 to 150
 }
 ```
 
-### Drawing / Annotations
+### Annotation Models
 
 ```swift
-enum DrawingTool: String, Codable, CaseIterable {
-    case pen, highlighter, arrow, rectangle, ellipse, eraser
+enum AnnotationTool: String, CaseIterable {
+    case pen, highlighter, arrow, line, rectangle, ellipse, eraser
 }
 
-struct DrawingStroke: Codable, Identifiable {
+struct StrokePoint {
+    var x: CGFloat
+    var y: CGFloat
+    var pressure: CGFloat
+}
+
+struct StrokeColor {
+    var r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat
+
+    // Palette: red, blue, green, orange, white, black
+    static let palette: [StrokeColor] = [...]
+}
+
+struct AnnotationStroke: Identifiable {
     let id: UUID
-    var tool: DrawingTool
-    var points: [CGPoint]
-    var color: CodableColor
+    var tool: AnnotationTool
+    var color: StrokeColor
     var lineWidth: CGFloat
-    var opacity: CGFloat  // 1.0 for pen, 0.3 for highlighter
-    var startMs: UInt64    // timestamp relative to recording start
-    var endMs: UInt64      // when the stroke should disappear (0 = permanent)
+    var points: [StrokePoint]
+    var origin: CGPoint?     // For shapes (rect, ellipse, arrow, line)
+    var endpoint: CGPoint?
+    var timestamp: TimeInterval
 }
 
-struct CodableColor: Codable {
-    var red: CGFloat
-    var green: CGFloat
-    var blue: CGFloat
-    var alpha: CGFloat
-}
-```
-
-### Editor
-
-```swift
-struct EditDecisionList: Codable {
-    var operations: [EditOperation]
+struct ClickRipple {
+    var normalizedX: CGFloat
+    var normalizedY: CGFloat
+    var color: StrokeColor
+    var duration: TimeInterval
+    var maxRadius: CGFloat
 }
 
-enum EditOperation: Codable {
-    case trim(startMs: UInt64, endMs: UInt64)
-    case cut(startMs: UInt64, endMs: UInt64)
-    case speed(startMs: UInt64, endMs: UInt64, factor: Float)
-}
-```
-
-### Export Configuration
-
-```swift
-struct MP4ExportConfig: Codable {
-    var codec: VideoCodec
-    var quality: VideoQuality
-    var includeWebcamOverlay: Bool
-    var includeAnnotations: Bool
+struct SpotlightState {
+    var isEnabled: Bool
+    var normalizedX: CGFloat
+    var normalizedY: CGFloat
+    var radius: CGFloat
+    var dimOpacity: CGFloat
 }
 
-struct GifExportConfig: Codable {
-    var maxWidth: UInt32        // default 640
-    var maxFps: UInt32          // default 10
-    var startMs: UInt64
-    var endMs: UInt64
+struct AnnotationSnapshot {
+    var strokes: [AnnotationStroke]
+    var ripples: [ClickRipple]
+    var spotlight: SpotlightState
 }
 ```
 
-### Settings
+### Global Hotkeys
 
 ```swift
-struct AppPreferences: Codable {
-    var recording: RecordingConfiguration
-    var webcamBubble: WebcamBubbleConfig
-    var shortcuts: [ShortcutAction: KeyCombination]
-    var darkModePreference: DarkModePreference
-    var noiseCancellation: Bool
-    var autoTranscribe: Bool
-    var autoGenerateTitle: Bool
-    var autoGenerateSummary: Bool
-    var launchAtStartup: Bool
-    var libraryPath: String
+enum HotkeyAction: String, CaseIterable {
+    case toggleRecording
+    case togglePause
 }
 
-enum DarkModePreference: String, Codable { case system, light, dark }
-
-enum ShortcutAction: String, Codable, CaseIterable {
-    case startStopRecording, pauseResumeRecording, toggleMute, toggleDrawing, cancelRecording
-}
-
-struct KeyCombination: Codable {
+struct HotkeyBinding: Codable {
     var keyCode: UInt16
     var modifiers: UInt
     var displayString: String
@@ -332,7 +313,7 @@ struct KeyCombination: Codable {
 
 ---
 
-## Rust Models (cloom-core/src/lib.rs)
+## Rust Models (cloom-core/src/)
 
 Rust models are minimal — only types that cross the FFI boundary for audio, AI, and GIF export.
 All FFI-exposed types derive `uniffi::Record` or `uniffi::Enum`.
@@ -354,7 +335,6 @@ struct FillerWord {
     count: u32,
 }
 
-// Input from Swift for filler word detection
 #[derive(uniffi::Record)]
 struct TranscriptWord {
     word: String,
@@ -383,20 +363,13 @@ struct Chapter {
 
 #[derive(uniffi::Enum)]
 enum LlmProvider {
-    OpenAI,
-    Claude, // Reserved for future provider expansion; v1 uses OpenAI only
+    OpenAi,     // Enabled in v1 (gpt-4o-mini)
+    Claude,     // Reserved for future — returns error if used
 }
-```
 
-### GIF Export Types
-
-```rust
-#[derive(uniffi::Record)]
-struct GifConfig {
-    max_width: u32,
-    max_fps: u32,
-    start_ms: u64,
-    end_ms: u64,
+#[derive(uniffi::Enum)]
+enum TranscriptionProvider {
+    OpenAi,     // Enabled in v1 (whisper-1)
 }
 ```
 
