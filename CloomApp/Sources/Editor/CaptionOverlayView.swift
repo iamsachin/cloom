@@ -1,17 +1,12 @@
 import SwiftUI
 
 struct CaptionOverlayView: View {
-    let words: [TranscriptWordSnapshot]
+    let phrases: [CaptionPhrase]
     let currentTimeMs: Int64
     let isEnabled: Bool
 
-    // Pre-grouped phrases (~6-8 words or ~3 seconds per phrase)
-    private var phrases: [CaptionPhrase] {
-        Self.buildPhrases(from: words)
-    }
-
     var body: some View {
-        if isEnabled, !words.isEmpty, let phrase = currentPhrase {
+        if isEnabled, !phrases.isEmpty, let phrase = currentPhrase {
             HStack(spacing: 4) {
                 ForEach(phrase.words) { word in
                     let isActive = word.startMs <= currentTimeMs && currentTimeMs < word.endMs

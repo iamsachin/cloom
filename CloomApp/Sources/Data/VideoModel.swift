@@ -23,6 +23,7 @@ final class VideoRecord {
     @Relationship(deleteRule: .cascade) var chapters: [ChapterRecord]
     @Relationship(deleteRule: .cascade) var comments: [VideoComment]
     @Relationship(deleteRule: .cascade) var viewEvents: [ViewEvent]
+    @Relationship(deleteRule: .cascade) var bookmarks: [BookmarkRecord]
     @Relationship(deleteRule: .cascade) var editDecisionList: EditDecisionList?
 
     // AI-generated
@@ -59,6 +60,7 @@ final class VideoRecord {
         self.chapters = []
         self.comments = []
         self.viewEvents = []
+        self.bookmarks = []
         self.hasTranscript = hasTranscript
         self.webcamFilePath = webcamFilePath
     }

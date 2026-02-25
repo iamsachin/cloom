@@ -1,43 +1,51 @@
 # Testing Strategy
 
-## Swift Testing (XCTest framework)
+## Swift Testing (Swift Testing framework)
 
-Services are concrete classes (not protocol-based). Testing uses in-memory SwiftData containers and direct assertions.
+Services are concrete classes (not protocol-based). Testing uses in-memory SwiftData containers and direct assertions via `@Test` and `#expect`.
 
-### Unit Tests (CloomTests/ — 27 tests in 2 files)
+### Unit Tests (CloomTests/ — 32 tests in 2 files)
 
 | File | Test Count | What's Tested |
 |------|-----------|---------------|
-| DataModelTests.swift | ~20 | VideoRecord CRUD/defaults/unique ID, FolderRecord hierarchy/videoCount, TagRecord relationship/color, EditDecisionList defaults/cuts/stitch/hasEdits, TranscriptRecord words/defaults, ChapterRecord properties |
+| DataModelTests.swift | ~25 | VideoRecord CRUD/defaults/unique ID, FolderRecord hierarchy/videoCount, TagRecord relationship/color, EditDecisionList defaults/cuts/stitch/hasEdits, TranscriptRecord words/defaults, ChapterRecord properties, BookmarkRecord properties/note/relationship/cascade/CRUD |
 | RecordingSettingsTests.swift | ~7 | VideoQuality bitrates/labels/identifiable/allCases, RecordingSettings defaults/custom/invalid raw value |
 
-### UI Tests (CloomUITests/ — 5 tests in 2 files)
+### Why No UI Tests
 
-| File | Test Count | What's Tested |
-|------|-----------|---------------|
-| RecordingFlowUITests.swift | 4 | Menu bar exists, open library, open settings, start recording menu |
-| SettingsUITests.swift | 1 | Open settings window |
+Cloom is a screen recording app that depends on TCC-protected hardware (Screen Recording, Camera, Microphone). UI tests cannot:
+- Grant TCC permissions programmatically (macOS security restriction)
+- Record or capture anything without pre-granted permissions
+- Reliably interact with MenuBarExtra apps (XCUIApplication doesn't find menu bar items)
+
+Even skipping the onboarding screen, UI tests would only verify that views appear — they can't test that recording, compositing, or export actually work. The core functionality requires manual testing or a CI Mac with MDM-provisioned TCC profiles.
+
+**Higher-ROI alternatives for future coverage:**
+- Unit-testing the compositor/writer pipeline with synthetic `CMSampleBuffer`s
+- Snapshot tests for view rendering with mock data
+- Integration tests for SwiftData query/filter logic
 
 ### SwiftData Testing Pattern
 
 ```swift
-func testSaveAndFetchVideo() throws {
+@Test func createVideoWithDefaults() throws {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try ModelContainer(
         for: VideoRecord.self, FolderRecord.self, TagRecord.self,
         TranscriptRecord.self, TranscriptWordRecord.self, ChapterRecord.self,
-        EditDecisionList.self, VideoComment.self, ViewEvent.self,
+        BookmarkRecord.self, EditDecisionList.self,
+        VideoComment.self, ViewEvent.self,
         configurations: config
     )
-    let context = container.mainContext
+    let context = ModelContext(container)
 
-    let video = VideoRecord(...)
+    let video = VideoRecord(title: "Test", filePath: "/test.mp4")
     context.insert(video)
     try context.save()
 
-    let fetched = try context.fetch(FetchDescriptor<VideoRecord>())
-    XCTAssertEqual(fetched.count, 1)
-    XCTAssertEqual(fetched.first?.title, "Test")
+    let results = try context.fetch(FetchDescriptor<VideoRecord>())
+    #expect(results.count == 1)
+    #expect(results.first?.title == "Test")
 }
 ```
 
@@ -45,7 +53,7 @@ func testSaveAndFetchVideo() throws {
 
 ## Rust Testing (`cargo test` — 43 tests, all passing)
 
-All tests are inline (`#[test]` + `#[cfg(test)]` modules) within source files. No separate test files.
+Tests use `#[cfg(test)]` modules with test code extracted to separate files via `#[path]` attributes for large modules.
 
 | Module | Test Count | What's Tested |
 |--------|-----------|---------------|
@@ -84,7 +92,7 @@ fn create_test_wav(samples: &[i16], sample_rate: u32) -> PathBuf {
 
 ## CI Pipeline (GitHub Actions)
 
-`.github/workflows/tests.yml` runs on push/PR:
+`.github/workflows/tests.yml` runs on PRs to main:
 
 ### Job 1: rust-tests (macOS-15)
 1. Install Rust + aarch64-apple-darwin target
@@ -96,18 +104,18 @@ fn create_test_wav(samples: &[i16], sample_rate: u32) -> PathBuf {
 2. Run `./build.sh` (build Rust + generate bindings)
 3. Run `xcodegen generate`
 4. Run `xcodebuild test -scheme Cloom -destination 'platform=macOS,arch=arm64' -only-testing:CloomTests`
-5. Result: 27 Swift unit tests pass
+5. Result: 32 Swift unit tests pass
 
 ---
 
 ## What's NOT Tested (Areas for Future Improvement)
 
 - **Recording integration tests:** Record screen → verify MP4 exists (requires TCC permissions in CI)
-- **Compositing tests:** Verify webcam overlay + annotation burn-in in output frames
+- **Compositing tests:** Verify webcam overlay + annotation burn-in in output frames (mock CMSampleBuffers)
 - **Export round-trip tests:** Trim/cut/stitch → export → verify duration
 - **AI integration tests:** End-to-end pipeline with mock API (Swift side)
 - **Library search/filter tests:** SwiftData predicate filtering
-- **UI snapshot tests:** Visual regression via swift-snapshot-testing
+- **Snapshot tests:** Visual regression via swift-snapshot-testing
 - **Performance tests:** Frame processing latency, memory usage
 
 ---
@@ -116,5 +124,5 @@ fn create_test_wav(samples: &[i16], sample_rate: u32) -> PathBuf {
 
 1. **Phase 1A:** `build.sh` compiles Rust + Swift. App launches in menu bar. Rust FFI returns a value. SwiftData container initializes.
 2. **Phase 1B–10:** Manual end-to-end test of each phase's features after implementation.
-3. **Phase 11:** Automated tests (43 Rust + 27 Swift) + CI pipeline.
-4. **Per-commit:** CI runs both Rust and Swift test suites on push.
+3. **Phase 11:** Automated tests (43 Rust + 32 Swift) + CI pipeline.
+4. **Per-commit:** CI runs both Rust and Swift test suites on PRs.

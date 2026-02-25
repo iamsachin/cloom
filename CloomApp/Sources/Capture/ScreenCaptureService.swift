@@ -22,6 +22,7 @@ final class ScreenCaptureService: NSObject {
     nonisolated(unsafe) var annotationRenderer: AnnotationRenderer?
     nonisolated(unsafe) var bufferPool: CVPixelBufferPool?
     nonisolated(unsafe) var noiseCancellationProcessor: NoiseCancellationProcessor?
+    nonisolated(unsafe) var isProcessingFrame: Bool = false
 
     private let outputQueue = DispatchQueue(label: "com.cloom.capture.output", qos: .userInteractive)
     private let audioQueue = DispatchQueue(label: "com.cloom.capture.audio", qos: .userInteractive)

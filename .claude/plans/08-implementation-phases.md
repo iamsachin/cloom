@@ -207,9 +207,9 @@
 | 66 | Accessibility pass | 30+ labels added across 8 files |
 
 ### Stage 2: Test Infrastructure
-- project.yml: CloomTests (unit-test) + CloomUITests (ui-testing) targets
+- project.yml: CloomTests (unit-test) target
 - Cargo.toml: wiremock + tokio dev-dependencies
-- Test directories: CloomTests/, CloomUITests/, cloom-core/tests/fixtures/
+- Test directories: CloomTests/, cloom-core/tests/fixtures/
 
 ### Stage 3: Rust Tests (43 tests, all passing)
 | # | Task | Tests |
@@ -220,15 +220,15 @@
 | 70 | Silence detection tests | 5 tests (programmatic WAV generation) |
 | 71 | GIF export tests | 7 tests (manifest, frames, progress) |
 
-### Stage 4: Swift Tests (27 tests in 8 suites, all passing)
+### Stage 4: Swift Tests (32 tests in 9 suites, all passing)
 | # | Task | Tests |
 |---|------|-------|
-| 72 | SwiftData model tests | DataModelTests: VideoRecord, FolderRecord, TagRecord, EDL, Transcript, Chapter |
+| 72 | SwiftData model tests | DataModelTests: VideoRecord, FolderRecord, TagRecord, EDL, Transcript, Chapter, Bookmark |
 | 75 | RecordingSettings tests | RecordingSettingsTests: VideoQuality, defaults, invalid values |
-| 76 | UI tests for recording flow | RecordingFlowUITests: menu bar, library, settings, recording |
-| 77 | UI tests for settings | SettingsUITests: settings window |
 
-**Milestone:** 43 Rust tests + 27 Swift tests pass. GitHub Actions CI pipeline. Build succeeds with 0 errors, 2 warnings.
+UI tests were removed — MenuBarExtra apps aren't hittable by XCUIApplication, and TCC-protected hardware (screen capture, camera, mic) can't be tested without pre-granted permissions.
+
+**Milestone:** 43 Rust tests + 32 Swift tests pass. GitHub Actions CI pipeline. Build succeeds with 0 errors, 2 warnings.
 
 ---
 

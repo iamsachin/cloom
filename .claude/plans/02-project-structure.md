@@ -121,13 +121,9 @@ cloom/
 │       ├── Info.plist                             # TCC usage descriptions
 │       └── Cloom.entitlements                     # App sandbox + capabilities
 │
-├── CloomTests/                        # Swift unit tests (27 tests)
-│   ├── DataModelTests.swift           # VideoRecord, FolderRecord, TagRecord, EDL, Transcript, Chapter
+├── CloomTests/                        # Swift unit tests (32 tests)
+│   ├── DataModelTests.swift           # VideoRecord, FolderRecord, TagRecord, EDL, Transcript, Chapter, Bookmark
 │   └── RecordingSettingsTests.swift   # VideoQuality enum, RecordingSettings defaults
-│
-├── CloomUITests/                      # Swift UI tests (5 tests)
-│   ├── RecordingFlowUITests.swift     # Menu bar, library, settings, recording
-│   └── SettingsUITests.swift          # Settings window
 │
 ├── cloom-core/                        # Rust library (Cargo project)
 │   ├── Cargo.toml

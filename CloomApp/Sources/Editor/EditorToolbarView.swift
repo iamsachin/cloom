@@ -10,6 +10,7 @@ struct EditorToolbarView: View {
     @Binding var showThumbnailPicker: Bool
     @Binding var showExportSheet: Bool
     @Binding var showInfoPanel: Bool
+    @Binding var showBookmarksPanel: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -104,6 +105,15 @@ struct EditorToolbarView: View {
                 ChapterNavigationView(editorState: state)
             }
         }
+
+        Button {
+            showBookmarksPanel.toggle()
+        } label: {
+            Image(systemName: showBookmarksPanel ? "bookmark.fill" : "bookmark")
+                .foregroundStyle(.green)
+        }
+        .help("Bookmarks")
+        .accessibilityLabel(showBookmarksPanel ? "Hide bookmarks" : "Show bookmarks")
 
         SpeedControlView(editorState: state)
 

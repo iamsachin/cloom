@@ -1,16 +1,20 @@
 import SwiftUI
 import SwiftData
+import AppKit
+
+nonisolated(unsafe) let thumbnailCache = NSCache<NSString, NSImage>()
 
 struct VideoCardView: View {
     let video: VideoRecord
 
     @State private var isHovered = false
+    @State private var thumbnailImage: NSImage?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Thumbnail
             Group {
-                if let nsImage = loadThumbnail() {
+                if let nsImage = thumbnailImage {
                     Image(nsImage: nsImage)
                         .resizable()
                         .aspectRatio(16 / 9, contentMode: .fill)
@@ -93,6 +97,25 @@ struct VideoCardView: View {
             isHovered = hovering
         }
         .accessibilityLabel("\(video.title), \(formattedDuration)")
+        .task(id: video.thumbnailPath) {
+            guard !video.thumbnailPath.isEmpty else {
+                thumbnailImage = nil
+                return
+            }
+            let key = video.thumbnailPath as NSString
+            if let cached = thumbnailCache.object(forKey: key) {
+                thumbnailImage = cached
+                return
+            }
+            let path = video.thumbnailPath
+            let loadTask = Task.detached(priority: .medium) {
+                NSImage(contentsOfFile: path)
+            }
+            if let loaded = await loadTask.value {
+                thumbnailCache.setObject(loaded, forKey: key)
+                thumbnailImage = loaded
+            }
+        }
     }
 
     // MARK: - Tag Pills
@@ -126,11 +149,6 @@ struct VideoCardView: View {
                     .background(.quaternary, in: Capsule())
             }
         }
-    }
-
-    private func loadThumbnail() -> NSImage? {
-        guard !video.thumbnailPath.isEmpty else { return nil }
-        return NSImage(contentsOfFile: video.thumbnailPath)
     }
 
     private var formattedDuration: String {

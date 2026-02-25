@@ -3,10 +3,6 @@ import SwiftUI
 struct TranscriptPanelView: View {
     let editorState: EditorState
 
-    private var sentences: [TranscriptSentence] {
-        Self.groupIntoSentences(editorState.transcriptWords)
-    }
-
     var body: some View {
         let currentTimeMs = editorState.currentTimeMs
 
@@ -29,7 +25,7 @@ struct TranscriptPanelView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
-                        ForEach(sentences) { sentence in
+                        ForEach(editorState.transcriptSentences) { sentence in
                             sentenceRow(sentence: sentence, currentTimeMs: currentTimeMs)
                         }
                     }

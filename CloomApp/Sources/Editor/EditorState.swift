@@ -27,6 +27,11 @@ final class EditorState {
     private(set) var showTranscript: Bool = false
     private(set) var transcriptWords: [TranscriptWordSnapshot] = []
     private(set) var chapters: [ChapterSnapshot] = []
+    var bookmarks: [BookmarkSnapshot] = []
+
+    // Cached computed collections (avoid recomputing every ~33ms tick)
+    private(set) var captionPhrases: [CaptionPhrase] = []
+    private(set) var transcriptSentences: [TranscriptSentence] = []
 
     // PiP
     @ObservationIgnored var pipController: AVPictureInPictureController?
@@ -62,10 +67,18 @@ final class EditorState {
                 .map { TranscriptWordSnapshot(word: $0.word, startMs: $0.startMs, endMs: $0.endMs, confidence: $0.confidence, isFillerWord: $0.isFillerWord) }
         }
 
+        // Pre-compute caption phrases and transcript sentences from loaded words
+        self.captionPhrases = CaptionOverlayView.buildPhrases(from: self.transcriptWords)
+        self.transcriptSentences = TranscriptPanelView.groupIntoSentences(self.transcriptWords)
+
         // Load chapters as value-type snapshots (sorted by startMs)
         self.chapters = videoRecord.chapters
             .sorted { $0.startMs < $1.startMs }
             .map { ChapterSnapshot(id: $0.id, title: $0.title, startMs: $0.startMs) }
+
+        self.bookmarks = videoRecord.bookmarks
+            .sorted { $0.timestampMs < $1.timestampMs }
+            .map { BookmarkSnapshot(id: $0.id, text: $0.text, timestampMs: $0.timestampMs) }
 
         setupTimeObserver()
         setupEndObserver()

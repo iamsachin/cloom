@@ -27,6 +27,7 @@ final class AppState: ObservableObject {
             TranscriptRecord.self,
             TranscriptWordRecord.self,
             ChapterRecord.self,
+            BookmarkRecord.self,
             VideoComment.self,
             ViewEvent.self,
             EditDecisionList.self,

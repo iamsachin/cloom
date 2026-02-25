@@ -11,7 +11,7 @@ struct VideoRecordTests {
         let container = try ModelContainer(
             for: VideoRecord.self, FolderRecord.self, TagRecord.self,
             TranscriptRecord.self, TranscriptWordRecord.self,
-            ChapterRecord.self, EditDecisionList.self,
+            ChapterRecord.self, BookmarkRecord.self, EditDecisionList.self,
             VideoComment.self, ViewEvent.self,
             configurations: config
         )
@@ -40,7 +40,7 @@ struct VideoRecordTests {
         let container = try ModelContainer(
             for: VideoRecord.self, FolderRecord.self, TagRecord.self,
             TranscriptRecord.self, TranscriptWordRecord.self,
-            ChapterRecord.self, EditDecisionList.self,
+            ChapterRecord.self, BookmarkRecord.self, EditDecisionList.self,
             VideoComment.self, ViewEvent.self,
             configurations: config
         )
@@ -79,7 +79,7 @@ struct FolderRecordTests {
         return try ModelContainer(
             for: FolderRecord.self, VideoRecord.self, TagRecord.self,
             TranscriptRecord.self, TranscriptWordRecord.self,
-            ChapterRecord.self, EditDecisionList.self,
+            ChapterRecord.self, BookmarkRecord.self, EditDecisionList.self,
             VideoComment.self, ViewEvent.self,
             configurations: config
         )
@@ -128,7 +128,7 @@ struct TagRecordTests {
         let container = try ModelContainer(
             for: TagRecord.self, VideoRecord.self, FolderRecord.self,
             TranscriptRecord.self, TranscriptWordRecord.self,
-            ChapterRecord.self, EditDecisionList.self,
+            ChapterRecord.self, BookmarkRecord.self, EditDecisionList.self,
             VideoComment.self, ViewEvent.self,
             configurations: config
         )
@@ -226,7 +226,7 @@ struct TranscriptRecordTests {
         let container = try ModelContainer(
             for: TranscriptRecord.self, TranscriptWordRecord.self,
             VideoRecord.self, FolderRecord.self, TagRecord.self,
-            ChapterRecord.self, EditDecisionList.self,
+            ChapterRecord.self, BookmarkRecord.self, EditDecisionList.self,
             VideoComment.self, ViewEvent.self,
             configurations: config
         )
@@ -263,5 +263,103 @@ struct ChapterRecordTests {
         #expect(chapter.title == "Intro")
         #expect(chapter.startMs == 0)
         #expect(!chapter.id.isEmpty)
+    }
+}
+
+// MARK: - BookmarkRecord Tests
+
+@Suite("BookmarkRecord")
+struct BookmarkRecordTests {
+    private func makeContainer() throws -> ModelContainer {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        return try ModelContainer(
+            for: VideoRecord.self, FolderRecord.self, TagRecord.self,
+            TranscriptRecord.self, TranscriptWordRecord.self,
+            ChapterRecord.self, BookmarkRecord.self, EditDecisionList.self,
+            VideoComment.self, ViewEvent.self,
+            configurations: config
+        )
+    }
+
+    @Test func bookmarkProperties() {
+        let bookmark = BookmarkRecord(timestampMs: 5000)
+        #expect(!bookmark.id.isEmpty)
+        #expect(bookmark.text == "")
+        #expect(bookmark.timestampMs == 5000)
+    }
+
+    @Test func bookmarkWithNote() {
+        let bookmark = BookmarkRecord(text: "Important moment", timestampMs: 12_500)
+        #expect(bookmark.text == "Important moment")
+        #expect(bookmark.timestampMs == 12_500)
+    }
+
+    @Test func bookmarkVideoRelationship() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+
+        let video = VideoRecord(title: "V1", filePath: "/v1.mp4")
+        let b1 = BookmarkRecord(text: "Start", timestampMs: 0)
+        let b2 = BookmarkRecord(text: "Middle", timestampMs: 5000)
+        context.insert(video)
+        context.insert(b1)
+        context.insert(b2)
+        b1.video = video
+        b2.video = video
+        try context.save()
+
+        #expect(video.bookmarks.count == 2)
+    }
+
+    @Test func bookmarkCascadeDelete() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+
+        let video = VideoRecord(title: "V1", filePath: "/v1.mp4")
+        let bookmark = BookmarkRecord(text: "Note", timestampMs: 1000)
+        context.insert(video)
+        context.insert(bookmark)
+        bookmark.video = video
+        try context.save()
+
+        #expect(video.bookmarks.count == 1)
+
+        context.delete(video)
+        try context.save()
+
+        let descriptor = FetchDescriptor<BookmarkRecord>()
+        let remaining = try context.fetch(descriptor)
+        #expect(remaining.isEmpty)
+    }
+
+    @Test func bookmarkCRUD() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+
+        // Create
+        let bookmark = BookmarkRecord(text: "Original", timestampMs: 3000)
+        context.insert(bookmark)
+        try context.save()
+
+        let descriptor = FetchDescriptor<BookmarkRecord>()
+        var results = try context.fetch(descriptor)
+        #expect(results.count == 1)
+        #expect(results.first?.text == "Original")
+
+        // Update
+        results.first?.text = "Updated"
+        try context.save()
+
+        results = try context.fetch(descriptor)
+        #expect(results.first?.text == "Updated")
+
+        // Delete
+        if let first = results.first {
+            context.delete(first)
+        }
+        try context.save()
+
+        results = try context.fetch(descriptor)
+        #expect(results.isEmpty)
     }
 }

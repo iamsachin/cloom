@@ -13,6 +13,7 @@ struct EditorView: View {
     @State private var cutMarkInMs: Int64?
     @State private var showChapterPopover = false
     @State private var showInfoPanel = false
+    @State private var showBookmarksPanel = false
 
     init(videoID: String) {
         self.videoID = videoID
@@ -60,7 +61,7 @@ struct EditorView: View {
                     )
 
                     CaptionOverlayView(
-                        words: state.transcriptWords,
+                        phrases: state.captionPhrases,
                         currentTimeMs: state.currentTimeMs,
                         isEnabled: state.captionsEnabled
                     )
@@ -83,7 +84,8 @@ struct EditorView: View {
                     showStitchPanel: $showStitchPanel,
                     showThumbnailPicker: $showThumbnailPicker,
                     showExportSheet: $showExportSheet,
-                    showInfoPanel: $showInfoPanel
+                    showInfoPanel: $showInfoPanel,
+                    showBookmarksPanel: $showBookmarksPanel
                 )
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
@@ -102,6 +104,15 @@ struct EditorView: View {
                 )
                 .frame(width: 260)
             }
+
+            if showBookmarksPanel {
+                Divider()
+                BookmarksPanelView(editorState: state)
+            }
+        }
+        .onKeyPress("b") {
+            state.addBookmark(ms: state.currentTimeMs)
+            return .handled
         }
         .navigationTitle(state.videoRecord.title)
         .sheet(isPresented: $showExportSheet) {

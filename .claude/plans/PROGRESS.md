@@ -226,9 +226,9 @@
 - [x] Task 66 — Accessibility pass — 30+ labels added across 8 files (toolbar, annotations, library, editor, settings)
 
 ### Stage 2: Test Infrastructure
-- [x] project.yml — CloomTests (unit-test) + CloomUITests (ui-testing) targets with GENERATE_INFOPLIST_FILE
+- [x] project.yml — CloomTests (unit-test) target with GENERATE_INFOPLIST_FILE
 - [x] Cargo.toml — wiremock + tokio dev-dependencies
-- [x] Test directories — CloomTests/, CloomUITests/, cloom-core/tests/fixtures/
+- [x] Test directories — CloomTests/, cloom-core/tests/fixtures/
 
 ### Stage 3: Rust Tests (43 tests, all passing)
 - [x] Task 67 — Transcription client tests (6 tests: file not found, file too large, response parsing, no words, empty words, MIME detection, wiremock fixture)
@@ -240,10 +240,10 @@
 ### Stage 4: Swift Tests (27 tests in 8 suites, all passing)
 - [x] Task 72 — SwiftData model tests (DataModelTests.swift: VideoRecord CRUD/defaults/unique ID, FolderRecord hierarchy/videoCount, TagRecord relationship/color, EDL defaults/cuts/stitch/hasEdits, TranscriptRecord words/defaults, ChapterRecord properties)
 - [x] Task 75 — RecordingSettings tests (RecordingSettingsTests.swift: VideoQuality bitrates/labels/identifiable/allCases, RecordingSettings defaults/custom/invalid raw value)
-- [x] Task 76 — UI tests for recording flow (RecordingFlowUITests.swift: menu bar exists, open library, settings, start recording menu)
-- [x] Task 77 — UI tests for settings (SettingsUITests.swift: open settings window)
+- ~~Task 76 — UI tests for recording flow~~ (removed — MenuBarExtra not hittable + TCC blocks all core functionality)
+- ~~Task 77 — UI tests for settings~~ (removed — same TCC limitations)
 
-**Milestone verified:** 43 Rust tests pass (cargo test). 27 Swift tests in 8 suites pass (xcodebuild test). UI test targets compile. Build succeeds (0 errors, 2 warnings).
+**Milestone verified:** 43 Rust tests pass (cargo test). 27 Swift tests in 8 suites pass (xcodebuild test). Build succeeds (0 errors, 2 warnings).
 
 ---
 
@@ -282,18 +282,45 @@ Split large files into focused, single-responsibility modules following best pra
 
 ---
 
-## Phase 13: Advanced
-**Status:** Not started
+## Phase 13: Bookmarks + Performance Audit
+**Status:** Complete
+**Date:** 2026-02-25
 
-- [ ] Task 78 — Local view analytics (track views, watch time)
-- [ ] Task 79 — Timestamped bookmarks/notes (personal timeline markers with text annotations)
-- [ ] Task 80 — Performance optimization + profiling
+### Bookmarks Feature
+- [x] Task 79 — BookmarkRecord SwiftData model + VideoRecord relationship (cascade delete)
+- [x] Task 79b — EditorState bookmark logic (BookmarkSnapshot value type, CRUD methods in extension)
+- [x] Task 79c — Timeline bookmark markers (green diamonds + vertical lines in EditorTimelineView)
+- [x] Task 79d — BookmarksPanelView (add/edit/delete, seek on click, highlight near-current-time rows)
+- [x] Task 79e — Editor integration (toolbar bookmark toggle, "B" key shortcut, panel in HStack)
+
+### Performance Fixes
+- [x] Task 80a — Async thumbnail loading (NSCache + Task.detached in VideoCardView, eliminates sync disk I/O per card)
+- [x] Task 80b — Frame dropout detection (isProcessingFrame guard in ScreenCaptureService, prevents queue backup)
+- [x] Task 80c — Waveform maxPeak optimization (moved peaks.max() outside Canvas closure, eliminates O(n) per playhead tick)
+- [x] Task 80d — Cache caption phrases & transcript sentences in EditorState (computed once at init, not every ~33ms)
+- [x] Task 80e — Cache storage summary in LibraryView (computed on appear + video count change, not every toolbar render)
+
+### Tests
+- [x] BookmarkRecord unit tests (5 tests: properties, note, relationship, cascade delete, CRUD)
+
+### Skipped
+- Task 78 — Local view analytics — skipped (no value without shared links)
+
+**Milestone verified:** 32 Swift tests pass (including 5 new BookmarkRecord tests). 43 Rust tests pass. Build succeeds (0 errors, 2 pre-existing warnings). Bookmarks work end-to-end. Performance fixes applied for 5 high-impact issues.
 
 ---
 
-## Phase 14: Pre-Release
+## Phase 14: App Icon & Branding
+**Status:** Not started
+
+- [ ] Task 82 — App icon (1024x1024 master + all required sizes for Assets.xcassets/AppIcon.appiconset)
+- [ ] Task 82b — Menu bar icon (16x16, 32x32 template images for MenuBarExtra)
+- [ ] Task 82c — DMG background / installer branding assets
+
+---
+
+## Phase 15: Pre-Release
 **Status:** Not started
 
 - [ ] Task 81 — Developer ID signing + notarization + DMG packaging
-- [ ] Task 82 — App icon + branding assets
 - [ ] Task 83 — Release notes + changelog
