@@ -64,7 +64,7 @@ final class EditorState {
         if let transcript = videoRecord.transcript {
             self.transcriptWords = transcript.words
                 .sorted { $0.startMs < $1.startMs }
-                .map { TranscriptWordSnapshot(word: $0.word, startMs: $0.startMs, endMs: $0.endMs, confidence: $0.confidence, isFillerWord: $0.isFillerWord) }
+                .map { TranscriptWordSnapshot(word: $0.word, startMs: $0.startMs, endMs: $0.endMs, confidence: $0.confidence, isFillerWord: $0.isFillerWord, isParagraphStart: $0.isParagraphStart) }
         }
 
         // Pre-compute caption phrases and transcript sentences from loaded words
@@ -297,6 +297,7 @@ struct TranscriptWordSnapshot: Identifiable {
     let endMs: Int64
     let confidence: Float
     let isFillerWord: Bool
+    let isParagraphStart: Bool
 }
 
 struct ChapterSnapshot: Identifiable {

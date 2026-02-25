@@ -41,6 +41,7 @@ extension RecordingCoordinator {
             webcamBubble?.onLayoutChanged = { [weak self] layout in
                 self?.compositor?.updateBubbleLayout(layout)
             }
+            comp.imageAdjuster = imageAdjuster
             if let bubble = webcamBubble {
                 comp.updateBubbleLayout(bubble.currentLayout())
             }

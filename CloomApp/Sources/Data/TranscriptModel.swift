@@ -32,6 +32,7 @@ final class TranscriptWordRecord {
     var endMs: Int64
     var confidence: Float
     var isFillerWord: Bool
+    var isParagraphStart: Bool
 
     @Relationship(inverse: \TranscriptRecord.words) var transcript: TranscriptRecord?
 
@@ -40,12 +41,14 @@ final class TranscriptWordRecord {
         startMs: Int64,
         endMs: Int64,
         confidence: Float = 1.0,
-        isFillerWord: Bool = false
+        isFillerWord: Bool = false,
+        isParagraphStart: Bool = false
     ) {
         self.word = word
         self.startMs = startMs
         self.endMs = endMs
         self.confidence = confidence
         self.isFillerWord = isFillerWord
+        self.isParagraphStart = isParagraphStart
     }
 }
