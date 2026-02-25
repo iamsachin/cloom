@@ -101,7 +101,7 @@ NSMicrophoneUsageDescription — "Cloom needs microphone access to record audio.
 
 ### xcodegen (project.yml → Cloom.xcodeproj)
 
-- **Targets:** Cloom (app), CloomTests (unit-test), CloomUITests (ui-testing)
+- **Targets:** Cloom (app), CloomTests (unit-test)
 - **Deployment:** macOS 26.0
 - **Key settings:**
   - `LIBRARY_SEARCH_PATHS: $(PROJECT_DIR)/libs`

@@ -27,6 +27,9 @@ struct LibraryView: View {
     // Bulk tag
     @State var showBulkTagPicker = false
 
+    // Cached storage summary
+    @State private var cachedStorageSummary = ""
+
     var body: some View {
         NavigationSplitView {
             LibrarySidebarView(selection: $sidebarSelection)
@@ -121,6 +124,8 @@ struct LibraryView: View {
             }
             .navigationTitle(navigationTitle)
             .searchable(text: $searchText, prompt: "Search videos...")
+            .onAppear { updateStorageSummary() }
+            .onChange(of: videos.count) { updateStorageSummary() }
             .toolbar { toolbarContent }
             .confirmationDialog(
                 "Delete \(selectedIDs.count) recording\(selectedIDs.count == 1 ? "" : "s")?",
@@ -152,18 +157,18 @@ struct LibraryView: View {
 
     // MARK: - Toolbar
 
-    private var storageSummary: String {
+    private func updateStorageSummary() {
         let count = videos.count
         let totalBytes = videos.reduce(Int64(0)) { $0 + $1.fileSizeBytes }
         let formatter = ByteCountFormatter()
         formatter.countStyle = .file
-        return "\(count) video\(count == 1 ? "" : "s") · \(formatter.string(fromByteCount: totalBytes))"
+        cachedStorageSummary = "\(count) video\(count == 1 ? "" : "s") · \(formatter.string(fromByteCount: totalBytes))"
     }
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .automatic) {
-            Text(storageSummary)
+            Text(cachedStorageSummary)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

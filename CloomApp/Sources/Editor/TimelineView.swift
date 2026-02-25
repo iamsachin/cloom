@@ -38,6 +38,9 @@ struct EditorTimelineView: View {
                 // Chapter markers
                 chapterMarkers(chapters: editorState.chapters, durationMs: durationMs, width: width, height: height)
 
+                // Bookmark markers
+                bookmarkMarkers(bookmarks: editorState.bookmarks, durationMs: durationMs, width: width, height: height)
+
                 // Playhead
                 playhead(currentTimeMs: currentTimeMs, durationMs: durationMs, width: width, height: height)
             }
@@ -83,13 +86,12 @@ struct EditorTimelineView: View {
     @ViewBuilder
     private func waveformCanvas(peaks: [Float], width: CGFloat, height: CGFloat) -> some View {
         if !peaks.isEmpty {
+            let maxPeak = peaks.max() ?? 1.0
+            let normFactor: Float = maxPeak > 0 ? 1.0 / maxPeak : 1.0
+
             Canvas { context, size in
                 let barWidth = size.width / CGFloat(peaks.count)
                 let midY = size.height / 2
-
-                // Find max peak for relative normalization
-                let maxPeak = peaks.max() ?? 1.0
-                let normFactor: Float = maxPeak > 0 ? 1.0 / maxPeak : 1.0
 
                 for (i, peak) in peaks.enumerated() {
                     // Normalize to 0-1 range relative to loudest peak,
@@ -131,6 +133,34 @@ struct EditorTimelineView: View {
 
                 Rectangle()
                     .fill(Color.accentColor.opacity(0.4))
+                    .frame(width: 1, height: height)
+                    .offset(x: x)
+            }
+        }
+    }
+
+    // MARK: - Bookmark Markers
+
+    @ViewBuilder
+    private func bookmarkMarkers(bookmarks: [BookmarkSnapshot], durationMs: Int64, width: CGFloat, height: CGFloat) -> some View {
+        if !bookmarks.isEmpty && durationMs > 0 {
+            ForEach(bookmarks) { bookmark in
+                let fraction = CGFloat(bookmark.timestampMs) / CGFloat(durationMs)
+                let x = fraction * width
+
+                // Green diamond
+                Path { path in
+                    path.move(to: CGPoint(x: x, y: -6))
+                    path.addLine(to: CGPoint(x: x + 5, y: 0))
+                    path.addLine(to: CGPoint(x: x, y: 6))
+                    path.addLine(to: CGPoint(x: x - 5, y: 0))
+                    path.closeSubpath()
+                }
+                .fill(Color.green)
+                .offset(y: height * 0.1)
+
+                Rectangle()
+                    .fill(Color.green.opacity(0.4))
                     .frame(width: 1, height: height)
                     .offset(x: x)
             }

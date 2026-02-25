@@ -33,6 +33,10 @@ extension ScreenCaptureService: SCStreamOutput {
     }
 
     nonisolated private func handleScreenFrame(_ sampleBuffer: CMSampleBuffer) {
+        guard !isProcessingFrame else { return }
+        isProcessingFrame = true
+        defer { isProcessingFrame = false }
+
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
 
