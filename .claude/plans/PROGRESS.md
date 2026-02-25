@@ -331,14 +331,38 @@ Split large files into focused, single-responsibility modules following best pra
 
 ---
 
-## Phase 15: Mic Sensitivity Setting
+## Phase 15: Audio Export Fixes & Subtitle Embedding
+**Status:** Complete
+**PR:** [#19](https://github.com/iamsachin/cloom/pull/19)
+**Branch:** `feature/audio-export-fix-subtitles`
+**Date:** 2026-02-25
+
+### Bug Fixes
+- [x] Task 107 — Fix export dropping audio: EditorCompositionBuilder now inserts ALL source audio tracks (not just Track 0), builds AVMutableAudioMix for multi-track mixdown
+- [x] Task 108 — Fix raw recordings for web players: SegmentStitcher handles multiple audio tracks per segment, new `mixdownAudio()` re-exports multi-track files into single mixed stereo output
+- [x] Task 109 — RecordingCoordinator uses mixdownAudio for single-segment path (with fallback to plain moveItem)
+
+### Subtitle Embedding Feature
+- [x] Task 110 — SubtitleExportService actor: SubtitleMode enum (none/hardBurn/srtSidecar/both), EDL-aware phrase timing (trim/cuts/speed), SRT generation, pre-rendered image cache for hard-burn
+- [x] Task 111 — Export UI: subtitle mode picker (shown when transcript exists), hard-burn integration into CIFilter pipeline, SRT sidecar generation after export
+- [x] Task 112 — Sendable conformance: TranscriptWordSnapshot, CaptionPhrase, CutRange
+- [x] Task 113 — Performance: pre-render all subtitle images once before export + CGBitmapContext direct rendering (replaces slow NSImage→TIFF→CGImage per-frame pipeline)
+
+### New Files
+- `CloomApp/Sources/Editor/SubtitleExportService.swift`
+
+**Milestone verified:** Build succeeds (0 errors, 3 warnings). Multi-track audio exported correctly. Raw recordings play in web players (Slack). Hard-burn subtitles render at correct times. SRT sidecar generated alongside MP4. Export speed comparable to non-subtitle export.
+
+---
+
+## Phase 16: Mic Sensitivity Setting
 **Status:** Not started
 
 - [ ] Task 106 — Mic sensitivity slider in Settings > Microphone (configurable waveform noise floor threshold, @AppStorage persistence, applies to WaveformGenerator adaptive noise floor)
 
 ---
 
-## Phase 16: Pre-Release
+## Phase 17: Pre-Release
 **Status:** Not started
 
 - [ ] Task 81 — Developer ID signing + notarization + DMG packaging
