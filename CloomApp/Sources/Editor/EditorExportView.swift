@@ -224,6 +224,21 @@ struct EditorExportView: View {
             let phrases = subtitlePhrases
             let ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
+            // Pre-render all subtitle images once (instead of per-frame)
+            var subtitleCache: [CIImage?] = []
+            if needsHardBurn {
+                let videoTracks = try await result.composition.loadTracks(withMediaType: .video)
+                if let videoTrack = videoTracks.first {
+                    let size = try await videoTrack.load(.naturalSize)
+                    subtitleCache = SubtitleExportService.prerenderImages(
+                        phrases: phrases,
+                        videoWidth: size.width,
+                        videoHeight: size.height
+                    )
+                    logger.info("Pre-rendered \(subtitleCache.count) subtitle images")
+                }
+            }
+
             let videoComp = try await AVMutableVideoComposition.videoComposition(
                 with: result.composition,
                 applyingCIFiltersWithHandler: { request in
@@ -239,16 +254,14 @@ struct EditorExportView: View {
 
                     image = image.cropped(to: request.sourceImage.extent)
 
-                    // Burn subtitles
+                    // Burn pre-rendered subtitle overlay
                     if needsHardBurn {
                         let frameTimeMs = Int64(request.compositionTime.seconds * 1000)
-                        let extent = request.sourceImage.extent
                         image = SubtitleExportService.burnSubtitle(
                             onto: image,
                             phrases: phrases,
-                            frameTimeMs: frameTimeMs,
-                            videoWidth: extent.width,
-                            videoHeight: extent.height
+                            cache: subtitleCache,
+                            frameTimeMs: frameTimeMs
                         )
                     }
 

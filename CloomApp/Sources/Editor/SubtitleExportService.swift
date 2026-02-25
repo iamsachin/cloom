@@ -89,28 +89,31 @@ actor SubtitleExportService {
 
     // MARK: - Hard-burn rendering (nonisolated for CIFilter handler)
 
-    /// Render subtitle text onto a video frame. Must be nonisolated because
-    /// AVMutableVideoComposition CIFilter handlers are synchronous.
+    /// Pre-render all subtitle phrase images once. Call before export starts.
+    /// Returns an array parallel to `phrases` — each entry is the rendered CIImage overlay.
+    nonisolated static func prerenderImages(
+        phrases: [SubtitlePhrase],
+        videoWidth: CGFloat,
+        videoHeight: CGFloat
+    ) -> [CIImage?] {
+        phrases.map { phrase in
+            renderTextImage(text: phrase.text, videoWidth: videoWidth, videoHeight: videoHeight)
+        }
+    }
+
+    /// Composite a pre-rendered subtitle image onto a video frame.
+    /// Uses binary search to find the active phrase, then looks up its cached image.
     nonisolated static func burnSubtitle(
         onto source: CIImage,
         phrases: [SubtitlePhrase],
-        frameTimeMs: Int64,
-        videoWidth: CGFloat,
-        videoHeight: CGFloat
+        cache: [CIImage?],
+        frameTimeMs: Int64
     ) -> CIImage {
-        // Find active phrase via binary search
-        guard let phrase = findActivePhrase(in: phrases, at: frameTimeMs) else {
+        guard let index = findActivePhraseIndex(in: phrases, at: frameTimeMs),
+              index < cache.count,
+              let textImage = cache[index] else {
             return source
         }
-
-        guard let textImage = renderTextImage(
-            text: phrase.text,
-            videoWidth: videoWidth,
-            videoHeight: videoHeight
-        ) else {
-            return source
-        }
-
         return textImage.composited(over: source)
     }
 
@@ -143,10 +146,10 @@ actor SubtitleExportService {
         return max(0, offset)
     }
 
-    private nonisolated static func findActivePhrase(
+    private nonisolated static func findActivePhraseIndex(
         in phrases: [SubtitlePhrase],
         at timeMs: Int64
-    ) -> SubtitlePhrase? {
+    ) -> Int? {
         var lo = 0
         var hi = phrases.count - 1
 
@@ -154,7 +157,7 @@ actor SubtitleExportService {
             let mid = (lo + hi) / 2
             let phrase = phrases[mid]
             if timeMs >= phrase.startMs && timeMs < phrase.endMs {
-                return phrase
+                return mid
             } else if timeMs < phrase.startMs {
                 hi = mid - 1
             } else {
@@ -169,10 +172,24 @@ actor SubtitleExportService {
         videoWidth: CGFloat,
         videoHeight: CGFloat
     ) -> CIImage? {
+        let w = Int(videoWidth)
+        let h = Int(videoHeight)
         let fontSize: CGFloat = max(16, videoHeight * 0.035)
         let padding: CGFloat = 12
         let bottomMargin: CGFloat = videoHeight * 0.06
 
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: nil,
+            width: w,
+            height: h,
+            bitsPerComponent: 8,
+            bytesPerRow: w * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+        ) else { return nil }
+
+        // Measure text
         let attrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: fontSize, weight: .semibold),
             .foregroundColor: NSColor.white,
@@ -189,29 +206,24 @@ actor SubtitleExportService {
             height: bgHeight
         )
 
-        // Draw into NSImage → CIImage
-        let canvasSize = NSSize(width: videoWidth, height: videoHeight)
-        let image = NSImage(size: canvasSize, flipped: false) { rect in
-            // Semi-transparent background capsule
-            let bgPath = NSBezierPath(roundedRect: bgRect, xRadius: bgHeight / 2, yRadius: bgHeight / 2)
-            NSColor(white: 0, alpha: 0.65).setFill()
-            bgPath.fill()
+        // Draw background capsule
+        let capsulePath = CGPath(roundedRect: bgRect, cornerWidth: bgHeight / 2, cornerHeight: bgHeight / 2, transform: nil)
+        ctx.setFillColor(CGColor(gray: 0, alpha: 0.65))
+        ctx.addPath(capsulePath)
+        ctx.fillPath()
 
-            // Draw text centered in background
-            let textOrigin = CGPoint(
-                x: bgRect.origin.x + padding,
-                y: bgRect.origin.y + (bgHeight - textSize.height) / 2
-            )
-            attrString.draw(at: textOrigin)
-            return true
-        }
+        // Draw text using NSGraphicsContext
+        let nsCtx = NSGraphicsContext(cgContext: ctx, flipped: false)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = nsCtx
+        let textOrigin = CGPoint(
+            x: bgRect.origin.x + padding,
+            y: bgRect.origin.y + (bgHeight - textSize.height) / 2
+        )
+        attrString.draw(at: textOrigin)
+        NSGraphicsContext.restoreGraphicsState()
 
-        guard let tiffData = image.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData),
-              let cgImage = bitmap.cgImage else {
-            return nil
-        }
-
+        guard let cgImage = ctx.makeImage() else { return nil }
         return CIImage(cgImage: cgImage)
     }
 
