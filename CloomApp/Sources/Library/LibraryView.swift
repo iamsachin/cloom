@@ -2,66 +2,30 @@ import SwiftUI
 import SwiftData
 import AppKit
 
-// MARK: - Sort Order
-
-enum LibrarySortOrder: String, CaseIterable, Identifiable {
-    case newestFirst = "Newest First"
-    case oldestFirst = "Oldest First"
-    case titleAZ = "Title (A-Z)"
-    case titleZA = "Title (Z-A)"
-    case longestFirst = "Longest First"
-    case shortestFirst = "Shortest First"
-    case largestFirst = "Largest First"
-
-    var id: String { rawValue }
-
-    func comparator(_ a: VideoRecord, _ b: VideoRecord) -> Bool {
-        switch self {
-        case .newestFirst: return a.createdAt > b.createdAt
-        case .oldestFirst: return a.createdAt < b.createdAt
-        case .titleAZ: return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
-        case .titleZA: return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedDescending
-        case .longestFirst: return a.durationMs > b.durationMs
-        case .shortestFirst: return a.durationMs < b.durationMs
-        case .largestFirst: return a.fileSizeBytes > b.fileSizeBytes
-        }
-    }
-}
-
-// MARK: - Transcript Filter
-
-enum TranscriptFilter: String, CaseIterable, Identifiable {
-    case all = "All"
-    case hasTranscript = "Has Transcript"
-    case noTranscript = "No Transcript"
-
-    var id: String { rawValue }
-}
-
 // MARK: - Library View
 
 struct LibraryView: View {
-    @Query(sort: \VideoRecord.createdAt, order: .reverse) private var videos: [VideoRecord]
-    @Query(sort: \FolderRecord.name) private var allFolders: [FolderRecord]
-    @Query(sort: \TagRecord.name) private var allTags: [TagRecord]
+    @Query(sort: \VideoRecord.createdAt, order: .reverse) var videos: [VideoRecord]
+    @Query(sort: \FolderRecord.name) var allFolders: [FolderRecord]
+    @Query(sort: \TagRecord.name) var allTags: [TagRecord]
     @EnvironmentObject var appState: AppState
-    @Environment(\.openWindow) private var openWindow
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.openWindow) var openWindow
+    @Environment(\.modelContext) var modelContext
 
-    @State private var sidebarSelection: SidebarSelection? = .allVideos
-    @State private var isSelecting = false
-    @State private var selectedIDs: Set<String> = []
-    @State private var showDeleteConfirmation = false
-    @State private var searchText: String = ""
-    @State private var sortOrder: LibrarySortOrder = .newestFirst
-    @State private var transcriptFilter: TranscriptFilter = .all
+    @State var sidebarSelection: SidebarSelection? = .allVideos
+    @State var isSelecting = false
+    @State var selectedIDs: Set<String> = []
+    @State var showDeleteConfirmation = false
+    @State var searchText: String = ""
+    @State var sortOrder: LibrarySortOrder = .newestFirst
+    @State var transcriptFilter: TranscriptFilter = .all
 
     // Move to folder
-    @State private var showMoveToFolderPicker = false
-    @State private var moveTargetVideoIDs: Set<String> = []
+    @State var showMoveToFolderPicker = false
+    @State var moveTargetVideoIDs: Set<String> = []
 
     // Bulk tag
-    @State private var showBulkTagPicker = false
+    @State var showBulkTagPicker = false
 
     var body: some View {
         NavigationSplitView {
@@ -73,7 +37,7 @@ struct LibraryView: View {
 
     // MARK: - Filtered & Sorted Videos
 
-    private var filteredVideos: [VideoRecord] {
+    var filteredVideos: [VideoRecord] {
         var result = videos
 
         // Filter by sidebar selection
@@ -186,131 +150,6 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: - Video Grid Item
-
-    @ViewBuilder
-    private func videoGridItem(_ video: VideoRecord) -> some View {
-        Button {
-            if isSelecting {
-                toggleSelection(video.id)
-            } else {
-                openWindow(value: video.id)
-            }
-        } label: {
-            VideoCardView(video: video)
-                .overlay(alignment: .topLeading) {
-                    if isSelecting {
-                        selectionBadge(isSelected: selectedIDs.contains(video.id))
-                            .padding(12)
-                    }
-                }
-                .overlay {
-                    if isSelecting && selectedIDs.contains(video.id) {
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.accentColor, lineWidth: 3)
-                    }
-                }
-        }
-        .buttonStyle(.plain)
-        .contextMenu { videoContextMenu(video) }
-    }
-
-    // MARK: - Video Context Menu
-
-    @ViewBuilder
-    private func videoContextMenu(_ video: VideoRecord) -> some View {
-        Button("Open") {
-            openWindow(value: video.id)
-        }
-
-        Divider()
-
-        Button("Copy File Path") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(video.filePath, forType: .string)
-        }
-
-        Button("Show in Finder") {
-            NSWorkspace.shared.selectFile(video.filePath, inFileViewerRootedAtPath: "")
-        }
-
-        Divider()
-
-        // Move to folder submenu
-        Menu("Move to Folder") {
-            Button("Remove from Folder") {
-                video.folder = nil
-                try? modelContext.save()
-            }
-            .disabled(video.folder == nil)
-
-            Divider()
-
-            let flat = flattenedFolders(allFolders.filter { $0.parent == nil })
-            ForEach(Array(flat.enumerated()), id: \.offset) { _, item in
-                Button {
-                    video.folder = item.folder
-                    try? modelContext.save()
-                } label: {
-                    HStack {
-                        if item.depth > 0 {
-                            Text(String(repeating: "  ", count: item.depth))
-                        }
-                        Image(systemName: "folder")
-                        Text(item.folder.name)
-                        if video.folder?.id == item.folder.id {
-                            Spacer()
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        }
-
-        // Tags submenu
-        Menu("Tags") {
-            ForEach(allTags, id: \.id) { tag in
-                let isAssigned = video.tags.contains { $0.id == tag.id }
-                Button {
-                    if isAssigned {
-                        video.tags.removeAll { $0.id == tag.id }
-                    } else {
-                        video.tags.append(tag)
-                    }
-                    try? modelContext.save()
-                } label: {
-                    HStack {
-                        Circle()
-                            .fill(Color(hex: tag.color))
-                            .frame(width: 8, height: 8)
-                        Text(tag.name)
-                        if isAssigned {
-                            Spacer()
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        }
-
-        Divider()
-
-        Button("Delete", role: .destructive) {
-            selectedIDs = [video.id]
-            showDeleteConfirmation = true
-        }
-    }
-
-    // Flatten folder hierarchy for menus
-    private func flattenedFolders(_ roots: [FolderRecord], depth: Int = 0) -> [(folder: FolderRecord, depth: Int)] {
-        var result: [(FolderRecord, Int)] = []
-        for folder in roots.sorted(by: { $0.name < $1.name }) {
-            result.append((folder, depth))
-            result.append(contentsOf: flattenedFolders(folder.children, depth: depth + 1))
-        }
-        return result
-    }
-
     // MARK: - Toolbar
 
     private var storageSummary: String {
@@ -393,35 +232,15 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: - Selection
+    // MARK: - Actions
 
-    private func toggleSelection(_ id: String) {
+    func toggleSelection(_ id: String) {
         if selectedIDs.contains(id) {
             selectedIDs.remove(id)
         } else {
             selectedIDs.insert(id)
         }
     }
-
-    @ViewBuilder
-    private func selectionBadge(isSelected: Bool) -> some View {
-        ZStack {
-            Circle()
-                .fill(isSelected ? Color.accentColor : Color.selectionBadge)
-                .frame(width: 24, height: 24)
-            if isSelected {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
-            } else {
-                Circle()
-                    .strokeBorder(.white, lineWidth: 2)
-                    .frame(width: 24, height: 24)
-            }
-        }
-    }
-
-    // MARK: - Actions
 
     private func deleteSelected() {
         let idsToDelete = selectedIDs
@@ -451,4 +270,3 @@ struct LibraryView: View {
         try? modelContext.save()
     }
 }
-
