@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import AppKit
 
 struct EditorView: View {
     let videoID: String
@@ -50,9 +49,7 @@ struct EditorView: View {
     @ViewBuilder
     private func editorContent(state: EditorState) -> some View {
         HStack(spacing: 0) {
-            // Main editor area
             VStack(spacing: 0) {
-                // Video preview with caption overlay
                 ZStack(alignment: .bottom) {
                     VideoPreviewView(
                         player: state.player,
@@ -72,30 +69,38 @@ struct EditorView: View {
 
                 Divider()
 
-                // Timeline
                 EditorTimelineView(editorState: state)
                     .frame(height: 120)
                     .padding(.horizontal, 8)
 
                 Divider()
 
-                // Toolbar
-                editorToolbar(state: state)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                EditorToolbarView(
+                    state: state,
+                    video: video,
+                    cutMarkInMs: $cutMarkInMs,
+                    showChapterPopover: $showChapterPopover,
+                    showStitchPanel: $showStitchPanel,
+                    showThumbnailPicker: $showThumbnailPicker,
+                    showExportSheet: $showExportSheet,
+                    showInfoPanel: $showInfoPanel
+                )
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
             }
 
-            // Transcript sidebar
             if state.showTranscript && state.videoRecord.hasTranscript {
                 Divider()
                 TranscriptPanelView(editorState: state)
             }
 
-            // Info sidebar
             if showInfoPanel {
                 Divider()
-                videoInfoPanel(state: state)
-                    .frame(width: 260)
+                EditorInfoPanel(
+                    videoRecord: state.videoRecord,
+                    durationMs: state.videoRecord.durationMs
+                )
+                .frame(width: 260)
             }
         }
         .navigationTitle(state.videoRecord.title)
@@ -110,229 +115,6 @@ struct EditorView: View {
         }
     }
 
-    @ViewBuilder
-    private func editorToolbar(state: EditorState) -> some View {
-        HStack(spacing: 12) {
-            // Play/Pause
-            Button {
-                state.togglePlayPause()
-            } label: {
-                Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.title3)
-            }
-            .keyboardShortcut(.space, modifiers: [])
-            .help(state.isPlaying ? "Pause" : "Play")
-            .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
-
-            // Time display
-            Text(formatTime(ms: state.currentTimeMs))
-                .font(.system(.body, design: .monospaced))
-                .foregroundStyle(.secondary)
-
-            Text("/")
-                .foregroundStyle(.tertiary)
-
-            Text(formatTime(ms: state.durationMs))
-                .font(.system(.body, design: .monospaced))
-                .foregroundStyle(.secondary)
-
-            Divider()
-                .frame(height: 20)
-
-            // Cut controls
-            if let markIn = cutMarkInMs {
-                // Mark-in is set — show indicator and Mark Out button
-                HStack(spacing: 4) {
-                    Image(systemName: "scissors")
-                        .foregroundStyle(.orange)
-                    Text("In: \(formatTime(ms: markIn))")
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.orange)
-                }
-
-                Button {
-                    let endMs = state.currentTimeMs
-                    if markIn < endMs {
-                        state.addCut(startMs: markIn, endMs: endMs)
-                    }
-                    cutMarkInMs = nil
-                } label: {
-                    Label("Mark Out", systemImage: "scissors")
-                }
-                .help("Cut from mark-in to current playhead")
-
-                Button {
-                    cutMarkInMs = nil
-                } label: {
-                    Image(systemName: "xmark.circle")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help("Cancel cut")
-            } else {
-                Button {
-                    cutMarkInMs = state.currentTimeMs
-                } label: {
-                    Label("Mark In", systemImage: "scissors")
-                }
-                .help("Set cut start point at playhead")
-            }
-
-            Spacer()
-
-            // Chapters
-            if !state.chapters.isEmpty {
-                Button {
-                    showChapterPopover.toggle()
-                } label: {
-                    Image(systemName: "list.bullet")
-                }
-                .help("Chapters")
-                .popover(isPresented: $showChapterPopover) {
-                    ChapterNavigationView(editorState: state)
-                }
-            }
-
-            // Speed
-            SpeedControlView(editorState: state)
-
-            // Stitch
-            Button("Stitch") {
-                showStitchPanel = true
-            }
-            .help("Stitch multiple clips together")
-            .accessibilityLabel("Stitch clips")
-
-            // Thumbnail
-            Button {
-                showThumbnailPicker = true
-            } label: {
-                Image(systemName: "photo")
-            }
-            .help("Set custom thumbnail")
-            .accessibilityLabel("Set custom thumbnail")
-
-            // Captions toggle
-            if state.videoRecord.hasTranscript {
-                Button {
-                    state.toggleCaptions()
-                } label: {
-                    Image(systemName: state.captionsEnabled ? "captions.bubble.fill" : "captions.bubble")
-                }
-                .help("Toggle captions")
-                .accessibilityLabel(state.captionsEnabled ? "Disable captions" : "Enable captions")
-
-                Button {
-                    state.toggleTranscript()
-                } label: {
-                    Image(systemName: state.showTranscript ? "doc.text.fill" : "doc.text")
-                }
-                .help("Toggle transcript")
-                .accessibilityLabel(state.showTranscript ? "Hide transcript" : "Show transcript")
-            }
-
-            // PiP
-            if state.pipController != nil {
-                Button {
-                    state.togglePiP()
-                } label: {
-                    Image(systemName: "pip")
-                }
-                .help("Picture in Picture")
-                .accessibilityLabel("Picture in Picture")
-            }
-
-            // Fullscreen
-            Button {
-                NSApp.mainWindow?.toggleFullScreen(nil)
-            } label: {
-                Image(systemName: "arrow.up.left.and.arrow.down.right")
-            }
-            .help("Toggle fullscreen")
-            .accessibilityLabel("Toggle fullscreen")
-
-            // Info panel toggle
-            Button {
-                showInfoPanel.toggle()
-            } label: {
-                Image(systemName: showInfoPanel ? "info.circle.fill" : "info.circle")
-            }
-            .help("Video info")
-            .accessibilityLabel(showInfoPanel ? "Hide video info" : "Show video info")
-
-            // Copy path
-            Menu {
-                Button("Copy File Path") {
-                    if let path = video?.filePath {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(path, forType: .string)
-                    }
-                }
-                Button("Show in Finder") {
-                    if let path = video?.filePath {
-                        NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
-                    }
-                }
-            } label: {
-                Image(systemName: "doc.on.doc")
-            }
-            .help("Copy path or reveal in Finder")
-
-            // Export
-            Button("Export") {
-                showExportSheet = true
-            }
-            .buttonStyle(.borderedProminent)
-            .help("Export video")
-            .accessibilityLabel("Export video")
-        }
-    }
-
-    @ViewBuilder
-    private func videoInfoPanel(state: EditorState) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Info")
-                    .font(.headline)
-                    .padding(.bottom, 4)
-
-                Text(state.videoRecord.title)
-                    .font(.title3.bold())
-
-                if let summary = state.videoRecord.summary, !summary.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Summary")
-                            .font(.caption.bold())
-                            .foregroundStyle(.tertiary)
-                        Text(summary)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                    }
-                }
-
-                Divider()
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(formatTime(ms: state.videoRecord.durationMs), systemImage: "clock")
-                    Label(formattedFileSize(state.videoRecord.fileSizeBytes), systemImage: "doc")
-                    Label("\(state.videoRecord.width)x\(state.videoRecord.height)", systemImage: "rectangle")
-                    Label(state.videoRecord.createdAt.formatted(date: .abbreviated, time: .shortened), systemImage: "calendar")
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-        }
-    }
-
-    private func formattedFileSize(_ bytes: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: bytes)
-    }
-
     private func setupEditor() {
         guard let video, editorState == nil else { return }
         let state = EditorState(videoRecord: video, modelContext: modelContext)
@@ -342,13 +124,5 @@ struct EditorView: View {
             await state.loadWaveform()
             await state.loadThumbnailStrip()
         }
-    }
-
-    private func formatTime(ms: Int64) -> String {
-        let totalSeconds = Int(ms / 1000)
-        let minutes = totalSeconds / 60
-        let seconds = totalSeconds % 60
-        let millis = Int((ms % 1000) / 10)
-        return String(format: "%d:%02d.%02d", minutes, seconds, millis)
     }
 }

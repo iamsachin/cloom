@@ -18,7 +18,6 @@ final class WebcamBubbleWindow {
     let ciContext = CIContext(options: [.useSoftwareRenderer: false])
     var moveObserver: NSObjectProtocol?
     private var themeObserver: NSObjectProtocol?
-    private var shapeObserver: NSObjectProtocol?
 
     enum BubbleSize: Int, CaseIterable {
         case small = 120
@@ -167,10 +166,6 @@ final class WebcamBubbleWindow {
         if let obs = themeObserver {
             NotificationCenter.default.removeObserver(obs)
             themeObserver = nil
-        }
-        if let obs = shapeObserver {
-            NotificationCenter.default.removeObserver(obs)
-            shapeObserver = nil
         }
     }
 }
