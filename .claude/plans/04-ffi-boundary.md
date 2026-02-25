@@ -1,15 +1,16 @@
 # FFI Boundary (Swift ↔ Rust via UniFFI)
 
-## Technology: UniFFI (Mozilla)
+## Technology: UniFFI 0.31 (Mozilla)
 
 - Generates idiomatic Swift bindings from Rust interface definitions
 - Uses `#[uniffi::export]` proc macros exclusively (no UDL files)
 - Supports async, callbacks, complex types, error handling
 - Rust `Result<T, E>` → Swift `throws`
+- Local binary: `cd cloom-core && cargo run --bin uniffi-bindgen` (not global CLI)
 
 ## What Crosses the Bridge
 
-The FFI surface is intentionally small. Only audio processing, AI API calls, and GIF export go through Rust. Everything else (data persistence, video encoding, compositing, config, MP4 export) is handled entirely in Swift.
+The FFI surface is intentionally small. Only audio processing, AI API calls, and GIF export go through Rust. Everything else (data persistence, video encoding, compositing, config, MP4 export, waveform generation) is handled entirely in Swift.
 
 ### Swift → Rust: Audio Processing
 
@@ -17,26 +18,34 @@ The FFI surface is intentionally small. Only audio processing, AI API calls, and
 |----------|-----------|-------------|
 | `detect_silence` | `(audio_path: String, threshold_db: f32, min_duration_ms: u64) → Vec<TimeRange>` | Find silent regions in audio file (symphonia decodes AAC/M4A/WAV) |
 | `identify_filler_words` | `(words: Vec<TranscriptWord>) → Vec<FillerWord>` | Scan transcript words for "um", "uh", "like", "you know", etc. |
-| `compute_audio_level` | `(audio_path: String, window_ms: u64) → Vec<f32>` | Compute RMS audio levels for waveform display |
+
+> **Note:** Waveform/audio level computation is done in Swift (WaveformGenerator.swift) using AVAssetReader, not via Rust FFI.
 
 ### Swift → Rust: AI (async)
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `transcribe_audio` | `async (audio_path: String, api_key: String, provider: TranscriptionProvider, model: String) → Transcript` | Upload audio to provider/model (v1 default: OpenAI `gpt-4o-mini-transcribe`), return word-level transcript |
-| `generate_title` | `async (transcript_text: String, api_key: String, provider: LlmProvider) → String` | Generate concise title from transcript |
-| `generate_summary` | `async (transcript_text: String, api_key: String, provider: LlmProvider) → String` | Generate 2-3 sentence summary |
-| `generate_chapters` | `async (transcript_text: String, api_key: String, provider: LlmProvider) → Vec<Chapter>` | Divide transcript into logical chapters |
+| `transcribe_audio` | `async (audio_path: String, api_key: String, provider: TranscriptionProvider) → Transcript` | Upload audio to OpenAI whisper-1, return word-level transcript |
+| `generate_title` | `async (transcript_text: String, api_key: String, provider: LlmProvider) → String` | Generate concise title via gpt-4o-mini |
+| `generate_summary` | `async (transcript_text: String, api_key: String, provider: LlmProvider) → String` | Generate 2-3 sentence summary via gpt-4o-mini |
+| `generate_chapters` | `async (transcript_text: String, api_key: String, provider: LlmProvider) → Vec<Chapter>` | Divide transcript into chapters via gpt-4o-mini |
 
-`LlmProvider` stays in the interface for forward compatibility. In v1, only `OpenAI` is enabled; unsupported providers return `CloomError::InvalidInput`.
+`LlmProvider` stays in the interface for forward compatibility. In v1, only `OpenAi` is enabled; `Claude` returns `CloomError::InvalidInput`.
 
-`TranscriptionProvider` and `model` stay in the interface for forward compatibility. In v1, only `OpenAI` is enabled and the default model is `gpt-4o-mini-transcribe`.
+`TranscriptionProvider` stays in the interface for forward compatibility. In v1, only `OpenAi` is enabled with `whisper-1` model.
 
 ### Swift → Rust: GIF Export (async)
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `export_gif` | `async (frames_manifest_path: String, config: GifConfig, output_path: String, progress: GifProgressCallback)` | Read pre-extracted frame list from Swift, quantize, encode GIF |
+| `export_gif` | `async (frames_manifest_path: String, output_path: String, width: u32, fps: u32, quality: u8, progress: GifProgressCallback)` | Read PNG manifest, encode GIF via gifski |
+
+### Utility Functions
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `hello_from_rust` | `(name: String) → String` | FFI smoke test |
+| `cloom_core_version` | `() → String` | Returns crate version string |
 
 ## FFI Type Definitions
 
@@ -50,14 +59,13 @@ FillerWord { word: String, start_ms: u64, end_ms: u64, count: u32 }
 TranscriptWord { word: String, start_ms: u64, end_ms: u64, confidence: f32 }
 Transcript { full_text: String, words: Vec<TranscriptWord>, language: String }
 Chapter { id: String, title: String, start_ms: u64 }
-GifConfig { max_width: u32, max_fps: u32, start_ms: u64, end_ms: u64 }
 ```
 
 ### Enums
 
 ```rust
-LlmProvider { OpenAI, Claude }
-TranscriptionProvider { OpenAI }
+LlmProvider { OpenAi, Claude }
+TranscriptionProvider { OpenAi }
 CloomError { IoError, ApiError, AudioError, InvalidInput, ExportError }
 ```
 
@@ -77,14 +85,16 @@ trait GifProgressCallback: Send + Sync {
 | Structs/Enums | UniFFI auto-generates Swift equivalents |
 | Strings | UniFFI auto-converts `String` ↔ `Swift.String` |
 | Callbacks | UniFFI callback interfaces (Rust trait → Swift protocol) |
-| File paths | `String` on both sides (Rust reads manifest + frame files directly from disk) |
+| File paths | `String` on both sides (Rust reads files directly from disk) |
 | Errors | Rust `Result<T, CloomError>` → Swift `throws` |
 | Audio data | NOT passed over FFI — Rust reads audio files directly via path |
+| Video frames | NOT passed over FFI — Swift extracts PNG frames to disk, Rust reads PNG manifest |
 
 ## Build Integration
 
 `build.sh` orchestrates (Apple Silicon):
 1. `cargo build --release --target aarch64-apple-darwin` → `target/aarch64-apple-darwin/release/libcloom_core.a`
-2. `uniffi-bindgen generate --library target/aarch64-apple-darwin/release/libcloom_core.dylib --language swift --out-dir CloomApp/Sources/Bridge/Generated/`
-3. Copy static library to known location
-4. Xcode Build Phase runs script pre-compilation
+2. `cd cloom-core && cargo run --bin uniffi-bindgen generate --library ../target/aarch64-apple-darwin/release/libcloom_core.dylib --language swift --out-dir ../CloomApp/Sources/Bridge/Generated/`
+3. Copy static library to `libs/libcloom_core.a`
+4. Xcode Build Phase runs `build.sh` as pre-build script
+5. Bridging header at `CloomApp/Sources/Bridge/Cloom-Bridging-Header.h` includes generated C header (workaround for Xcode 26 explicit module builds)

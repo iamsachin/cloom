@@ -1,149 +1,177 @@
-# Feature Categories (A-K)
+# Feature Categories (A-L)
 
 Feature codes are referenced throughout the implementation phases (08-implementation-phases.md).
+Status indicators: **Done** = implemented, **Deferred** = planned for later phase, **Planned** = not yet started.
 
 ---
 
-## A: Screen Recording
+## A: Screen Recording — Done
 
-| Code | Feature | Description |
-|------|---------|-------------|
-| A1 | Screen + Webcam recording | Record screen and webcam simultaneously as separate streams, composited during export |
-| A2 | Full-screen capture | Capture entire display via SCRecordingOutput |
-| A3 | Screen-only recording | Record screen without webcam |
-| A4 | Direct-to-file recording | Zero-copy hardware-accelerated recording via SCRecordingOutput |
-| A5 | Window capture | Capture a specific application window |
-| A6 | Region capture | Capture a user-selected rectangular area |
-| A7 | Multi-monitor support | Enumerate and select from multiple displays |
-| A8 | System audio capture | Record system/app audio via SCStreamConfiguration |
-| A9 | Microphone capture | Record microphone audio via AVCaptureSession |
-| A10 | Recording countdown | 3-2-1 visual countdown before recording starts |
-| A11 | Pause/Resume | Pause and resume recording with seamless PTS adjustment |
-| A12 | Recording state machine | Central state management: idle → countdown → recording → paused → stopped |
-
----
-
-## B: Webcam
-
-| Code | Feature | Description |
-|------|---------|-------------|
-| B1 | Webcam bubble overlay | Circular floating NSPanel showing camera preview |
-| B2 | Draggable bubble | Drag webcam bubble to any screen position |
-| B3 | Resizable bubble | Small (120pt), medium (180pt), large (280pt) sizes |
-| B4 | Corner snapping | Bubble snaps to screen corners |
-| B5 | Background blur | Person segmentation via Vision framework + CIFilter blur |
-| B6 | Virtual backgrounds | Replace background using segmentation mask as alpha channel |
+| Code | Feature | Description | Status |
+|------|---------|-------------|--------|
+| A1 | Screen + Webcam recording | Record screen with webcam composited in real-time into single MP4 via CIContext + Metal | Done |
+| A2 | Full-screen capture | Capture entire display via SCStreamOutput per-frame pipeline | Done |
+| A3 | Screen-only recording | Record screen without webcam | Done |
+| A4 | Per-frame pipeline | SCStreamOutput delivers CMSampleBuffers; VideoWriter (AVAssetWriter actor) encodes HEVC | Done |
+| A5 | Window capture | Capture a specific application window via SCContentSharingPicker | Done |
+| A6 | Region capture | Capture a user-selected rectangular area via RegionSelectionWindow | Done |
+| A7 | Multi-monitor support | SCContentSharingPicker handles display enumeration | Done |
+| A8 | System audio capture | Record system/app audio via SCStreamConfiguration.capturesAudio | Done |
+| A9 | Microphone capture | Record microphone via SCStreamConfiguration.captureMicrophone on separate audioQueue | Done |
+| A10 | Recording countdown | 3-2-1 visual countdown via CountdownOverlayWindow | Done |
+| A11 | Pause/Resume | Segment-based: stop VideoWriter on pause, new segment on resume, SegmentStitcher concatenates | Done |
+| A12 | Recording state machine | RecordingCoordinator: idle → selectingContent → countdown → recording → paused → stopping | Done |
 
 ---
 
-## C: Controls & UI
+## B: Webcam — Done (B6 deferred)
 
-| Code | Feature | Description |
-|------|---------|-------------|
-| C1 | Floating control bar | Compact NSPanel with stop, pause, mute, draw, timer |
-| C2 | Menu bar integration | MenuBarExtra for quick access to recording and library |
-| C3 | Global keyboard shortcuts | Customizable hotkeys via Carbon `RegisterEventHotKey` |
-| C4 | Mic mute/unmute | Toggle microphone during recording without stopping |
-| C5 | Recording timer | Elapsed time display in control bar |
-
----
-
-## D: Drawing & Annotations
-
-| Code | Feature | Description |
-|------|---------|-------------|
-| D1 | Pen tool | Freehand drawing on transparent overlay |
-| D2 | Highlighter | Semi-transparent (0.3 opacity) freehand strokes |
-| D3 | Arrow tool | Draw arrows pointing to areas of interest |
-| D4 | Rectangle tool | Draw rectangles on screen |
-| D5 | Ellipse tool | Draw ellipses/circles on screen |
-| D6 | Color picker & stroke width | Choose stroke color and line width |
-| D7 | Eraser & undo/redo | Erase strokes, undo/redo stack |
-| D8 | Mouse click emphasis | Expanding ripple effect on mouse clicks via CGEvent tap |
-| D9 | Cursor spotlight | Radial gradient highlight around cursor position |
+| Code | Feature | Description | Status |
+|------|---------|-------------|--------|
+| B1 | Webcam bubble overlay | Circular/rounded/pill NSPanel showing camera preview with CIContext Metal rendering | Done |
+| B2 | Draggable bubble | Drag webcam bubble to any screen position | Done |
+| B3 | Resizable bubble | Click-to-cycle: small (120pt), medium (180pt), large (280pt) | Done |
+| B4 | Background blur | Person segmentation via VNGeneratePersonSegmentationRequest + CIFilter blur | Done |
+| B5 | Webcam shapes | Circle, roundedRect, pill — shape-aware masking via CGContext cache | Done |
+| B6 | Virtual backgrounds | Replace background using segmentation mask | Deferred |
+| B7 | Bubble themes | 8 themes: solid colors (red/blue/green/purple) + gradients (sunset/ocean/forest/cosmic) | Done |
+| B8 | Image adjustments | Brightness, contrast, saturation, highlights, shadows via CIColorControls + CIHighlightShadowAdjust | Done |
+| B9 | Color temperature | CITemperatureAndTint filter, 2000–10000K range | Done |
+| B10 | Webcam unmirroring | Horizontal flip with correct CIImage extent handling | Done |
 
 ---
 
-## E: Editor
+## C: Controls & UI — Done
 
-| Code | Feature | Description |
-|------|---------|-------------|
-| E1 | Trim start/end | Drag handles to trim from beginning or end |
-| E2 | Cut sections | Split and delete middle portions |
-| E3 | Stitch clips | Join multiple recording segments |
-| E4 | Timeline scrubber | Horizontal scrolling timeline with audio waveform |
-| E5 | Speed adjustment | Change playback/export speed for segments |
-| E6 | Thumbnail selection | Choose a frame as the video thumbnail |
-
----
-
-## F: AI Features
-
-| Code | Feature | Description |
-|------|---------|-------------|
-| F1 | Transcription | Word-level transcription via OpenAI `gpt-4o-mini-transcribe` (Rust client, swappable provider/model) |
-| F2 | Auto-generate title | LLM generates concise title from transcript (Rust client) |
-| F3 | Auto-generate summary | LLM generates 2-3 sentence summary (Rust client) |
-| F4 | Auto-generate chapters | LLM divides transcript into logical chapters with timestamps (Rust client) |
-| F5 | Filler word detection | Identify "um", "uh", "like", "you know" in transcript (Rust) |
-| F6 | Silence detection | Detect silent regions in audio for auto-removal (Rust + symphonia) |
+| Code | Feature | Description | Status |
+|------|---------|-------------|--------|
+| C1 | Floating control pill | BubbleControlPill NSPanel attached to webcam bubble (stop, timer, pause, discard) | Done |
+| C2 | Menu bar integration | MenuBarExtra for quick access to recording and library | Done |
+| C3 | Global keyboard shortcuts | CGEvent tap with customizable hotkeys (Cmd+Shift+R toggle, Cmd+Shift+P pause), ShortcutRecorderButton in Settings | Done |
+| C4 | Mic mute/unmute | Toggle microphone during recording without stopping | Done |
+| C5 | Recording timer | Elapsed time display in control pill and toolbar | Done |
+| C6 | Recording toolbar | RecordingToolbarPanel with mode selection, mic/camera/blur toggles, draw/click/spotlight toggles | Done |
+| C7 | Discard recording | DiscardConfirmationWindow alert, performDiscard cleanup, trash button in toolbar + menu bar | Done |
 
 ---
 
-## G: Player
+## D: Drawing & Annotations — Done
 
-| Code | Feature | Description |
-|------|---------|-------------|
-| G1 | Basic video playback | AVPlayer wrapper with play/pause/seek |
-| G2 | Caption overlay | Render SRT/VTT captions from transcript |
-| G3 | Speed control | 0.5x, 1x, 1.5x, 2x playback speed |
-| G4 | Fullscreen | Full-screen video playback |
-| G5 | Picture-in-Picture | PiP via AVPictureInPictureController |
-| G6 | Transcript panel | Scrolling transcript synced to playback, click-to-seek |
-| G7 | Chapter navigation | Jump between AI-detected chapters |
-
----
-
-## H: Export & Sharing
-
-| Code | Feature | Description |
-|------|---------|-------------|
-| H1 | Auto-copy file path | Copy exported file path to clipboard |
-| H2 | MP4 export with EDL | Apply EditDecisionList (trims, cuts, speed) via AVMutableComposition (Swift) |
-| H3 | GIF export | Generate optimized GIF with color quantization (Rust gif crate) |
+| Code | Feature | Description | Status |
+|------|---------|-------------|--------|
+| D1 | Pen tool | Freehand drawing on transparent AnnotationCanvasWindow NSPanel | Done |
+| D2 | Highlighter | Semi-transparent (0.3 opacity) freehand strokes | Done |
+| D3 | Arrow tool | Draw arrows pointing to areas of interest | Done |
+| D4 | Line tool | Draw straight lines | Done |
+| D5 | Rectangle tool | Draw rectangles on screen | Done |
+| D6 | Ellipse tool | Draw ellipses/circles on screen | Done |
+| D7 | Color picker & stroke width | 6-color palette (red/blue/green/orange/white/black) + width slider in AnnotationToolbarPanel | Done |
+| D8 | Eraser & undo | Erase strokes, undo stack (no redo). Clear all. Escape exits draw mode | Done |
+| D9 | Mouse click emphasis | Expanding ripple effect via ClickEmphasisMonitor + CIRadialGradient | Done |
+| D10 | Cursor spotlight | Radial gradient dim overlay via CursorSpotlightMonitor | Done |
+| D11 | Real-time burn-in | AnnotationRenderer composites strokes/ripples/spotlight as CIImage into recorded frames | Done |
 
 ---
 
-## I: Library & Organization
+## E: Editor — Done
 
-| Code | Feature | Description |
-|------|---------|-------------|
-| I1 | Full-text search | Search titles + transcript content (SwiftData metadata + local SQLite FTS via GRDB) |
-| I2 | Folder management | Create, rename, delete, nest folders |
-| I3 | Tags & labels | Color-coded tags on videos |
-| I4 | Sort & filter | Sort by date, name, duration; filter by folder/tag |
-| I5 | Thumbnail previews | Video thumbnails in grid/list view |
-
----
-
-## J: Settings & Polish
-
-| Code | Feature | Description |
-|------|---------|-------------|
-| J1 | Video quality settings | Select 720p / 1080p / 1440p / native quality |
-| J2 | Frame rate settings | Select 24 / 30 / 60 FPS |
-| J3 | Codec selection | H.264 or H.265 |
-| J4 | Launch at startup | SMAppService integration |
-| J5 | Keyboard shortcut customization | Remap global hotkeys |
-| J6 | Dark mode | System / light / dark mode preference |
-| J7 | Notifications | Post-recording notifications via UNUserNotificationCenter |
-| J8 | Noise cancellation | Audio noise reduction |
+| Code | Feature | Description | Status |
+|------|---------|-------------|--------|
+| E1 | Trim start/end | TrimHandlesView with yellow drag handles + grayed-out overlay | Done |
+| E2 | Cut sections | CutRegionOverlay with red hatched regions + context menu to remove | Done |
+| E3 | Stitch clips | StitchPanelView with drag-to-reorder, EditorCompositionBuilder concatenation | Done |
+| E4 | Timeline scrubber | EditorTimelineView with Canvas-based waveform peaks + thumbnail strip + red playhead | Done |
+| E5 | Speed adjustment | SpeedControlView popover with 0.25x–4x presets | Done |
+| E6 | Thumbnail selection | ThumbnailPickerView with slider + "Use Current Frame" + PNG save | Done |
+| E7 | Export adjustments | Brightness/contrast sliders in EditorExportView, AVMutableVideoComposition with CIColorControls | Done |
 
 ---
 
-## K: Analytics & Advanced
+## F: AI Features — Done
 
-| Code | Feature | Description |
-|------|---------|-------------|
-| K1 | Local view analytics | Track view count, watch time, completion rate |
-| K2 | Timestamped comments | Add comments at specific video timestamps |
+| Code | Feature | Description | Status |
+|------|---------|-------------|--------|
+| F1 | Transcription | Word-level transcription via OpenAI `whisper-1` (Rust client, multipart upload) | Done |
+| F2 | Auto-generate title | LLM generates concise title via `gpt-4o-mini` (Rust client) | Done |
+| F3 | Auto-generate summary | LLM generates 2-3 sentence summary via `gpt-4o-mini` (Rust client) | Done |
+| F4 | Auto-generate chapters | LLM divides transcript into chapters with timestamps via `gpt-4o-mini` (Rust client) | Done |
+| F5 | Filler word detection | Identify "um", "uh", "like", "you know", etc. (Rust, single + multi-word sliding window) | Done |
+| F6 | Silence detection | Detect silent regions via symphonia + RMS threshold (Rust, configurable threshold/duration) | Done |
+
+---
+
+## G: Player — Done
+
+| Code | Feature | Description | Status |
+|------|---------|-------------|--------|
+| G1 | Basic video playback | AVPlayer wrapper in EditorView with play/pause/seek | Done |
+| G2 | Caption overlay | Karaoke-style word-by-word highlight with phrase grouping + binary search lookup | Done |
+| G3 | Speed control | 0.25x–4x playback speed via AVPlayer.rate | Done |
+| G4 | Fullscreen | NSWindow.toggleFullScreen | Done |
+| G5 | Picture-in-Picture | AVPictureInPictureController via VideoPreviewView Coordinator | Done |
+| G6 | Transcript panel | TranscriptPanelView: FlowLayout, auto-scroll, click-to-seek, filler word styling | Done |
+| G7 | Chapter navigation | ChapterNavigationView popover list + accent color timeline markers | Done |
+
+---
+
+## H: Export & Sharing — Done
+
+| Code | Feature | Description | Status |
+|------|---------|-------------|--------|
+| H1 | Auto-copy file path | Copy exported file path to clipboard + Show in Finder (context menus) | Done |
+| H2 | MP4 export with EDL | Apply EditDecisionList via EditorCompositionBuilder + AVAssetExportSession | Done |
+| H3 | GIF export | gifski via Rust FFI (Swift extracts PNG frames → manifest → gifski encoder → GIF) | Done |
+
+---
+
+## I: Library & Organization — Done
+
+| Code | Feature | Description | Status |
+|------|---------|-------------|--------|
+| I1 | Full-text search | .searchable modifier, title/summary/transcript SwiftData predicate filtering | Done |
+| I2 | Folder management | LibrarySidebarView: create, rename, move, nest folders with context menus | Done |
+| I3 | Tags & labels | TagEditorView: 8-preset color picker, tag pills on VideoCardView, bulk tagging | Done |
+| I4 | Sort & filter | LibrarySortOrder enum with 7 options, TranscriptFilter, hover preview on cards | Done |
+| I5 | Thumbnail previews | Video thumbnails in grid view with hover scale effect | Done |
+| I6 | Info sidebar | Editor info panel (title, full summary, metadata) toggled via (i) button | Done |
+
+---
+
+## J: Settings & Polish — Done
+
+| Code | Feature | Description | Status |
+|------|---------|-------------|--------|
+| J1 | Video quality settings | VideoQuality enum: low (2Mbps), medium (5Mbps), high (10Mbps) | Done |
+| J2 | Frame rate settings | 24/30/60 FPS via @AppStorage | Done |
+| J3 | Codec | HEVC primary with H.264 fallback (no user-facing codec selection) | Done |
+| J4 | Launch at startup | SMAppService.mainApp register/unregister, toggle in Settings > General | Done |
+| J5 | Keyboard shortcut customization | ShortcutRecorderButton with UCKeyTranslate display strings, UserDefaults persistence | Done |
+| J6 | Dark mode | Theme.swift semantic Color extensions, appearance picker System/Light/Dark in Settings | Done |
+| J7 | Notifications | UNUserNotificationCenter, recording-complete with "Open Library" action | Done |
+| J8 | Noise cancellation | NoiseCancellationProcessor noise gate (RMS threshold -40dB on mic samples) | Done |
+| J9 | Onboarding | PermissionChecker + OnboardingView with live status polling for Screen Recording/Camera/Mic/Accessibility | Done |
+| J10 | Crash recovery | cleanupOrphanedTempFiles in AppState.init, scans /tmp for cloom_segment_* and cloom_audio_* | Done |
+| J11 | Disk space monitoring | checkDiskSpace <1GB guard, storage summary in LibraryView toolbar | Done |
+| J12 | Webcam settings | WebcamSettingsTab: shape picker, adjustment sliders, theme swatches, temperature/tint | Done |
+
+---
+
+## K: Analytics & Advanced — Planned (Phase 12)
+
+| Code | Feature | Description | Status |
+|------|---------|-------------|--------|
+| K1 | Local view analytics | Track view count, watch time, completion rate (models exist, UI not built) | Planned |
+| K2 | Timestamped comments | Add comments at specific video timestamps (model exists, UI not built) | Planned |
+| K3 | Performance optimization | Profiling and optimization pass | Planned |
+| K4 | Beauty / soft-focus filter | Person segmentation + CIGaussianBlur skin smoothing | Planned |
+
+---
+
+## L: Pre-Release — Planned (Phase 13)
+
+| Code | Feature | Description | Status |
+|------|---------|-------------|--------|
+| L1 | Developer ID signing | Code signing for distribution outside App Store | Planned |
+| L2 | Notarization + DMG | Apple notarization + stapled DMG packaging | Planned |
+| L3 | App icon + branding | App icon and branding assets | Planned |
+| L4 | Release notes | Changelog and release documentation | Planned |

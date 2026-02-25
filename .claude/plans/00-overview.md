@@ -9,31 +9,40 @@ A free, local, standalone macOS screen recording app that replicates Loom's UI/U
 
 ## Key Decisions
 - **Tech Stack:** SwiftUI + Rust FFI (hybrid)
-- **Build System:** Xcode project is primary (SPM can be used for internal modularization)
+- **Build System:** xcodegen generates `Cloom.xcodeproj` from `project.yml`; `build.sh` orchestrates Rust build + UniFFI codegen
 - **macOS Target:** macOS 26+ (Tahoe), Apple Silicon only
-- **Storage:** Local-only
-- **AI:** API-based (OpenAI only in v1; default transcription model `gpt-4o-mini-transcribe`; provider/model abstraction retained for future expansion) — Rust owns API clients
-- **Build Style:** Feature-complete planning, TDD
-- **Features:** All categories A-K (see 01-features.md)
-- **Distribution:** Direct DMG sharing (outside App Store) with Developer ID signing + Apple notarization + stapling
+- **Swift:** 6.2, **Xcode:** 26.2
+- **Rust:** Stable edition 2021, UniFFI 0.31
+- **Storage:** Local-only (SwiftData)
+- **AI:** API-based (OpenAI only in v1; transcription via `whisper-1`; LLM via `gpt-4o-mini`; provider abstraction retained for future expansion) — Rust owns API clients
+- **GIF Export:** gifski via Rust FFI (Swift extracts PNG frames, Rust encodes GIF)
+- **Features:** All categories A-K (see 01-features.md); some deferred (B6 virtual backgrounds, K1 analytics, K2 comments)
+- **Distribution:** Direct DMG sharing (outside App Store) with Developer ID signing + Apple notarization + stapling (not yet implemented)
 
 ## Design Principle
 Swift owns all Apple framework interactions **and** all video processing:
 - UI (SwiftUI, AppKit)
-- Capture (ScreenCaptureKit)
+- Capture (ScreenCaptureKit — SCStreamOutput per-frame pipeline)
 - Camera (AVFoundation, Vision)
-- Encoding & Compositing (AVAssetWriter, VideoToolbox, CoreImage, Metal)
-- Export (AVMutableComposition for MP4, annotations via CoreImage/CoreGraphics)
+- Encoding & Real-Time Compositing (AVAssetWriter, CoreImage, Metal — webcam + annotations composited into frames during recording)
+- Export (AVMutableComposition for MP4 with EDL, AVAssetExportSession)
 - Data persistence (SwiftData)
-- Settings (UserDefaults)
+- Settings (UserDefaults / @AppStorage)
+- API key storage (file-based at `~/Library/Application Support/Cloom/api_key`)
+- Global hotkeys (CGEvent tap)
 
 Rust owns compute-heavy processing and external API calls:
 - AI API clients (OpenAI via reqwest + tokio; provider abstraction retained for future providers)
-- Audio analysis (silence detection, filler word identification via symphonia)
-- GIF export (gif crate)
+- Audio analysis (silence detection via symphonia, filler word identification)
+- GIF export (gifski encoder with PNG manifest input)
+
+## Implementation Status
+- **Phases 1A–11:** Complete (project skeleton through cleanup & tests)
+- **Phase 12 (Advanced):** Not started — local analytics, timestamped comments, performance optimization, beauty filter
+- **Phase 13 (Pre-Release):** Not started — signing, notarization, DMG, branding
 
 ## Prerequisites
-- Xcode (latest, for macOS 26 SDK)
+- Xcode 26.2+ (for macOS 26 SDK)
 - Rust toolchain (`rustup` + `cargo`)
-- UniFFI CLI (`cargo install uniffi_bindgen`)
-- Apple Developer Program membership (required for Developer ID signing + notarization)
+- UniFFI CLI is local to the Rust crate (`cd cloom-core && cargo run --bin uniffi-bindgen`), NOT a global install
+- Apple Developer Program membership (required for Developer ID signing + notarization — Phase 13)
