@@ -269,7 +269,7 @@ final class EditorState {
         let url = URL(fileURLWithPath: videoRecord.filePath)
         let generator = WaveformGenerator()
         do {
-            let peaks = try await generator.generatePeaks(from: url, peakCount: 1000)
+            let peaks = try await generator.generatePeaks(from: url, peakCount: 300)
             waveformPeaks = peaks
         } catch {
             logger.error("Failed to generate waveform: \(error)")

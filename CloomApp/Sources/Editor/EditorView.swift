@@ -131,9 +131,7 @@ struct EditorView: View {
         let state = EditorState(videoRecord: video, modelContext: modelContext)
         self.editorState = state
 
-        Task {
-            await state.loadWaveform()
-            await state.loadThumbnailStrip()
-        }
+        Task { await state.loadWaveform() }
+        Task { await state.loadThumbnailStrip() }
     }
 }
