@@ -15,7 +15,13 @@ struct WebcamSettingsTab: View {
     @State private var previewImage: NSImage?
     @State private var cameraService: CameraService?
     @State private var imageAdjuster = WebcamImageAdjuster()
-    private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
+    private let ciContext: CIContext = {
+        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        if let device = MTLCreateSystemDefaultDevice() {
+            return CIContext(mtlDevice: device, options: [.workingColorSpace: colorSpace])
+        }
+        return CIContext(options: [.workingColorSpace: colorSpace])
+    }()
 
     private var currentShape: WebcamShape {
         WebcamShape(rawValue: webcamShapeRaw) ?? .circle
