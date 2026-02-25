@@ -85,6 +85,21 @@ actor AIOrchestrator {
             logger.info("Found \(fillerWords.count) filler words")
         }
 
+        // Step 2.5: Format paragraphs
+        var paragraphedText: String?
+        if hasEnoughText {
+            do {
+                paragraphedText = try formatParagraphs(
+                    transcriptText: transcript.fullText,
+                    apiKey: apiKey,
+                    provider: .openAi
+                )
+                logger.info("Formatted paragraphs")
+            } catch {
+                logger.error("Paragraph formatting failed: \(error)")
+            }
+        }
+
         // Step 3-5: Only call LLM if transcript has meaningful text
         var generatedTitle: String?
         var generatedSummary: String?
@@ -151,6 +166,7 @@ actor AIOrchestrator {
         await persistResults(
             videoRecordID: videoRecordID,
             transcript: transcript,
+            paragraphedText: paragraphedText,
             fillerWords: fillerWords,
             generatedTitle: generatedTitle,
             generatedSummary: generatedSummary,
@@ -196,6 +212,7 @@ actor AIOrchestrator {
     private func persistResults(
         videoRecordID: String,
         transcript: Transcript,
+        paragraphedText: String?,
         fillerWords: [FillerWord],
         generatedTitle: String?,
         generatedSummary: String?,
@@ -217,23 +234,30 @@ actor AIOrchestrator {
         // Build filler word set for fast lookup
         let fillerSet = Set(fillerWords.map { "\($0.startMs)-\($0.endMs)" })
 
-        // Create transcript record
+        // Determine paragraph-start word indices from paragraphed text
+        let paragraphStartIndices = Self.findParagraphStartIndices(
+            originalWords: transcript.words.map(\.word),
+            paragraphedText: paragraphedText
+        )
+
+        // Create transcript record (use paragraphed text if available)
         let transcriptRecord = TranscriptRecord(
             videoID: videoRecordID,
-            fullText: transcript.fullText,
+            fullText: paragraphedText ?? transcript.fullText,
             language: transcript.language
         )
         context.insert(transcriptRecord)
 
         // Create word records
-        for w in transcript.words {
+        for (index, w) in transcript.words.enumerated() {
             let isFiller = fillerSet.contains("\(w.startMs)-\(w.endMs)")
             let wordRecord = TranscriptWordRecord(
                 word: w.word,
                 startMs: w.startMs,
                 endMs: w.endMs,
                 confidence: w.confidence,
-                isFillerWord: isFiller
+                isFillerWord: isFiller,
+                isParagraphStart: paragraphStartIndices.contains(index)
             )
             wordRecord.transcript = transcriptRecord
             context.insert(wordRecord)
@@ -270,5 +294,29 @@ actor AIOrchestrator {
         } catch {
             logger.error("Failed to save AI results: \(error)")
         }
+    }
+
+    /// Map paragraph breaks in the LLM-formatted text back to word indices.
+    /// Returns a set of word indices where a new paragraph begins.
+    static func findParagraphStartIndices(originalWords: [String], paragraphedText: String?) -> Set<Int> {
+        guard let text = paragraphedText else { return [] }
+
+        let paragraphs = text.components(separatedBy: "\n\n").filter { !$0.isEmpty }
+        guard paragraphs.count > 1 else { return [] }
+
+        var indices: Set<Int> = []
+        var wordIndex = 0
+
+        for (paraIdx, paragraph) in paragraphs.enumerated() {
+            // Count words in this paragraph by splitting on whitespace
+            let paraWords = paragraph.split(whereSeparator: \.isWhitespace)
+            if paraIdx > 0 {
+                indices.insert(wordIndex)
+            }
+            wordIndex += paraWords.count
+        }
+
+        // Only keep indices that are within the original word array bounds
+        return indices.filter { $0 < originalWords.count }
     }
 }

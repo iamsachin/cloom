@@ -173,8 +173,8 @@ struct LibraryView: View {
                 .foregroundStyle(.secondary)
         }
 
-        ToolbarItemGroup(placement: .primaryAction) {
-            if isSelecting {
+        if isSelecting {
+            ToolbarItemGroup(placement: .primaryAction) {
                 Button(selectedIDs.count == filteredVideos.count ? "Deselect All" : "Select All") {
                     if selectedIDs.count == filteredVideos.count {
                         selectedIDs.removeAll()
@@ -205,8 +205,9 @@ struct LibraryView: View {
                     isSelecting = false
                     selectedIDs.removeAll()
                 }
-            } else {
-                // Sort picker
+            }
+        } else {
+            ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Picker("Sort", selection: $sortOrder) {
                         ForEach(LibrarySortOrder.allCases) { order in
@@ -216,8 +217,10 @@ struct LibraryView: View {
                 } label: {
                     Label("Sort", systemImage: "arrow.up.arrow.down")
                 }
+                .menuIndicator(.hidden)
+            }
 
-                // Transcript filter
+            ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Picker("Filter", selection: $transcriptFilter) {
                         ForEach(TranscriptFilter.allCases) { filter in
@@ -227,7 +230,10 @@ struct LibraryView: View {
                 } label: {
                     Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
                 }
+                .menuIndicator(.hidden)
+            }
 
+            ToolbarItem(placement: .primaryAction) {
                 Button {
                     isSelecting = true
                 } label: {

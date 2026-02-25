@@ -68,6 +68,25 @@ pub fn generate_chapters(
     parse_chapters(&raw)
 }
 
+/// Insert paragraph breaks into transcript text using an LLM.
+/// Returns the same text with `\n\n` inserted between logical paragraphs.
+#[uniffi::export]
+pub fn format_paragraphs(
+    transcript_text: String,
+    api_key: String,
+    provider: LlmProvider,
+) -> Result<String, CloomError> {
+    validate_provider(&provider)?;
+    let truncated = truncate_transcript(&transcript_text);
+    let prompt = format!(
+        "Add paragraph breaks to this transcript. Insert exactly \"\\n\\n\" between logical paragraphs \
+         (topic changes, speaker pauses, or shifts in subject). \
+         Do NOT change, add, or remove any words or punctuation — return the original text \
+         with only paragraph breaks inserted.\n\nTranscript:\n{truncated}"
+    );
+    chat_completion(&api_key, &prompt)
+}
+
 pub(crate) fn validate_provider(provider: &LlmProvider) -> Result<(), CloomError> {
     match provider {
         LlmProvider::OpenAi => Ok(()),

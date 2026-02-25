@@ -27,6 +27,7 @@ struct TranscriptPanelView: View {
                     LazyVStack(alignment: .leading, spacing: 8) {
                         ForEach(editorState.transcriptSentences) { sentence in
                             sentenceRow(sentence: sentence, currentTimeMs: currentTimeMs)
+                                .padding(.top, sentence.isParagraphStart ? 12 : 0)
                         }
                     }
                     .padding(12)
@@ -88,18 +89,29 @@ struct TranscriptPanelView: View {
         guard !words.isEmpty else { return [] }
         var sentences: [TranscriptSentence] = []
         var current: [TranscriptWordSnapshot] = []
+        var paragraphStart = false
 
         for word in words {
+            // Force a new sentence group at paragraph boundaries
+            if word.isParagraphStart && !current.isEmpty {
+                sentences.append(TranscriptSentence(words: current, isParagraphStart: paragraphStart))
+                current = []
+                paragraphStart = true
+            } else if word.isParagraphStart {
+                paragraphStart = true
+            }
+
             current.append(word)
             let trimmed = word.word.trimmingCharacters(in: .whitespaces)
             let endsWithPunctuation = trimmed.hasSuffix(".") || trimmed.hasSuffix("?") || trimmed.hasSuffix("!")
             if endsWithPunctuation || current.count >= 18 {
-                sentences.append(TranscriptSentence(words: current))
+                sentences.append(TranscriptSentence(words: current, isParagraphStart: paragraphStart))
                 current = []
+                paragraphStart = false
             }
         }
         if !current.isEmpty {
-            sentences.append(TranscriptSentence(words: current))
+            sentences.append(TranscriptSentence(words: current, isParagraphStart: paragraphStart))
         }
         return sentences
     }
@@ -108,6 +120,12 @@ struct TranscriptPanelView: View {
 struct TranscriptSentence: Identifiable {
     let id = UUID()
     let words: [TranscriptWordSnapshot]
+    let isParagraphStart: Bool
+
+    init(words: [TranscriptWordSnapshot], isParagraphStart: Bool = false) {
+        self.words = words
+        self.isParagraphStart = isParagraphStart
+    }
 }
 
 // Simple horizontal flow layout for wrapping words

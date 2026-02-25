@@ -21,10 +21,18 @@ private struct SendablePixelBuffer: @unchecked Sendable {
     var buffer: CVPixelBuffer?
 }
 
+private struct SendableAdjuster: @unchecked Sendable {
+    var adjuster: WebcamImageAdjuster?
+}
+
 final class WebcamCompositor: @unchecked Sendable {
     let borderWidth: CGFloat
 
-    nonisolated(unsafe) var imageAdjuster: WebcamImageAdjuster?
+    private let _imageAdjuster: OSAllocatedUnfairLock<SendableAdjuster>
+    var imageAdjuster: WebcamImageAdjuster? {
+        get { _imageAdjuster.withLock { $0.adjuster } }
+        set { _imageAdjuster.withLock { $0.adjuster = newValue } }
+    }
 
     private let latestFrame: OSAllocatedUnfairLock<SendablePixelBuffer>
     private let latestLayout: OSAllocatedUnfairLock<BubbleLayout>
@@ -35,6 +43,7 @@ final class WebcamCompositor: @unchecked Sendable {
 
     init(borderWidth: CGFloat = 3.0) {
         self.borderWidth = borderWidth
+        self._imageAdjuster = OSAllocatedUnfairLock(initialState: SendableAdjuster())
         self.latestFrame = OSAllocatedUnfairLock(initialState: SendablePixelBuffer(buffer: nil))
         self.latestLayout = OSAllocatedUnfairLock(initialState: .default)
         self.maskCache = OSAllocatedUnfairLock(initialState: ShapeMaskCache())
@@ -77,7 +86,7 @@ final class WebcamCompositor: @unchecked Sendable {
         // Scale and flip webcam
         let webcamWidth = CGFloat(CVPixelBufferGetWidth(webcamFrame))
         let webcamHeight = CGFloat(CVPixelBufferGetHeight(webcamFrame))
-        let scaleFactor = max(width, height) / min(webcamWidth, webcamHeight)
+        let scaleFactor = max(width / webcamWidth, height / webcamHeight)
 
         let scaledWebcam = webcamImage
             .transformed(by: CGAffineTransform(scaleX: -scaleFactor, y: scaleFactor))

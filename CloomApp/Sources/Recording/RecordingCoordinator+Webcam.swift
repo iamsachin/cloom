@@ -37,9 +37,11 @@ extension RecordingCoordinator {
         }
         cameraService?.start()
         webcamBubble?.show()
+        startObservingWebcamSettings()
     }
 
     func stopWebcam() {
+        stopObservingWebcamSettings()
         cameraService?.stop()
         webcamBubble?.dismiss()
         bubbleControlPill?.dismiss()
@@ -66,25 +68,40 @@ extension RecordingCoordinator {
         let defaults = UserDefaults.standard
         return WebcamAdjustments(
             brightness: Float(defaults.double(forKey: "webcamBrightness")),
-            contrast: {
-                let v = defaults.double(forKey: "webcamContrast")
-                return v == 0 ? 1 : Float(v)
-            }(),
-            saturation: {
-                let v = defaults.double(forKey: "webcamSaturation")
-                return v == 0 ? 1 : Float(v)
-            }(),
-            highlights: {
-                let v = defaults.double(forKey: "webcamHighlights")
-                return v == 0 ? 1 : Float(v)
-            }(),
+            contrast: Float(defaults.object(forKey: "webcamContrast") as? Double ?? 1),
+            saturation: Float(defaults.object(forKey: "webcamSaturation") as? Double ?? 1),
+            highlights: Float(defaults.object(forKey: "webcamHighlights") as? Double ?? 1),
             shadows: Float(defaults.double(forKey: "webcamShadows")),
-            temperature: {
-                let v = defaults.double(forKey: "webcamTemperature")
-                return v == 0 ? 6500 : Float(v)
-            }(),
+            temperature: Float(defaults.object(forKey: "webcamTemperature") as? Double ?? 6500),
             tint: Float(defaults.double(forKey: "webcamTint"))
         )
+    }
+
+    // MARK: - Webcam Settings Observation
+
+    private static let webcamSettingsKeys: Set<String> = [
+        "webcamBrightness", "webcamContrast", "webcamSaturation",
+        "webcamHighlights", "webcamShadows", "webcamTemperature", "webcamTint",
+    ]
+
+    func startObservingWebcamSettings() {
+        stopObservingWebcamSettings()
+        webcamSettingsObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.imageAdjuster?.updateAdjustments(self?.loadWebcamAdjustments() ?? .default)
+            }
+        }
+    }
+
+    func stopObservingWebcamSettings() {
+        if let obs = webcamSettingsObserver {
+            NotificationCenter.default.removeObserver(obs)
+            webcamSettingsObserver = nil
+        }
     }
 
     func getCaptureAreaScreenRect() -> CGRect {

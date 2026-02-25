@@ -37,6 +37,7 @@ final class RecordingCoordinator: ObservableObject {
     var imageAdjuster: WebcamImageAdjuster?
     var bubbleControlPill: BubbleControlPill?
     var webcamRecordingService: WebcamRecordingService?
+    var webcamSettingsObserver: NSObjectProtocol?
 
     // Annotations
     var annotationStore: AnnotationStore?
