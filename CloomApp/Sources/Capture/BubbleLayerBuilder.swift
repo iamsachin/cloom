@@ -13,9 +13,9 @@ extension WebcamBubbleWindow {
         let height = diameter
         let cornerRadius = currentShape.cornerRadius(forHeight: height)
 
-        // Expand panel to include theme border + outer glow so nothing is clipped
-        let themeBorderWidth: CGFloat = currentTheme != .none ? 6 : 0
-        let glowPadding: CGFloat = currentTheme != .none ? 10 : 0
+        // Expand panel to include theme border + shadow padding so nothing is clipped
+        let themeBorderWidth: CGFloat = currentTheme != .none ? 3 : 0
+        let glowPadding: CGFloat = currentTheme != .none ? 4 : 0
         let totalInset = themeBorderWidth + glowPadding
         let panelWidth = width + totalInset * 2
         let panelHeight = height + totalInset * 2
@@ -67,16 +67,20 @@ extension WebcamBubbleWindow {
         )
         let borderCornerRadius = currentShape.cornerRadius(forHeight: borderRect.height)
 
-        // Shadow layer — soft drop shadow
-        let shadowLayer = CALayer()
-        shadowLayer.frame = innerRect
-        shadowLayer.cornerRadius = cornerRadius
-        shadowLayer.backgroundColor = NSColor.black.cgColor
-        shadowLayer.shadowColor = NSColor.black.cgColor
-        shadowLayer.shadowOpacity = 0.35
-        shadowLayer.shadowRadius = 10
-        shadowLayer.shadowOffset = CGSize(width: 0, height: -3)
-        rootLayer.addSublayer(shadowLayer)
+        // Shadow layer — soft drop shadow (skip for "none" theme for a clean bubble)
+        if currentTheme != .none {
+            let shadowLayer = CALayer()
+            shadowLayer.frame = innerRect
+            shadowLayer.cornerRadius = cornerRadius
+            shadowLayer.backgroundColor = NSColor.black.cgColor
+            shadowLayer.shadowColor = NSColor.black.cgColor
+            shadowLayer.shadowOpacity = 0.35
+            shadowLayer.shadowRadius = 10
+            shadowLayer.shadowOffset = CGSize(width: 0, height: -3)
+            shadowLayer.shouldRasterize = true
+            shadowLayer.rasterizationScale = NSScreen.main?.backingScaleFactor ?? 2.0
+            rootLayer.addSublayer(shadowLayer)
+        }
 
         // Theme border ring with subtle colored glow
         let themeBorder = CAGradientLayer()
@@ -128,14 +132,19 @@ extension WebcamBubbleWindow {
 
         applyTheme()
 
-        // Observe window move to update compositor layout
+        // Observe window move to update compositor layout (throttled to ~15Hz)
         moveObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didMoveNotification,
             object: panel,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
-                self?.reportLayout()
+            guard let self else { return }
+            let now = CACurrentMediaTime()
+            if now - self.lastLayoutReport > 0.066 {
+                self.lastLayoutReport = now
+                Task { @MainActor in
+                    self.reportLayout()
+                }
             }
         }
 
@@ -149,7 +158,9 @@ extension WebcamBubbleWindow {
         guard let themeLayer else { return }
 
         if currentTheme == .none {
-            themeLayer.isHidden = true
+            // Make border transparent instead of hiding — avoids rebuild issues
+            themeLayer.colors = nil
+            themeLayer.backgroundColor = NSColor.clear.cgColor
             return
         }
 
@@ -157,8 +168,8 @@ extension WebcamBubbleWindow {
         let diameter = CGFloat(currentSize.rawValue)
         let width = diameter * currentShape.aspectRatio
         let height = diameter
-        let themeBorderWidth: CGFloat = 6
-        let glowPadding: CGFloat = 10
+        let themeBorderWidth: CGFloat = 3
+        let glowPadding: CGFloat = 4
         let borderRect = NSRect(
             x: glowPadding, y: glowPadding,
             width: width + themeBorderWidth * 2,
@@ -167,27 +178,16 @@ extension WebcamBubbleWindow {
         themeLayer.frame = borderRect
         themeLayer.cornerRadius = currentShape.cornerRadius(forHeight: borderRect.height)
 
-        // Determine the primary glow color for the shadow
-        let glowColor: CGColor
         if let gradientColors = currentTheme.gradientNSColors() {
             themeLayer.colors = [gradientColors.0.cgColor, gradientColors.1.cgColor]
             themeLayer.startPoint = CGPoint(x: 0, y: 1)
             themeLayer.endPoint = CGPoint(x: 1, y: 0)
             themeLayer.backgroundColor = nil
-            glowColor = gradientColors.0.cgColor
         } else if let solidColor = currentTheme.cgColor() {
             themeLayer.colors = nil
             themeLayer.backgroundColor = solidColor
-            glowColor = solidColor
-        } else {
-            glowColor = NSColor.clear.cgColor
         }
 
-        // Subtle colored outer glow
-        themeLayer.shadowColor = glowColor
-        themeLayer.shadowOpacity = 0.45
-        themeLayer.shadowRadius = 8
-        themeLayer.shadowOffset = .zero
     }
 
     func rebuildPanel() {

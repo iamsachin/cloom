@@ -17,6 +17,7 @@ final class WebcamBubbleWindow {
     var themeLayer: CAGradientLayer?
     let ciContext = CIContext(options: [.useSoftwareRenderer: false])
     var moveObserver: NSObjectProtocol?
+    nonisolated(unsafe) var lastLayoutReport: CFTimeInterval = 0
     private var themeObserver: NSObjectProtocol?
 
     enum BubbleSize: Int, CaseIterable {
@@ -42,6 +43,12 @@ final class WebcamBubbleWindow {
     }()
 
     func show() {
+        // Re-sync from UserDefaults in case settings changed while bubble wasn't showing
+        let themeRaw = UserDefaults.standard.string(forKey: "webcamBubbleTheme") ?? "none"
+        currentTheme = BubbleTheme(rawValue: themeRaw) ?? .none
+        let shapeRaw = UserDefaults.standard.string(forKey: "webcamShape") ?? "circle"
+        currentShape = WebcamShape(rawValue: shapeRaw) ?? .circle
+
         if panel == nil {
             createPanel()
         }
@@ -104,9 +111,11 @@ final class WebcamBubbleWindow {
         let hadBorder = currentTheme != .none
         let willHaveBorder = theme != .none
         currentTheme = theme
-        if hadBorder != willHaveBorder {
+        if !hadBorder && willHaveBorder {
+            // Panel needs to grow to accommodate border — rebuild
             rebuildPanel()
         } else {
+            // Removing border or switching between themes — just update layer visuals
             applyTheme()
             reportLayout()
         }
@@ -121,7 +130,7 @@ final class WebcamBubbleWindow {
         let screenFrame = screen.frame
         let centerX = frame.midX - screenFrame.origin.x
         let centerY = frame.midY - screenFrame.origin.y
-        let borderInset: CGFloat = currentTheme != .none ? 16 : 0
+        let borderInset: CGFloat = currentTheme != .none ? 7 : 0
         return BubbleLayout(
             normalizedX: centerX / screenFrame.width,
             normalizedY: centerY / screenFrame.height,

@@ -85,17 +85,15 @@ struct EditorTimelineView: View {
 
     @ViewBuilder
     private func waveformCanvas(peaks: [Float], width: CGFloat, height: CGFloat) -> some View {
-        if !peaks.isEmpty {
-            let maxPeak = peaks.max() ?? 1.0
-            let normFactor: Float = maxPeak > 0 ? 1.0 / maxPeak : 1.0
+        let maxPeak = peaks.max() ?? 0
+        if !peaks.isEmpty && maxPeak > 0.001 {
+            let normFactor: Float = 1.0 / maxPeak
 
             Canvas { context, size in
                 let barWidth = size.width / CGFloat(peaks.count)
                 let midY = size.height / 2
 
                 for (i, peak) in peaks.enumerated() {
-                    // Normalize to 0-1 range relative to loudest peak,
-                    // then apply sqrt curve to boost quiet audio visibility
                     let normalized = min(peak * normFactor, 1.0)
                     let boosted = CGFloat(sqrt(normalized))
                     let barHeight = boosted * size.height * 0.9
@@ -103,10 +101,10 @@ struct EditorTimelineView: View {
                     let rect = CGRect(
                         x: x,
                         y: midY - barHeight / 2,
-                        width: max(barWidth - 0.5, 0.5),
-                        height: max(barHeight, 1)
+                        width: barWidth,
+                        height: max(barHeight, 2)
                     )
-                    context.fill(Path(rect), with: .color(.accentColor.opacity(0.6)))
+                    context.fill(Path(rect), with: .color(.accentColor.opacity(0.8)))
                 }
             }
             .frame(width: width, height: height)
@@ -121,20 +119,31 @@ struct EditorTimelineView: View {
             ForEach(chapters) { chapter in
                 let fraction = CGFloat(chapter.startMs) / CGFloat(durationMs)
                 let x = fraction * width
+                let tooltip = chapter.title.isEmpty ? formatMs(chapter.startMs) : chapter.title
 
-                Path { path in
-                    path.move(to: CGPoint(x: x, y: 0))
-                    path.addLine(to: CGPoint(x: x - 4, y: -8))
-                    path.addLine(to: CGPoint(x: x + 4, y: -8))
-                    path.closeSubpath()
+                ZStack {
+                    Path { path in
+                        path.move(to: CGPoint(x: x, y: 0))
+                        path.addLine(to: CGPoint(x: x - 4, y: -8))
+                        path.addLine(to: CGPoint(x: x + 4, y: -8))
+                        path.closeSubpath()
+                    }
+                    .fill(Color.accentColor)
+                    .offset(y: height * 0.1)
+
+                    Rectangle()
+                        .fill(Color.accentColor.opacity(0.4))
+                        .frame(width: 1, height: height)
+                        .offset(x: x)
+
+                    // Invisible hit-test area for tooltip
+                    Rectangle()
+                        .fill(Color.clear)
+                        .frame(width: 16, height: height)
+                        .offset(x: x)
+                        .contentShape(Rectangle())
                 }
-                .fill(Color.accentColor)
-                .offset(y: height * 0.1)
-
-                Rectangle()
-                    .fill(Color.accentColor.opacity(0.4))
-                    .frame(width: 1, height: height)
-                    .offset(x: x)
+                .help(tooltip)
             }
         }
     }
@@ -147,24 +156,44 @@ struct EditorTimelineView: View {
             ForEach(bookmarks) { bookmark in
                 let fraction = CGFloat(bookmark.timestampMs) / CGFloat(durationMs)
                 let x = fraction * width
+                let tooltip = bookmark.text.isEmpty ? formatMs(bookmark.timestampMs) : bookmark.text
 
-                // Green diamond
-                Path { path in
-                    path.move(to: CGPoint(x: x, y: -6))
-                    path.addLine(to: CGPoint(x: x + 5, y: 0))
-                    path.addLine(to: CGPoint(x: x, y: 6))
-                    path.addLine(to: CGPoint(x: x - 5, y: 0))
-                    path.closeSubpath()
+                ZStack {
+                    // Green diamond
+                    Path { path in
+                        path.move(to: CGPoint(x: x, y: -6))
+                        path.addLine(to: CGPoint(x: x + 5, y: 0))
+                        path.addLine(to: CGPoint(x: x, y: 6))
+                        path.addLine(to: CGPoint(x: x - 5, y: 0))
+                        path.closeSubpath()
+                    }
+                    .fill(Color.green)
+                    .offset(y: height * 0.1)
+
+                    Rectangle()
+                        .fill(Color.green.opacity(0.4))
+                        .frame(width: 1, height: height)
+                        .offset(x: x)
+
+                    // Invisible hit-test area for tooltip
+                    Rectangle()
+                        .fill(Color.clear)
+                        .frame(width: 16, height: height)
+                        .offset(x: x)
+                        .contentShape(Rectangle())
                 }
-                .fill(Color.green)
-                .offset(y: height * 0.1)
-
-                Rectangle()
-                    .fill(Color.green.opacity(0.4))
-                    .frame(width: 1, height: height)
-                    .offset(x: x)
+                .help(tooltip)
             }
         }
+    }
+
+    // MARK: - Helpers
+
+    private func formatMs(_ ms: Int64) -> String {
+        let totalSeconds = Int(ms / 1000)
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
 
     // MARK: - Playhead

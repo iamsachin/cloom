@@ -200,7 +200,7 @@ struct WebcamSettingsTab: View {
 
     @ViewBuilder
     private var themeRingView: some View {
-        let borderWidth: CGFloat = 5
+        let borderWidth: CGFloat = 3
         let ringWidth = previewSize.width + borderWidth * 2
         let ringHeight = previewSize.height + borderWidth * 2
         let ringRadius = previewCornerRadius + borderWidth
@@ -213,7 +213,6 @@ struct WebcamSettingsTab: View {
                     endPoint: .topTrailing
                 ))
                 .frame(width: ringWidth, height: ringHeight)
-                .shadow(color: Color(cgColor: c1).opacity(0.4), radius: 8)
                 .overlay(
                     RoundedRectangle(cornerRadius: previewCornerRadius + 0.5)
                         .strokeBorder(.white.opacity(0.4), lineWidth: 1)
@@ -223,7 +222,6 @@ struct WebcamSettingsTab: View {
             RoundedRectangle(cornerRadius: ringRadius)
                 .fill(Color(cgColor: c))
                 .frame(width: ringWidth, height: ringHeight)
-                .shadow(color: Color(cgColor: c).opacity(0.4), radius: 8)
                 .overlay(
                     RoundedRectangle(cornerRadius: previewCornerRadius + 0.5)
                         .strokeBorder(.white.opacity(0.4), lineWidth: 1)
