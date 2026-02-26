@@ -6,10 +6,11 @@ struct RecordingSettingsTab: View {
     @AppStorage("recordingQuality") private var qualityRaw: String = VideoQuality.medium.rawValue
     @AppStorage("recordingMicDeviceID") private var micDeviceID: String = ""
     @AppStorage("recordingCameraDeviceID") private var cameraDeviceID: String = ""
-    @AppStorage("noiseCancellationEnabled") private var noiseCancellationEnabled: Bool = false
+    @AppStorage("micSensitivity") private var micSensitivity: Int = 100
 
     @State private var microphones: [AVCaptureDevice] = []
     @State private var cameras: [AVCaptureDevice] = []
+    @StateObject private var micMonitor = MicLevelMonitor()
 
     private var quality: Binding<VideoQuality> {
         Binding(
@@ -43,8 +44,24 @@ struct RecordingSettingsTab: View {
                     }
                 }
 
-                Toggle("Noise Reduction", isOn: $noiseCancellationEnabled)
-                    .help("Reduces background noise from microphone input using a noise gate")
+                HStack {
+                    Text("Sensitivity")
+                    Slider(value: Binding(
+                        get: { Double(micSensitivity) },
+                        set: { micSensitivity = Int($0) }
+                    ), in: 0...200, step: 1)
+                    Text("\(micSensitivity)%")
+                        .monospacedDigit()
+                        .frame(width: 45, alignment: .trailing)
+                        .foregroundStyle(micSensitivity != 100 ? Color.accentColor : .secondary)
+                        .onTapGesture { micSensitivity = 100 }
+                }
+                .help("Microphone input gain — 100% is full volume, lower values attenuate")
+                .onChange(of: micSensitivity) {
+                    micMonitor.updateSensitivity(micSensitivity)
+                }
+
+                MicLevelMeterView(level: micMonitor.level)
             }
 
             Section("Camera") {
@@ -57,7 +74,16 @@ struct RecordingSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .onAppear { refreshDevices() }
+        .onAppear {
+            refreshDevices()
+            micMonitor.start(deviceID: micDeviceID.isEmpty ? nil : micDeviceID, sensitivity: micSensitivity)
+        }
+        .onDisappear {
+            micMonitor.stop()
+        }
+        .onChange(of: micDeviceID) {
+            micMonitor.start(deviceID: micDeviceID.isEmpty ? nil : micDeviceID, sensitivity: micSensitivity)
+        }
     }
 
     private func refreshDevices() {
@@ -68,5 +94,35 @@ struct RecordingSettingsTab: View {
         )
         microphones = micDiscovery.devices
         cameras = CameraService.availableCameras()
+    }
+}
+
+// MARK: - Level Meter
+
+private struct MicLevelMeterView: View {
+    let level: Float
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("Level")
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.secondary.opacity(0.2))
+
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(barColor)
+                        .frame(width: max(0, geo.size.width * CGFloat(level)))
+                        .animation(.easeOut(duration: 0.08), value: level)
+                }
+            }
+            .frame(height: 8)
+        }
+    }
+
+    private var barColor: Color {
+        if level > 0.9 { return .red }
+        if level > 0.6 { return .yellow }
+        return .green
     }
 }

@@ -85,11 +85,10 @@ extension ScreenCaptureService: SCStreamOutput {
     nonisolated private func handleAudio(_ sampleBuffer: CMSampleBuffer, sourceType: AudioSourceType) {
         guard let writer = videoWriter else { return }
 
-        let processedBuffer: CMSampleBuffer
-        if sourceType == .microphone, let processor = noiseCancellationProcessor {
-            processedBuffer = processor.process(sampleBuffer)
-        } else {
-            processedBuffer = sampleBuffer
+        var processedBuffer = sampleBuffer
+
+        if sourceType == .microphone, let gainProc = micGainProcessor {
+            processedBuffer = gainProc.process(processedBuffer)
         }
 
         let wrapped = SendableSampleBuffer(buffer: processedBuffer)

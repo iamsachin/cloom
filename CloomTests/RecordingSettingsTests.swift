@@ -46,14 +46,14 @@ struct RecordingSettingsTests {
             quality: VideoQuality(rawValue: VideoQuality.medium.rawValue) ?? .medium,
             micDeviceID: nil,
             cameraDeviceID: nil,
-            noiseCancellationEnabled: false
+            micSensitivity: 100
         )
 
         #expect(settings.fps == 30)
         #expect(settings.quality == .medium)
         #expect(settings.micDeviceID == nil)
         #expect(settings.cameraDeviceID == nil)
-        #expect(settings.noiseCancellationEnabled == false)
+        #expect(settings.micSensitivity == 100)
     }
 
     @Test func customValues() {
@@ -62,7 +62,7 @@ struct RecordingSettingsTests {
             quality: .high,
             micDeviceID: "mic-abc",
             cameraDeviceID: "cam-xyz",
-            noiseCancellationEnabled: true
+            micSensitivity: 150
         )
 
         #expect(settings.fps == 60)
@@ -70,7 +70,7 @@ struct RecordingSettingsTests {
         #expect(settings.quality.bitrate == 20_000_000)
         #expect(settings.micDeviceID == "mic-abc")
         #expect(settings.cameraDeviceID == "cam-xyz")
-        #expect(settings.noiseCancellationEnabled == true)
+        #expect(settings.micSensitivity == 150)
     }
 
     @Test func qualityFromInvalidRawValue() {

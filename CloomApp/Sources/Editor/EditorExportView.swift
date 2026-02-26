@@ -225,49 +225,53 @@ struct EditorExportView: View {
             let ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
             // Pre-render all subtitle images once (instead of per-frame)
-            var subtitleCache: [CIImage?] = []
+            let subtitleCache: [CIImage?]
             if needsHardBurn {
                 let videoTracks = try await result.composition.loadTracks(withMediaType: .video)
                 if let videoTrack = videoTracks.first {
                     let size = try await videoTrack.load(.naturalSize)
-                    subtitleCache = SubtitleExportService.prerenderImages(
+                    let rendered = SubtitleExportService.prerenderImages(
                         phrases: phrases,
                         videoWidth: size.width,
                         videoHeight: size.height
                     )
-                    logger.info("Pre-rendered \(subtitleCache.count) subtitle images")
+                    logger.info("Pre-rendered \(rendered.count) subtitle images")
+                    subtitleCache = rendered
+                } else {
+                    subtitleCache = []
                 }
+            } else {
+                subtitleCache = []
             }
 
-            let videoComp = try await AVMutableVideoComposition.videoComposition(
-                with: result.composition,
-                applyingCIFiltersWithHandler: { request in
-                    var image = request.sourceImage.clampedToExtent()
+            let videoComp = try await AVVideoComposition(
+                applyingFiltersTo: result.composition
+            ) { params in
+                var image = params.sourceImage.clampedToExtent()
 
-                    // Apply brightness/contrast
-                    if needsAdjustment {
-                        image = image.applyingFilter("CIColorControls", parameters: [
-                            kCIInputBrightnessKey: brightness,
-                            kCIInputContrastKey: contrast,
-                        ])
-                    }
-
-                    image = image.cropped(to: request.sourceImage.extent)
-
-                    // Burn pre-rendered subtitle overlay
-                    if needsHardBurn {
-                        let frameTimeMs = Int64(request.compositionTime.seconds * 1000)
-                        image = SubtitleExportService.burnSubtitle(
-                            onto: image,
-                            phrases: phrases,
-                            cache: subtitleCache,
-                            frameTimeMs: frameTimeMs
-                        )
-                    }
-
-                    request.finish(with: image, context: ciContext)
+                // Apply brightness/contrast
+                if needsAdjustment {
+                    image = image.applyingFilter("CIColorControls", parameters: [
+                        kCIInputBrightnessKey: brightness,
+                        kCIInputContrastKey: contrast,
+                    ])
                 }
-            )
+
+                image = image.cropped(to: params.sourceImage.extent)
+
+                // Burn pre-rendered subtitle overlay
+                if needsHardBurn {
+                    let frameTimeMs = Int64(params.compositionTime.seconds * 1000)
+                    image = SubtitleExportService.burnSubtitle(
+                        onto: image,
+                        phrases: phrases,
+                        cache: subtitleCache,
+                        frameTimeMs: frameTimeMs
+                    )
+                }
+
+                return AVCIImageFilteringResult(resultImage: image, ciContext: ciContext)
+            }
             session.videoComposition = videoComp
         }
 
