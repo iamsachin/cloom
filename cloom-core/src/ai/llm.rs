@@ -61,6 +61,8 @@ pub fn generate_chapters(
     let truncated = truncate_transcript(&transcript_text);
     let prompt = format!(
         "Divide this recording transcript into logical chapters. \
+         The transcript includes timestamps in [M:SS] format. Use these timestamps to determine accurate start_ms values. \
+         Convert the [M:SS] timestamps to milliseconds (e.g., [1:30] = 90000). \
          Return a JSON array where each element has \"title\" (string) and \"start_ms\" (integer milliseconds). \
          Return ONLY the JSON array, no markdown fences or extra text.\n\nTranscript:\n{truncated}"
     );
