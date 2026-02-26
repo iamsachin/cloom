@@ -356,13 +356,49 @@ Split large files into focused, single-responsibility modules following best pra
 ---
 
 ## Phase 16: Mic Sensitivity Setting
-**Status:** Not started
+**Status:** Complete
+**Date:** 2026-02-26
 
-- [ ] Task 106 — Mic sensitivity slider in Settings > Microphone (configurable waveform noise floor threshold, @AppStorage persistence, applies to WaveformGenerator adaptive noise floor)
+- [x] Task 106 — Mic sensitivity slider in Settings > Microphone (configurable waveform noise floor threshold, @AppStorage persistence, applies to WaveformGenerator adaptive noise floor)
 
 ---
 
-## Phase 17: Pre-Release
+## Phase 17: Performance & Code Quality Audit
+**Status:** Complete
+**Date:** 2026-02-26
+
+### Phase 1: Recording Hot Path — Critical Fixes
+- [x] Task 114 — SharedCIContext singleton (consolidated 6 CIContext instances into 1 shared Metal-backed context)
+- [x] Task 115 — PersonSegmenter throttling (Vision runs every 5th frame with cached mask reuse)
+- [x] Task 116 — MicLevelMonitor Task flood fix (replaced ~94 Task{@MainActor}/sec with 30Hz timer)
+- [x] Task 117 — ScreenCaptureService data race fix (OSAllocatedUnfairLock<CaptureState> for 6 shared properties)
+- [x] Task 118 — VideoWriter force unwrap removal (guard let instead of firstVideoPTS!)
+
+### Phase 2: Async Annotation Rendering
+- [x] Task 119 — Cached stroke overlay in AnnotationRenderer (skip CGContext when stroke count unchanged)
+
+### Phase 3: Export Speed Fixes
+- [x] Task 120 — GIF export: direct CGImage→PNG via ImageIO + 100ms frame tolerance
+- [x] Task 121 — Streaming waveform peaks: O(peakCount) memory instead of O(total_samples)
+- [x] Task 122 — Subtitle render to capsule-sized CGContext (~400x40px vs full 1920x1080)
+
+### Phase 4: Rust Performance Fixes
+- [x] Task 123 — Shared Tokio runtime via LazyLock (no more per-call thread pool)
+- [x] Task 124 — Pre-computed lowercase in filler detection (eliminates ~90k redundant allocations)
+- [x] Task 125 — Vec pre-allocation in silence detection
+
+### Phase 5: Crash Prevention
+- [x] Task 126 — Thumbnail NSCache limits (100 items / 100MB)
+
+### Phase 6: AI Pipeline & Code Quality
+- [x] Task 127 — Parallel AI tasks via async let (title/summary/chapters ~2/3 wall-clock reduction)
+- [x] Task 128 — Library search 300ms debounce
+
+**Milestone verified:** Build succeeds (0 errors, 1 warning). 43 Rust tests pass. 23 files changed across Swift and Rust.
+
+---
+
+## Phase 18: Pre-Release
 **Status:** Not started
 
 - [ ] Task 81 — Developer ID signing + notarization + DMG packaging
