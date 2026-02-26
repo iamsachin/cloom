@@ -16,7 +16,7 @@ actor WaveformGenerator {
         }
     }
 
-    func generatePeaks(from url: URL, peakCount: Int) async throws -> [Float] {
+    func generatePeaks(from url: URL, peakCount: Int, micSensitivity: Int = 100) async throws -> [Float] {
         let asset = AVURLAsset(url: url)
         let audioTracks = try await asset.loadTracks(withMediaType: .audio)
 
@@ -31,7 +31,7 @@ actor WaveformGenerator {
         var combinedPeaks = [Float](repeating: 0, count: peakCount)
 
         for audioTrack in audioTracks {
-            let trackPeaks = try readTrackPeaks(asset: asset, track: audioTrack, peakCount: peakCount)
+            let trackPeaks = try readTrackPeaks(asset: asset, track: audioTrack, peakCount: peakCount, micSensitivity: micSensitivity)
             for i in 0..<peakCount {
                 combinedPeaks[i] = max(combinedPeaks[i], trackPeaks[i])
             }
@@ -42,7 +42,7 @@ actor WaveformGenerator {
         return combinedPeaks
     }
 
-    private func readTrackPeaks(asset: AVURLAsset, track: AVAssetTrack, peakCount: Int) throws -> [Float] {
+    private func readTrackPeaks(asset: AVURLAsset, track: AVAssetTrack, peakCount: Int, micSensitivity: Int) throws -> [Float] {
         let reader = try AVAssetReader(asset: asset)
 
         let outputSettings: [String: Any] = [
@@ -102,10 +102,14 @@ actor WaveformGenerator {
         }
 
         // Adaptive noise floor: use the median peak as the background noise level,
-        // then zero out anything below 2x the median to suppress fan/hum while keeping speech
+        // then zero out anything below a threshold to suppress fan/hum while keeping speech.
+        // Higher mic sensitivity → lower multiplier (show more waveform detail).
+        // At 100%+ the multiplier is 2x (default). At 0% it's 5x (more aggressive).
+        let sensitivityFraction = max(0, min(1, Float(min(micSensitivity, 100)) / 100.0))
+        let noiseMultiplier: Float = 5.0 - sensitivityFraction * 3.0 // 5x at 0%, 2x at 100%+
         let sorted = peaks.sorted()
         let median = sorted[sorted.count / 2]
-        let noiseFloor = median * 2
+        let noiseFloor = median * noiseMultiplier
         return peaks.map { $0 < noiseFloor ? 0 : $0 }
     }
 }

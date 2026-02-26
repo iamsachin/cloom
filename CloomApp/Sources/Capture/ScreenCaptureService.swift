@@ -21,7 +21,7 @@ final class ScreenCaptureService: NSObject {
     nonisolated(unsafe) var compositor: WebcamCompositor?
     nonisolated(unsafe) var annotationRenderer: AnnotationRenderer?
     nonisolated(unsafe) var bufferPool: CVPixelBufferPool?
-    nonisolated(unsafe) var noiseCancellationProcessor: NoiseCancellationProcessor?
+    nonisolated(unsafe) var micGainProcessor: MicGainProcessor?
     nonisolated(unsafe) var isProcessingFrame: Bool = false
 
     private let outputQueue = DispatchQueue(label: "com.cloom.capture.output", qos: .userInteractive)
@@ -50,9 +50,8 @@ final class ScreenCaptureService: NSObject {
     private func startStream(filter: SCContentFilter, config: SCStreamConfiguration, outputURL: URL, settings: RecordingSettings, compositor: WebcamCompositor?, annotationRenderer: AnnotationRenderer? = nil) async throws {
         self.compositor = compositor
         self.annotationRenderer = annotationRenderer
-        self.noiseCancellationProcessor = settings.noiseCancellationEnabled
-            ? NoiseCancellationProcessor()
-            : nil
+        let gainProc = MicGainProcessor(sensitivity: settings.micSensitivity)
+        self.micGainProcessor = gainProc.isUnity ? nil : gainProc
 
         let writer = try VideoWriter(
             outputURL: outputURL,
@@ -92,7 +91,7 @@ final class ScreenCaptureService: NSObject {
         self.compositor = nil
         self.annotationRenderer = nil
         self.bufferPool = nil
-        self.noiseCancellationProcessor = nil
+        self.micGainProcessor = nil
     }
 
     func updateCompositor(_ compositor: WebcamCompositor?) {

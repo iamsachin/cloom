@@ -9,6 +9,7 @@ final class WebcamRecordingService: NSObject, @unchecked Sendable {
     // Properties accessed from capture queue — protected by isRecording flag
     nonisolated(unsafe) var imageAdjuster: WebcamImageAdjuster?
     nonisolated(unsafe) var personSegmenter: PersonSegmenter?
+    nonisolated(unsafe) var micGainProcessor: MicGainProcessor?
 
     private let outputQueue = DispatchQueue(label: "com.cloom.webcamRecording", qos: .userInteractive)
     private let ciContext: CIContext
@@ -218,7 +219,12 @@ extension WebcamRecordingService: AVCaptureVideoDataOutputSampleBufferDelegate, 
             }
         } else if output is AVCaptureAudioDataOutput {
             guard let audioInput, audioInput.isReadyForMoreMediaData else { return }
-            audioInput.append(sampleBuffer)
+            if let gainProc = micGainProcessor {
+                let gained = gainProc.process(sampleBuffer)
+                audioInput.append(gained)
+            } else {
+                audioInput.append(sampleBuffer)
+            }
         }
     }
 }

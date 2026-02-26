@@ -187,6 +187,8 @@ extension RecordingCoordinator {
 
         let service = WebcamRecordingService()
         service.imageAdjuster = imageAdjuster
+        let gainProc = MicGainProcessor(sensitivity: settings.micSensitivity)
+        if !gainProc.isUnity { service.micGainProcessor = gainProc }
         if blurEnabled {
             let segmenter = PersonSegmenter()
             segmenter.isEnabled = true
