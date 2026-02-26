@@ -90,13 +90,15 @@ final class AnnotationStore: @unchecked Sendable {
     func snapshot() -> AnnotationSnapshot {
         state.withLock { state in
             var allStrokes = state.strokes
+            let hasActive = state.activeStroke != nil
             if let active = state.activeStroke {
                 allStrokes.append(active)
             }
             return AnnotationSnapshot(
                 strokes: allStrokes,
                 ripples: state.ripples,
-                spotlight: state.spotlight
+                spotlight: state.spotlight,
+                hasActiveStroke: hasActive
             )
         }
     }
