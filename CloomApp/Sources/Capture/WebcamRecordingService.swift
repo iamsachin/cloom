@@ -6,13 +6,14 @@ private let logger = Logger(subsystem: "com.cloom.app", category: "WebcamRecordi
 private let sRGBColorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
 
 final class WebcamRecordingService: NSObject, @unchecked Sendable {
-    // Properties accessed from capture queue — protected by isRecording flag
+    // Properties accessed from capture queue — set on MainActor before startRunning,
+    // read from delegate after. isRecording gate prevents stale reads.
     nonisolated(unsafe) var imageAdjuster: WebcamImageAdjuster?
     nonisolated(unsafe) var personSegmenter: PersonSegmenter?
     nonisolated(unsafe) var micGainProcessor: MicGainProcessor?
 
     private let outputQueue = DispatchQueue(label: "com.cloom.webcamRecording", qos: .userInteractive)
-    private let ciContext: CIContext
+    private let ciContext: CIContext = SharedCIContext.instance
 
     private nonisolated(unsafe) var session: AVCaptureSession?
     private nonisolated(unsafe) var assetWriter: AVAssetWriter?
@@ -26,11 +27,6 @@ final class WebcamRecordingService: NSObject, @unchecked Sendable {
     nonisolated(unsafe) var onPreviewFrame: ((_ image: CIImage, _ pixelBuffer: CVPixelBuffer) -> Void)?
 
     override init() {
-        if let device = MTLCreateSystemDefaultDevice() {
-            self.ciContext = CIContext(mtlDevice: device, options: [.workingColorSpace: sRGBColorSpace])
-        } else {
-            self.ciContext = CIContext(options: [.workingColorSpace: sRGBColorSpace])
-        }
         super.init()
     }
 

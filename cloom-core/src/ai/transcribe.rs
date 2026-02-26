@@ -92,11 +92,7 @@ fn transcribe_openai(
         model.to_string()
     };
 
-    let rt = tokio::runtime::Runtime::new().map_err(|e| CloomError::ApiError {
-        msg: format!("Failed to create async runtime: {e}"),
-    })?;
-
-    rt.block_on(async {
+    crate::runtime::RUNTIME.block_on(async {
         let client = reqwest::Client::new();
 
         let mime_type = if file_name.ends_with(".m4a") {

@@ -1,5 +1,6 @@
 import AVFoundation
-import AppKit
+import ImageIO
+import UniformTypeIdentifiers
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "GifExportService")
@@ -48,8 +49,10 @@ actor GifExportService {
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
         generator.maximumSize = CGSize(width: width, height: 0) // maintain aspect ratio
-        generator.requestedTimeToleranceBefore = .zero
-        generator.requestedTimeToleranceAfter = .zero
+        // Allow tolerance for faster keyframe-based extraction (exact decode unnecessary for GIF)
+        let tolerance = CMTime(seconds: 0.1, preferredTimescale: 600)
+        generator.requestedTimeToleranceBefore = tolerance
+        generator.requestedTimeToleranceAfter = tolerance
 
         var manifestLines: [String] = []
 
@@ -61,12 +64,12 @@ actor GifExportService {
                 let (image, _) = try await generator.image(at: cmTime)
                 let framePath = tempDir.appendingPathComponent(String(format: "frame_%05d.png", i))
 
-                let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
-                if let tiffData = nsImage.tiffRepresentation,
-                   let bitmap = NSBitmapImageRep(data: tiffData),
-                   let pngData = bitmap.representation(using: .png, properties: [:]) {
-                    try pngData.write(to: framePath)
-                    manifestLines.append("\(Int(timeSeconds * 1000))\t\(framePath.path)")
+                // Write CGImage directly to PNG via ImageIO — avoids NSImage→TIFF→NSBitmapImageRep round-trip
+                if let dest = CGImageDestinationCreateWithURL(framePath as CFURL, UTType.png.identifier as CFString, 1, nil) {
+                    CGImageDestinationAddImage(dest, image, nil)
+                    if CGImageDestinationFinalize(dest) {
+                        manifestLines.append("\(Int(timeSeconds * 1000))\t\(framePath.path)")
+                    }
                 }
             } catch {
                 logger.warning("Failed to extract frame \(i): \(error)")

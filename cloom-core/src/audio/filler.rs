@@ -24,36 +24,33 @@ const MULTI_FILLERS: &[&str] = &["you know", "i mean", "sort of", "kind of"];
 /// can be computed on the Swift side if needed.
 #[uniffi::export]
 pub fn identify_filler_words(words: Vec<TranscriptWord>) -> Vec<FillerWord> {
-    let mut results = Vec::new();
+    let mut results = Vec::with_capacity(words.len() / 5);
+
+    // Pre-compute cleaned/lowercased words once to avoid redundant allocations
+    let cleaned: Vec<String> = words
+        .iter()
+        .map(|w| w.word.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase())
+        .collect();
 
     // Single-word fillers
-    for w in &words {
-        let lower = w.word.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase();
+    for (i, lower) in cleaned.iter().enumerate() {
         if SINGLE_FILLERS.contains(&lower.as_str()) {
             results.push(FillerWord {
-                word: lower,
-                start_ms: w.start_ms,
-                end_ms: w.end_ms,
+                word: lower.clone(),
+                start_ms: words[i].start_ms,
+                end_ms: words[i].end_ms,
                 count: 1,
             });
         }
     }
 
-    // Multi-word fillers (sliding window of 2-3 words)
+    // Multi-word fillers (sliding window of 2-3 words) using pre-computed lowercase
     for window_size in 2..=3 {
-        if words.len() < window_size {
+        if cleaned.len() < window_size {
             continue;
         }
-        for i in 0..=(words.len() - window_size) {
-            let phrase: String = words[i..i + window_size]
-                .iter()
-                .map(|w| {
-                    w.word
-                        .trim_matches(|c: char| !c.is_alphanumeric())
-                        .to_lowercase()
-                })
-                .collect::<Vec<_>>()
-                .join(" ");
+        for i in 0..=(cleaned.len() - window_size) {
+            let phrase: String = cleaned[i..i + window_size].join(" ");
 
             if MULTI_FILLERS.contains(&phrase.as_str()) {
                 results.push(FillerWord {

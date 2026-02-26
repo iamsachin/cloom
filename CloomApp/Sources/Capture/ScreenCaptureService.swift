@@ -11,18 +11,25 @@ protocol CaptureServiceDelegate: AnyObject {
     func captureDidFail(error: Error)
 }
 
+/// Thread-safe state accessed from both MainActor and the SCStreamOutput callback queue.
+struct CaptureState: @unchecked Sendable {
+    var videoWriter: VideoWriter?
+    var compositor: WebcamCompositor?
+    var annotationRenderer: AnnotationRenderer?
+    var bufferPool: CVPixelBufferPool?
+    var micGainProcessor: MicGainProcessor?
+    var isProcessingFrame: Bool = false
+}
+
 @MainActor
 final class ScreenCaptureService: NSObject {
     weak var delegate: CaptureServiceDelegate?
 
     private var stream: SCStream?
     private var currentConfig: SCStreamConfiguration?
-    nonisolated(unsafe) var videoWriter: VideoWriter?
-    nonisolated(unsafe) var compositor: WebcamCompositor?
-    nonisolated(unsafe) var annotationRenderer: AnnotationRenderer?
-    nonisolated(unsafe) var bufferPool: CVPixelBufferPool?
-    nonisolated(unsafe) var micGainProcessor: MicGainProcessor?
-    nonisolated(unsafe) var isProcessingFrame: Bool = false
+
+    /// All cross-queue state protected by a single unfair lock.
+    nonisolated let captureState = OSAllocatedUnfairLock(initialState: CaptureState())
 
     private let outputQueue = DispatchQueue(label: "com.cloom.capture.output", qos: .userInteractive)
     private let audioQueue = DispatchQueue(label: "com.cloom.capture.audio", qos: .userInteractive)
@@ -48,10 +55,7 @@ final class ScreenCaptureService: NSObject {
     }
 
     private func startStream(filter: SCContentFilter, config: SCStreamConfiguration, outputURL: URL, settings: RecordingSettings, compositor: WebcamCompositor?, annotationRenderer: AnnotationRenderer? = nil) async throws {
-        self.compositor = compositor
-        self.annotationRenderer = annotationRenderer
         let gainProc = MicGainProcessor(sensitivity: settings.micSensitivity)
-        self.micGainProcessor = gainProc.isUnity ? nil : gainProc
 
         let writer = try VideoWriter(
             outputURL: outputURL,
@@ -59,7 +63,6 @@ final class ScreenCaptureService: NSObject {
             width: config.width,
             height: config.height
         )
-        self.videoWriter = writer
 
         self.currentConfig = config
         let stream = SCStream(filter: filter, configuration: config, delegate: self)
@@ -70,7 +73,17 @@ final class ScreenCaptureService: NSObject {
         try stream.addStreamOutput(self, type: .microphone, sampleHandlerQueue: audioQueue)
 
         await writer.start()
-        self.bufferPool = writer.exposedPixelBufferPool
+        let pool = writer.exposedPixelBufferPool
+        // CVPixelBufferPool isn't Sendable but is safe here — set before capture starts.
+        nonisolated(unsafe) let sendablePool = pool
+
+        captureState.withLock {
+            $0.videoWriter = writer
+            $0.compositor = compositor
+            $0.annotationRenderer = annotationRenderer
+            $0.micGainProcessor = gainProc.isUnity ? nil : gainProc
+            $0.bufferPool = sendablePool
+        }
 
         try await stream.startCapture()
         delegate?.captureDidStart()
@@ -80,22 +93,26 @@ final class ScreenCaptureService: NSObject {
         guard let stream else { return }
         try await stream.stopCapture()
 
-        if let writer = videoWriter {
+        let writer = captureState.withLock { $0.videoWriter }
+        if let writer {
             await writer.finish()
+        }
+
+        captureState.withLock {
+            $0.videoWriter = nil
+            $0.compositor = nil
+            $0.annotationRenderer = nil
+            $0.bufferPool = nil
+            $0.micGainProcessor = nil
         }
 
         logger.info("Capture stopped")
         self.stream = nil
         self.currentConfig = nil
-        self.videoWriter = nil
-        self.compositor = nil
-        self.annotationRenderer = nil
-        self.bufferPool = nil
-        self.micGainProcessor = nil
     }
 
     func updateCompositor(_ compositor: WebcamCompositor?) {
-        self.compositor = compositor
+        captureState.withLock { $0.compositor = compositor }
     }
 
     func updateConfiguration(micEnabled: Bool) async throws {

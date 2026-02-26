@@ -17,6 +17,8 @@ struct LibraryView: View {
     @State var selectedIDs: Set<String> = []
     @State var showDeleteConfirmation = false
     @State var searchText: String = ""
+    @State var debouncedSearchText: String = ""
+    @State private var searchDebounceTask: Task<Void, Never>?
     @State var sortOrder: LibrarySortOrder = .newestFirst
     @State var transcriptFilter: TranscriptFilter = .all
 
@@ -65,8 +67,8 @@ struct LibraryView: View {
         }
 
         // Filter by search text
-        if !searchText.isEmpty {
-            let query = searchText.lowercased()
+        if !debouncedSearchText.isEmpty {
+            let query = debouncedSearchText.lowercased()
             result = result.filter { video in
                 video.title.lowercased().contains(query)
                 || (video.summary?.lowercased().contains(query) ?? false)
@@ -102,14 +104,14 @@ struct LibraryView: View {
 
     @ViewBuilder
     private var detailContent: some View {
-        if filteredVideos.isEmpty && searchText.isEmpty && sidebarSelection == .allVideos {
+        if filteredVideos.isEmpty && debouncedSearchText.isEmpty && sidebarSelection == .allVideos {
             ContentUnavailableView(
                 "No Recordings Yet",
                 systemImage: "record.circle",
                 description: Text("Start a recording from the menu bar to get started.")
             )
         } else if filteredVideos.isEmpty {
-            ContentUnavailableView.search(text: searchText.isEmpty ? "No videos" : searchText)
+            ContentUnavailableView.search(text: debouncedSearchText.isEmpty ? "No videos" : debouncedSearchText)
         } else {
             ScrollView {
                 LazyVGrid(
@@ -124,6 +126,14 @@ struct LibraryView: View {
             }
             .navigationTitle(navigationTitle)
             .searchable(text: $searchText, prompt: "Search videos...")
+            .onChange(of: searchText) { _, newValue in
+                searchDebounceTask?.cancel()
+                searchDebounceTask = Task {
+                    try? await Task.sleep(for: .milliseconds(300))
+                    guard !Task.isCancelled else { return }
+                    debouncedSearchText = newValue
+                }
+            }
             .onAppear { updateStorageSummary() }
             .onChange(of: videos.count) { updateStorageSummary() }
             .toolbar { toolbarContent }

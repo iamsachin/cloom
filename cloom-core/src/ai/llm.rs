@@ -136,11 +136,7 @@ struct ChatResponseMessage {
 }
 
 fn chat_completion(api_key: &str, prompt: &str) -> Result<String, CloomError> {
-    let rt = tokio::runtime::Runtime::new().map_err(|e| CloomError::ApiError {
-        msg: format!("Failed to create async runtime: {e}"),
-    })?;
-
-    rt.block_on(async {
+    crate::runtime::RUNTIME.block_on(async {
         let client = reqwest::Client::new();
 
         let body = ChatRequest {

@@ -8,16 +8,17 @@ private let sRGBColorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpa
 /// Renders annotation overlays as CIImage for video burn-in.
 /// Called from SCStreamOutput queue — must be thread-safe.
 final class AnnotationRenderer: @unchecked Sendable {
-    let ciContext: CIContext
+    let ciContext: CIContext = SharedCIContext.instance
     private let store: AnnotationStore
+
+    // Stroke cache — avoids CGContext creation every frame when strokes haven't changed.
+    private var cachedStrokeImage: CIImage?
+    private var cachedStrokeCount: Int = -1
+    private var cachedStrokeWidth: Int = 0
+    private var cachedStrokeHeight: Int = 0
 
     init(store: AnnotationStore) {
         self.store = store
-        if let device = MTLCreateSystemDefaultDevice() {
-            self.ciContext = CIContext(mtlDevice: device, options: [.workingColorSpace: sRGBColorSpace])
-        } else {
-            self.ciContext = CIContext(options: [.workingColorSpace: sRGBColorSpace])
-        }
     }
 
     /// Returns a CIImage overlay to composite over the screen frame, or nil if nothing to render.
@@ -31,20 +32,29 @@ final class AnnotationRenderer: @unchecked Sendable {
         let hasRipples = !snap.ripples.isEmpty
         let hasSpotlight = snap.spotlight.isEnabled
 
-        guard hasStrokes || hasRipples || hasSpotlight else { return nil }
+        guard hasStrokes || hasRipples || hasSpotlight else {
+            cachedStrokeImage = nil
+            cachedStrokeCount = -1
+            return nil
+        }
 
         let w = CGFloat(screenWidth)
         let h = CGFloat(screenHeight)
         var overlay: CIImage?
 
-        // 1. Render strokes
+        // 1. Render strokes (cached — only re-render when count or dimensions change)
         if hasStrokes {
-            if let strokeImage = renderStrokes(snap.strokes, width: screenWidth, height: screenHeight) {
-                overlay = strokeImage
+            let strokeCount = snap.strokes.count
+            if strokeCount != cachedStrokeCount || screenWidth != cachedStrokeWidth || screenHeight != cachedStrokeHeight {
+                cachedStrokeImage = renderStrokes(snap.strokes, width: screenWidth, height: screenHeight)
+                cachedStrokeCount = strokeCount
+                cachedStrokeWidth = screenWidth
+                cachedStrokeHeight = screenHeight
             }
+            overlay = cachedStrokeImage
         }
 
-        // 2. Render ripples
+        // 2. Render ripples (CIFilter-based — cheap, no caching needed)
         if hasRipples {
             for ripple in snap.ripples {
                 if let rippleImage = renderRipple(ripple, width: w, height: h, currentTime: currentTime) {
@@ -53,7 +63,7 @@ final class AnnotationRenderer: @unchecked Sendable {
             }
         }
 
-        // 3. Render spotlight
+        // 3. Render spotlight (CIFilter-based — cheap, no caching needed)
         if hasSpotlight {
             if let spotlightImage = renderSpotlight(snap.spotlight, width: w, height: h) {
                 overlay = overlay.map { $0.composited(over: spotlightImage) } ?? spotlightImage

@@ -36,7 +36,7 @@ final class WebcamCompositor: @unchecked Sendable {
 
     private let latestFrame: OSAllocatedUnfairLock<SendablePixelBuffer>
     private let latestLayout: OSAllocatedUnfairLock<BubbleLayout>
-    private let ciContext: CIContext
+    private let ciContext: CIContext = SharedCIContext.instance
 
     // Shape mask cache (accessed from extension)
     let maskCache: OSAllocatedUnfairLock<ShapeMaskCache>
@@ -51,12 +51,6 @@ final class WebcamCompositor: @unchecked Sendable {
         self.latestLayout = OSAllocatedUnfairLock(initialState: .default)
         self.maskCache = OSAllocatedUnfairLock(initialState: ShapeMaskCache())
         self.frameImageCache = OSAllocatedUnfairLock(initialState: FrameImageCache())
-
-        if let device = MTLCreateSystemDefaultDevice() {
-            self.ciContext = CIContext(mtlDevice: device, options: [.workingColorSpace: sRGBColorSpace])
-        } else {
-            self.ciContext = CIContext(options: [.workingColorSpace: sRGBColorSpace])
-        }
     }
 
     func updateWebcamFrame(_ pixelBuffer: CVPixelBuffer) {

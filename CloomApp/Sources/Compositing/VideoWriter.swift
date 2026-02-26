@@ -19,6 +19,7 @@ actor VideoWriter {
 
     /// Exposed for the compositing pipeline to allocate output buffers.
     /// Only valid after `start()` has been called.
+    /// Set once in start() before capture begins; read-only from capture queue thereafter.
     nonisolated(unsafe) var exposedPixelBufferPool: CVPixelBufferPool?
 
     private var firstVideoPTS: CMTime?
@@ -98,7 +99,8 @@ actor VideoWriter {
             firstVideoPTS = pts
         }
 
-        let normalizedPTS = CMTimeSubtract(pts, firstVideoPTS!)
+        guard let offset = firstVideoPTS else { return }
+        let normalizedPTS = CMTimeSubtract(pts, offset)
 
         guard videoInput.isReadyForMoreMediaData else {
             dropCount += 1

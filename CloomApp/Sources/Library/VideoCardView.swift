@@ -2,7 +2,12 @@ import SwiftUI
 import SwiftData
 import AppKit
 
-nonisolated(unsafe) let thumbnailCache = NSCache<NSString, NSImage>()
+nonisolated(unsafe) let thumbnailCache: NSCache<NSString, NSImage> = {
+    let cache = NSCache<NSString, NSImage>()
+    cache.countLimit = 100
+    cache.totalCostLimit = 100_000_000 // ~100MB
+    return cache
+}()
 
 struct VideoCardView: View {
     let video: VideoRecord

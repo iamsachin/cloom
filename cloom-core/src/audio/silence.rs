@@ -71,8 +71,9 @@ pub fn detect_silence(
             msg: format!("Failed to create decoder: {e}"),
         })?;
 
-    // Collect all decoded samples (mono-mixed)
-    let mut all_samples: Vec<f32> = Vec::new();
+    // Collect all decoded samples (mono-mixed) — pre-allocate from estimated duration
+    let estimated_samples = sample_rate as usize * 120; // ~2 min estimate
+    let mut all_samples: Vec<f32> = Vec::with_capacity(estimated_samples);
 
     loop {
         let packet = match format.next_packet() {

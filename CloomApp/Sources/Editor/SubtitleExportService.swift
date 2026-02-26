@@ -172,24 +172,11 @@ actor SubtitleExportService {
         videoWidth: CGFloat,
         videoHeight: CGFloat
     ) -> CIImage? {
-        let w = Int(videoWidth)
-        let h = Int(videoHeight)
         let fontSize: CGFloat = max(16, videoHeight * 0.035)
         let padding: CGFloat = 12
         let bottomMargin: CGFloat = videoHeight * 0.06
 
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let ctx = CGContext(
-            data: nil,
-            width: w,
-            height: h,
-            bitsPerComponent: 8,
-            bytesPerRow: w * 4,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
-        ) else { return nil }
-
-        // Measure text
+        // Measure text first to allocate only the needed capsule size (not full video frame)
         let attrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: fontSize, weight: .semibold),
             .foregroundColor: NSColor.white,
@@ -199,15 +186,26 @@ actor SubtitleExportService {
 
         let bgWidth = textSize.width + padding * 2
         let bgHeight = textSize.height + padding
-        let bgRect = CGRect(
-            x: (videoWidth - bgWidth) / 2,
-            y: bottomMargin,
-            width: bgWidth,
-            height: bgHeight
-        )
 
-        // Draw background capsule
-        let capsulePath = CGPath(roundedRect: bgRect, cornerWidth: bgHeight / 2, cornerHeight: bgHeight / 2, transform: nil)
+        // Create a CGContext sized to the capsule only (not full video frame)
+        let capsuleW = Int(ceil(bgWidth))
+        let capsuleH = Int(ceil(bgHeight))
+        guard capsuleW > 0 && capsuleH > 0 else { return nil }
+
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: nil,
+            width: capsuleW,
+            height: capsuleH,
+            bitsPerComponent: 8,
+            bytesPerRow: capsuleW * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+        ) else { return nil }
+
+        // Draw background capsule at origin
+        let capsuleRect = CGRect(x: 0, y: 0, width: bgWidth, height: bgHeight)
+        let capsulePath = CGPath(roundedRect: capsuleRect, cornerWidth: bgHeight / 2, cornerHeight: bgHeight / 2, transform: nil)
         ctx.setFillColor(CGColor(gray: 0, alpha: 0.65))
         ctx.addPath(capsulePath)
         ctx.fillPath()
@@ -217,14 +215,19 @@ actor SubtitleExportService {
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = nsCtx
         let textOrigin = CGPoint(
-            x: bgRect.origin.x + padding,
-            y: bgRect.origin.y + (bgHeight - textSize.height) / 2
+            x: padding,
+            y: (bgHeight - textSize.height) / 2
         )
         attrString.draw(at: textOrigin)
         NSGraphicsContext.restoreGraphicsState()
 
         guard let cgImage = ctx.makeImage() else { return nil }
+
+        // Position the small capsule image at its correct location within the full video frame
+        let posX = (videoWidth - bgWidth) / 2
+        let posY = bottomMargin
         return CIImage(cgImage: cgImage)
+            .transformed(by: CGAffineTransform(translationX: posX, y: posY))
     }
 
     private func formatSRTTime(ms: Int64) -> String {

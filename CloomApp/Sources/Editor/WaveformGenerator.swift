@@ -61,50 +61,48 @@ actor WaveformGenerator {
             return [Float](repeating: 0, count: peakCount)
         }
 
-        // Collect all samples
-        var allSamples: [Int16] = []
+        // Streaming peak calculation — O(peakCount) memory instead of O(total_samples).
+        // First pass: count total samples to compute samplesPerPeak.
+        var totalSamples = 0
+        var buffers: [(CMBlockBuffer, Int)] = []
+
         while let buffer = output.copyNextSampleBuffer() {
             guard let blockBuffer = CMSampleBufferGetDataBuffer(buffer) else { continue }
             let length = CMBlockBufferGetDataLength(blockBuffer)
+            let sampleCount = length / MemoryLayout<Int16>.size
+            totalSamples += sampleCount
+            buffers.append((blockBuffer, length))
+        }
+
+        guard totalSamples > 0 else {
+            return [Float](repeating: 0, count: peakCount)
+        }
+
+        let samplesPerPeak = max(1, totalSamples / peakCount)
+        var peaks = [Float](repeating: 0, count: peakCount)
+        var globalSampleIndex = 0
+
+        for (blockBuffer, length) in buffers {
             var data = Data(count: length)
             _ = data.withUnsafeMutableBytes { ptr in
                 guard let baseAddress = ptr.baseAddress else { return noErr }
                 return CMBlockBufferCopyDataBytes(blockBuffer, atOffset: 0, dataLength: length, destination: baseAddress)
             }
-            let samples = data.withUnsafeBytes { raw in
-                Array(raw.bindMemory(to: Int16.self))
+            data.withUnsafeBytes { raw in
+                let samples = raw.bindMemory(to: Int16.self)
+                for sample in samples {
+                    let binIndex = min(globalSampleIndex / samplesPerPeak, peakCount - 1)
+                    let absVal = Float(abs(sample)) / Float(Int16.max)
+                    if absVal > peaks[binIndex] {
+                        peaks[binIndex] = absVal
+                    }
+                    globalSampleIndex += 1
+                }
             }
-            allSamples.append(contentsOf: samples)
-        }
-
-        guard !allSamples.isEmpty else {
-            return [Float](repeating: 0, count: peakCount)
-        }
-
-        // Downsample to peakCount peaks
-        let samplesPerPeak = max(1, allSamples.count / peakCount)
-        var peaks: [Float] = []
-        peaks.reserveCapacity(peakCount)
-
-        for i in 0..<peakCount {
-            let start = i * samplesPerPeak
-            let end = min(start + samplesPerPeak, allSamples.count)
-            guard start < end else {
-                peaks.append(0)
-                continue
-            }
-            var maxVal: Int16 = 0
-            for j in start..<end {
-                let absVal = abs(allSamples[j])
-                if absVal > maxVal { maxVal = absVal }
-            }
-            peaks.append(Float(maxVal) / Float(Int16.max))
         }
 
         // Adaptive noise floor: use the median peak as the background noise level,
         // then zero out anything below a threshold to suppress fan/hum while keeping speech.
-        // Higher mic sensitivity → lower multiplier (show more waveform detail).
-        // At 100%+ the multiplier is 2x (default). At 0% it's 5x (more aggressive).
         let sensitivityFraction = max(0, min(1, Float(min(micSensitivity, 100)) / 100.0))
         let noiseMultiplier: Float = 5.0 - sensitivityFraction * 3.0 // 5x at 0%, 2x at 100%+
         let sorted = peaks.sorted()
