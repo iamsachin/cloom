@@ -21,6 +21,11 @@
 ## Git & Commits
 - At natural checkpoints (feature complete, bug fixed, refactor done, etc.), ask the user if they'd like to commit the changes so far before continuing.
 
+## Plan Docs (`.claude/plans/`)
+- Before starting any task, consult the relevant plan files in `.claude/plans/` for context on architecture, data models, module structure, and prior decisions.
+- Key files: `00-overview.md` (scope), `01-features.md` (feature matrix), `02-project-structure.md` (file tree), `03-data-models.md` (types), `04-ffi-boundary.md` (Rust FFI), `05-swift-modules.md` / `06-rust-modules.md` (module details), `07-technical-challenges.md` (known issues & solutions), `08-implementation-phases.md` (roadmap).
+- After completing a task, update any plan files affected by the changes (new files, renamed types, new features, changed architecture, etc.) to keep them in sync with the codebase.
+
 ## Progress Tracking
 - After completing each phase, mark it as done in the progress tracker (`.claude/plans/PROGRESS.md`) before moving on.
 
