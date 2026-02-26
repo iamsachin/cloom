@@ -162,4 +162,5 @@ struct AnnotationSnapshot: Sendable {
     let strokes: [AnnotationStroke]
     let ripples: [ClickRipple]
     let spotlight: SpotlightState
+    let hasActiveStroke: Bool
 }

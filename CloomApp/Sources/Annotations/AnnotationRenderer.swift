@@ -42,16 +42,23 @@ final class AnnotationRenderer: @unchecked Sendable {
         let h = CGFloat(screenHeight)
         var overlay: CIImage?
 
-        // 1. Render strokes (cached — only re-render when count or dimensions change)
+        // 1. Render strokes (cached when stable, bypassed during active drawing)
         if hasStrokes {
             let strokeCount = snap.strokes.count
-            if strokeCount != cachedStrokeCount || screenWidth != cachedStrokeWidth || screenHeight != cachedStrokeHeight {
+            if snap.hasActiveStroke {
+                // Active stroke changes every frame — skip cache
+                overlay = renderStrokes(snap.strokes, width: screenWidth, height: screenHeight)
+                cachedStrokeImage = nil
+                cachedStrokeCount = -1
+            } else if strokeCount != cachedStrokeCount || screenWidth != cachedStrokeWidth || screenHeight != cachedStrokeHeight {
                 cachedStrokeImage = renderStrokes(snap.strokes, width: screenWidth, height: screenHeight)
                 cachedStrokeCount = strokeCount
                 cachedStrokeWidth = screenWidth
                 cachedStrokeHeight = screenHeight
+                overlay = cachedStrokeImage
+            } else {
+                overlay = cachedStrokeImage
             }
-            overlay = cachedStrokeImage
         }
 
         // 2. Render ripples (CIFilter-based — cheap, no caching needed)
