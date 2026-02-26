@@ -124,9 +124,10 @@ actor AIOrchestrator {
                     return nil
                 }
             }()
+            let timestampedText = Self.buildTimestampedTranscript(from: transcript.words)
             async let chaptersResult: [Chapter] = {
                 do {
-                    return try generateChapters(transcriptText: fullText, apiKey: apiKey, provider: .openAi)
+                    return try generateChapters(transcriptText: timestampedText, apiKey: apiKey, provider: .openAi)
                 } catch {
                     logger.error("Chapter generation failed: \(error)")
                     return []
@@ -290,6 +291,30 @@ actor AIOrchestrator {
         } catch {
             logger.error("Failed to save AI results: \(error)")
         }
+    }
+
+    /// Build a transcript string with periodic timestamps so the LLM can generate accurate chapter markers.
+    /// Format: "[MM:SS] word word word [MM:SS] word word..."
+    static func buildTimestampedTranscript(from words: [TranscriptWord]) -> String {
+        guard !words.isEmpty else { return "" }
+
+        var result = ""
+        var lastTimestampMs: Int64 = -10_000 // force first timestamp
+
+        for w in words {
+            // Insert a timestamp marker every ~10 seconds
+            if w.startMs - lastTimestampMs >= 10_000 {
+                let totalSec = Int(w.startMs / 1000)
+                let m = totalSec / 60
+                let s = totalSec % 60
+                if !result.isEmpty { result += "\n" }
+                result += String(format: "[%d:%02d] ", m, s)
+                lastTimestampMs = w.startMs
+            }
+            result += w.word + " "
+        }
+
+        return result.trimmingCharacters(in: .whitespaces)
     }
 
     /// Map paragraph breaks in the LLM-formatted text back to word indices.

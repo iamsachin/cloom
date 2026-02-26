@@ -90,19 +90,22 @@ struct EditorTimelineView: View {
             let normFactor: Float = 1.0 / maxPeak
 
             Canvas { context, size in
-                let barWidth = size.width / CGFloat(peaks.count)
+                let totalWidth = size.width
+                let barSpacing: CGFloat = 0.5
+                let barWidth = max(1, (totalWidth / CGFloat(peaks.count)) - barSpacing)
+                let step = totalWidth / CGFloat(peaks.count)
                 let midY = size.height / 2
 
                 for (i, peak) in peaks.enumerated() {
                     let normalized = min(peak * normFactor, 1.0)
                     let boosted = CGFloat(sqrt(normalized))
                     let barHeight = boosted * size.height * 0.9
-                    let x = CGFloat(i) * barWidth
+                    let x = CGFloat(i) * step
                     let rect = CGRect(
                         x: x,
                         y: midY - barHeight / 2,
                         width: barWidth,
-                        height: max(barHeight, 2)
+                        height: max(barHeight, 1)
                     )
                     context.fill(Path(rect), with: .color(.accentColor.opacity(0.8)))
                 }
