@@ -33,18 +33,23 @@ extension ScreenCaptureService: SCStreamOutput {
     }
 
     nonisolated private func handleScreenFrame(_ sampleBuffer: CMSampleBuffer) {
-        guard !isProcessingFrame else { return }
-        isProcessingFrame = true
-        defer { isProcessingFrame = false }
+        // Read all shared state in one lock acquisition
+        let state = captureState.withLock { state -> CaptureState? in
+            guard !state.isProcessingFrame else { return nil }
+            state.isProcessingFrame = true
+            return state
+        }
+        guard let state else { return }
+        defer { captureState.withLock { $0.isProcessingFrame = false } }
 
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
 
-        guard let writer = videoWriter else { return }
+        guard let writer = state.videoWriter else { return }
 
         // Step 1: Composite webcam if available
         let afterWebcam: CVPixelBuffer
-        if let comp = compositor, let pool = bufferPool,
+        if let comp = state.compositor, let pool = state.bufferPool,
            let composited = comp.composite(screenBuffer: pixelBuffer, bufferPool: pool) {
             afterWebcam = composited
         } else {
@@ -53,7 +58,7 @@ extension ScreenCaptureService: SCStreamOutput {
 
         // Step 2: Composite annotations if available
         let outputBuffer: CVPixelBuffer
-        if let renderer = annotationRenderer, let pool = bufferPool {
+        if let renderer = state.annotationRenderer, let pool = state.bufferPool {
             let screenWidth = CVPixelBufferGetWidth(afterWebcam)
             let screenHeight = CVPixelBufferGetHeight(afterWebcam)
             let currentTime = ProcessInfo.processInfo.systemUptime
@@ -83,11 +88,14 @@ extension ScreenCaptureService: SCStreamOutput {
     }
 
     nonisolated private func handleAudio(_ sampleBuffer: CMSampleBuffer, sourceType: AudioSourceType) {
-        guard let writer = videoWriter else { return }
+        let (writer, gainProc) = captureState.withLock {
+            ($0.videoWriter, $0.micGainProcessor)
+        }
+        guard let writer else { return }
 
         var processedBuffer = sampleBuffer
 
-        if sourceType == .microphone, let gainProc = micGainProcessor {
+        if sourceType == .microphone, let gainProc {
             processedBuffer = gainProc.process(processedBuffer)
         }
 

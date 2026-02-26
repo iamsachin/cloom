@@ -2,12 +2,14 @@ import AVFoundation
 import Combine
 
 /// Captures real-time mic audio and publishes the peak level (0.0–1.0) after gain.
+/// Audio callback updates rawLevel atomically; a 30Hz timer publishes to @Published level.
 @MainActor
 final class MicLevelMonitor: NSObject, ObservableObject {
     @Published var level: Float = 0
 
     private var session: AVCaptureSession?
     private var audioOutput: AVCaptureAudioDataOutput?
+    private var displayTimer: Timer?
     private let queue = DispatchQueue(label: "com.cloom.micLevel", qos: .userInteractive)
     private nonisolated(unsafe) var gainLinear: Float = 1.0
     private nonisolated(unsafe) var rawLevel: Float = 0
@@ -41,6 +43,15 @@ final class MicLevelMonitor: NSObject, ObservableObject {
         self.session = session
         self.audioOutput = output
 
+        // 30Hz timer to read rawLevel and publish — avoids ~94 Task { @MainActor } per second
+        displayTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.level = self.rawLevel
+            }
+        }
+
         session.startRunning()
     }
 
@@ -49,6 +60,8 @@ final class MicLevelMonitor: NSObject, ObservableObject {
     }
 
     func stop() {
+        displayTimer?.invalidate()
+        displayTimer = nil
         session?.stopRunning()
         session = nil
         audioOutput = nil
@@ -97,9 +110,5 @@ extension MicLevelMonitor: AVCaptureAudioDataOutputSampleBufferDelegate {
         let current = rawLevel
         let smoothed = gained > current ? gained : current * 0.85 + gained * 0.15
         rawLevel = smoothed
-
-        Task { @MainActor [smoothed] in
-            self.level = smoothed
-        }
     }
 }

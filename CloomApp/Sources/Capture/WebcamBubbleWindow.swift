@@ -15,13 +15,7 @@ final class WebcamBubbleWindow {
     var panel: NSPanel?
     var imageLayer: CALayer?
     var emojiFrameLayer: CALayer?
-    let ciContext: CIContext = {
-        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
-        if let device = MTLCreateSystemDefaultDevice() {
-            return CIContext(mtlDevice: device, options: [.workingColorSpace: colorSpace])
-        }
-        return CIContext(options: [.workingColorSpace: colorSpace])
-    }()
+    let ciContext: CIContext = SharedCIContext.instance
     var moveObserver: NSObjectProtocol?
     nonisolated(unsafe) var lastLayoutReport: CFTimeInterval = 0
     private var decorationObserver: NSObjectProtocol?

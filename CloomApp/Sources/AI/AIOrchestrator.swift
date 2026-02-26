@@ -106,44 +106,40 @@ actor AIOrchestrator {
         var generatedChapters: [Chapter] = []
 
         if hasEnoughText {
-            // Step 3: Generate title
-            do {
-                generatedTitle = try generateTitle(
-                    transcriptText: transcript.fullText,
-                    apiKey: apiKey,
-                    provider: .openAi
-                )
-                logger.info("Generated title: \(generatedTitle ?? "")")
-            } catch {
-                logger.error("Title generation failed: \(error)")
-                await showError("Title Generation Failed", detail: "\(error)")
-            }
+            // Steps 3-5: Run title, summary, and chapter generation in parallel
+            let fullText = transcript.fullText
+            async let titleResult: String? = {
+                do {
+                    return try generateTitle(transcriptText: fullText, apiKey: apiKey, provider: .openAi)
+                } catch {
+                    logger.error("Title generation failed: \(error)")
+                    return nil
+                }
+            }()
+            async let summaryResult: String? = {
+                do {
+                    return try generateSummary(transcriptText: fullText, apiKey: apiKey, provider: .openAi)
+                } catch {
+                    logger.error("Summary generation failed: \(error)")
+                    return nil
+                }
+            }()
+            async let chaptersResult: [Chapter] = {
+                do {
+                    return try generateChapters(transcriptText: fullText, apiKey: apiKey, provider: .openAi)
+                } catch {
+                    logger.error("Chapter generation failed: \(error)")
+                    return []
+                }
+            }()
 
-            // Step 4: Generate summary
-            do {
-                generatedSummary = try generateSummary(
-                    transcriptText: transcript.fullText,
-                    apiKey: apiKey,
-                    provider: .openAi
-                )
-                logger.info("Generated summary")
-            } catch {
-                logger.error("Summary generation failed: \(error)")
-                await showError("Summary Generation Failed", detail: "\(error)")
-            }
+            generatedTitle = await titleResult
+            generatedSummary = await summaryResult
+            generatedChapters = await chaptersResult
 
-            // Step 5: Generate chapters
-            do {
-                generatedChapters = try generateChapters(
-                    transcriptText: transcript.fullText,
-                    apiKey: apiKey,
-                    provider: .openAi
-                )
-                logger.info("Generated \(generatedChapters.count) chapters")
-            } catch {
-                logger.error("Chapter generation failed: \(error)")
-                await showError("Chapter Generation Failed", detail: "\(error)")
-            }
+            if let t = generatedTitle { logger.info("Generated title: \(t)") }
+            if generatedSummary != nil { logger.info("Generated summary") }
+            logger.info("Generated \(generatedChapters.count) chapters")
         } else {
             logger.info("Transcript too short (\(trimmedText.count) chars) — skipping LLM steps")
         }
