@@ -31,6 +31,8 @@ final class VideoRecord {
     @Relationship(deleteRule: .cascade) var chapters: [ChapterRecord]
     @Relationship(deleteRule: .cascade) var comments: [VideoComment]
     @Relationship(deleteRule: .cascade) var viewEvents: [ViewEvent]
+    @Relationship(deleteRule: .cascade) var bookmarks: [BookmarkRecord]
+    @Relationship(deleteRule: .cascade) var editDecisionList: EditDecisionList?
 
     // AI-generated
     var hasTranscript: Bool
@@ -130,6 +132,19 @@ struct CutRange: Codable {
 }
 ```
 
+### Bookmark
+
+```swift
+@Model
+final class BookmarkRecord {
+    @Attribute(.unique) var id: String
+    var text: String
+    var timestampMs: Int64
+
+    @Relationship(inverse: \VideoRecord.bookmarks) var video: VideoRecord?
+}
+```
+
 ### Comment & Analytics (models exist, UI not yet built)
 
 ```swift
@@ -192,21 +207,23 @@ enum RecordingState: Equatable {
 ### Video Quality & Recording Settings
 
 ```swift
-enum VideoQuality: String, Codable, CaseIterable, Identifiable {
-    case low      // 2 Mbps
-    case medium   // 5 Mbps
-    case high     // 10 Mbps
+enum VideoQuality: String, CaseIterable, Identifiable {
+    case low      // 4 Mbps
+    case medium   // 10 Mbps
+    case high     // 20 Mbps
 
     var bitrate: Int { /* ... */ }
     var label: String { /* ... */ }
 }
 
 struct RecordingSettings {
-    var fps: Int                  // 24, 30, or 60 (via @AppStorage)
-    var quality: VideoQuality     // low, medium, high
-    var micDeviceID: String?
-    var cameraDeviceID: String?
-    var noiseCancellationEnabled: Bool
+    let fps: Int                  // 24, 30, or 60 (via @AppStorage)
+    let quality: VideoQuality     // low, medium, high
+    let micDeviceID: String?
+    let cameraDeviceID: String?
+    let micSensitivity: Int       // 0–100 (gain applied via MicGainProcessor)
+
+    static func fromDefaults() -> RecordingSettings { /* reads from UserDefaults */ }
 }
 ```
 

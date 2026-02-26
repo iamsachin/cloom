@@ -2,18 +2,19 @@
 
 Rust's role is focused: AI API clients, audio analysis, and GIF export. Video encoding, compositing, data persistence, config, MP4 export, and waveform generation are all handled by Swift.
 
-**Total: 8 source files, ~1,600 lines of code, 42 inline tests.**
+**Total: 12 source files, ~1,700 lines of code, 43 tests (inline + extracted test files).**
 
 ---
 
-## audio/ — Audio Processing (3 files)
+## audio/ — Audio Processing (4 files)
 
 **Responsibilities:**
 - Silence detection: decode audio file (AAC/M4A/WAV) via symphonia, identify silent regions by RMS amplitude threshold
 - Filler word identification: scan transcript words for common filler patterns (single + multi-word)
 
 **Key Files:**
-- `silence.rs` — `SilenceDetector` struct. `detect_silence()` decodes audio via symphonia, computes RMS per 10ms window, finds regions below threshold for minimum duration. Returns `Vec<TimeRange>`. **5 tests:** file not found, all silent, sine wave, silence between tones, below min duration (programmatic WAV generation).
+- `silence.rs` — `SilenceDetector` struct. `detect_silence()` decodes audio via symphonia, computes RMS per 10ms window, finds regions below threshold for minimum duration. Returns `Vec<TimeRange>`. Pre-allocated Vecs for performance.
+- `silence_tests.rs` — **5 tests:** file not found, all silent, sine wave, silence between tones, below min duration (programmatic WAV generation). Extracted via `#[path]` attribute.
 - `filler.rs` — `FillerWordDetector` struct. `detect_fillers()` scans `TranscriptWord` list via case-insensitive matching. Single-word: uh, um, like, basically, literally, actually, honestly, right, so. Multi-word (sliding window): you know, i mean, sort of, kind of. Returns `Vec<FillerWord>` with word + count. **12 tests:** punctuation stripping, all singles, all multis, clean speech, consecutive, sorting, count.
 - `mod.rs` — Module re-exports
 
@@ -23,7 +24,7 @@ Rust's role is focused: AI API clients, audio analysis, and GIF export. Video en
 
 ---
 
-## ai/ — AI API Clients (3 files)
+## ai/ — AI API Clients (4 files)
 
 **Responsibilities:**
 - OpenAI transcription API: upload audio file, receive word-level transcription via `whisper-1`
@@ -38,9 +39,10 @@ Rust's role is focused: AI API clients, audio analysis, and GIF export. Video en
   - `generate_title()` — prompt: "Generate a concise title (max 10 words)"
   - `generate_summary()` — prompt: "Summarize key points in 2-3 sentences"
   - `generate_chapters()` — prompt: "Divide into chapters with timestamps", parses JSON array (supports code-fenced, bare-fenced, and raw JSON styles). Returns `Vec<Chapter>` with unique IDs.
+  - `format_paragraphs()` — adds paragraph breaks to raw transcript via LLM
   - `truncate_transcript()` — truncates to ~8000 chars for LLM context
   - `validate_provider()` — checks provider support
-  - **11 tests:** parse_chapters (valid/code-fenced/bare-fence/invalid/empty/unique-ids), truncate (short/long/boundary), validate_provider (OpenAI/Claude)
+- `llm_tests.rs` — **11 tests:** parse_chapters (valid/code-fenced/bare-fence/invalid/empty/unique-ids), truncate (short/long/boundary), validate_provider (OpenAI/Claude). Extracted via `#[path]` attribute.
 - `mod.rs` — Module re-exports
 
 **Crates:** `reqwest` (HTTP client), `serde` + `serde_json` (serialization), `tokio` (async runtime)
@@ -60,7 +62,7 @@ Rust's role is focused: AI API clients, audio analysis, and GIF export. Video en
 
 ---
 
-## gif_export.rs — GIF Export (1 file, root level)
+## gif_export.rs — GIF Export (2 files, root level)
 
 **Responsibilities:**
 - Read PNG frames manifest from disk (JSON file listing PNG paths)
@@ -69,12 +71,13 @@ Rust's role is focused: AI API clients, audio analysis, and GIF export. Video en
 - Progress reporting via callback
 
 **Key Types:**
+- `GifConfig` (uniffi::Record) — width, height, fps, quality, repeat_count
 - `GifExporter` struct
-- `export_gif()` — reads PNG manifest → loads frames → gifski encoder → GIF file
+- `export_gif(manifest_path, output_path, config, progress_callback)` — reads PNG manifest → loads frames → gifski encoder → GIF file
 
 **Crates:** `gifski` (GIF encoding with color quantization), `png` (PNG decoding), `imgref` + `rgb` (image frame types)
 
-**7 tests:** empty manifest, manifest not found, single/multi frame, progress callback, PNG RGBA/RGB loading
+- `gif_export_tests.rs` — **7 tests:** empty manifest, manifest not found, single/multi frame, progress callback, PNG RGBA/RGB loading. Extracted via `#[path]` attribute.
 
 ### GIF Export Flow
 1. Swift extracts frames from MP4 at reduced rate (via AVAssetImageGenerator)
@@ -86,13 +89,27 @@ Rust's role is focused: AI API clients, audio analysis, and GIF export. Video en
 
 ---
 
+## runtime.rs — Shared Async Runtime (1 file)
+
+**Responsibilities:**
+- Provides a shared Tokio runtime via `LazyLock<Runtime>` singleton
+- All async FFI functions (AI, transcription) use this runtime instead of creating per-call thread pools
+- Eliminates ~4ms thread pool startup overhead per API call
+
+**Key Types:**
+- `RUNTIME: LazyLock<Runtime>` — shared multi-threaded Tokio runtime
+
+**Crates:** `tokio` (rt-multi-thread)
+
+---
+
 ## lib.rs — FFI Entry Point (1 file)
 
 **Responsibilities:**
 - `uniffi::setup_scaffolding!()` macro for UniFFI proc macro setup
 - `CloomError` error enum definition (IoError, ApiError, AudioError, InvalidInput, ExportError)
 - Utility FFI functions: `hello_from_rust()`, `cloom_core_version()`
-- Module declarations for `ai`, `audio`, `gif_export`
+- Module declarations for `ai`, `audio`, `gif_export`, `runtime`
 
 **2 unit tests:** hello_from_rust, cloom_core_version
 

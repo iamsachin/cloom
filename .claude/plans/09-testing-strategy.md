@@ -53,16 +53,16 @@ Even skipping the onboarding screen, UI tests would only verify that views appea
 
 ## Rust Testing (`cargo test` — 43 tests, all passing)
 
-Tests use `#[cfg(test)]` modules with test code extracted to separate files via `#[path]` attributes for large modules.
+Tests use `#[cfg(test)]` modules. Large test modules are extracted to separate files via `#[path]` attributes (Phase 12).
 
-| Module | Test Count | What's Tested |
-|--------|-----------|---------------|
-| ai/transcribe.rs | 6 | File not found, file too large (>25MB), response parsing (wiremock), no words, empty words, MIME detection |
-| ai/llm.rs | 11 | parse_chapters (valid/code-fenced/bare-fence/invalid/empty/unique-ids), truncate_transcript (short/long/boundary), validate_provider (OpenAI/Claude) |
-| audio/filler.rs | 12 | Punctuation stripping, all singles, all multis, clean speech, consecutive, single word, sorting, count |
-| audio/silence.rs | 5 | File not found, all silent, sine wave, silence between tones, below min duration (programmatic WAV generation) |
-| gif_export.rs | 7 | Empty manifest, manifest not found, single/multi frame, progress callback, PNG RGBA/RGB loading |
-| lib.rs | 2 | hello_from_rust, cloom_core_version |
+| Module | Test File | Test Count | What's Tested |
+|--------|-----------|-----------|---------------|
+| ai/transcribe.rs | (inline) | 6 | File not found, file too large (>25MB), response parsing (wiremock), no words, empty words, MIME detection |
+| ai/llm.rs | ai/llm_tests.rs | 11 | parse_chapters (valid/code-fenced/bare-fence/invalid/empty/unique-ids), truncate_transcript (short/long/boundary), validate_provider (OpenAI/Claude) |
+| audio/filler.rs | (inline) | 12 | Punctuation stripping, all singles, all multis, clean speech, consecutive, single word, sorting, count |
+| audio/silence.rs | audio/silence_tests.rs | 5 | File not found, all silent, sine wave, silence between tones, below min duration (programmatic WAV generation) |
+| gif_export.rs | gif_export_tests.rs | 7 | Empty manifest, manifest not found, single/multi frame, progress callback, PNG RGBA/RGB loading |
+| lib.rs | (inline) | 2 | hello_from_rust, cloom_core_version |
 
 ### Test Fixtures
 

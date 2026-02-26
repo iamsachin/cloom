@@ -7,7 +7,7 @@
 | Xcode 26.2+ | macOS 26 SDK, SwiftUI, AppKit | Mac App Store |
 | Rust toolchain | cloom-core | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
 | xcodegen | Generate Cloom.xcodeproj from project.yml | `brew install xcodegen` |
-| Apple Developer Program membership | Developer ID signing + notarization (Phase 13) | developer.apple.com |
+| Apple Developer Program membership | Developer ID signing + notarization (Phase 18) | developer.apple.com |
 
 > **Note:** UniFFI CLI is local to the Rust crate (`cd cloom-core && cargo run --bin uniffi-bindgen`). No global install needed.
 
@@ -121,7 +121,7 @@ NSMicrophoneUsageDescription — "Cloom needs microphone access to record audio.
 
 **Apple Silicon only** (`aarch64-apple-darwin`) for v1.
 
-## Distribution (Phase 13 — Not Yet Implemented)
+## Distribution (Phase 18 — Not Yet Implemented)
 
 1. Archive/export the app from Xcode for Developer ID distribution
 2. Sign with `Developer ID Application`

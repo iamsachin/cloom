@@ -80,8 +80,8 @@
 
 **Solution:**
 - `PersonSegmenter` uses `.balanced` quality (not `.accurate`) for real-time
+- **Throttled to every 5th frame** with cached mask reuse (Phase 17 optimization)
 - `CIFilter` for GPU-accelerated blur compositing
-- Cache most recent mask and reuse if processing falls behind
 - Applied in the webcam frame pipeline before compositing
 
 ---
@@ -206,3 +206,38 @@
 **Problem:** Adding new enum cases (e.g., `.webcamOnly`) requires updating ALL switch statements.
 
 **Solution:** Audit all switch statements on `CaptureMode` when adding cases — particularly `ScreenCaptureService.swift`'s `buildFilter` and `configureStream` methods.
+
+---
+
+## 17. Multi-Track Audio Export (Phase 15)
+
+**Problem:** Exported videos dropped audio because `EditorCompositionBuilder` only inserted Track 0 from source. Web players (Slack) couldn't play multi-track recordings.
+
+**Solution:**
+- `EditorCompositionBuilder` now inserts ALL source audio tracks with `AVMutableAudioMix`
+- `SegmentStitcher.mixdownAudio()` re-exports multi-track files into single mixed stereo output
+- `RecordingCoordinator` uses mixdownAudio for single-segment recordings too (with fallback to plain moveItem)
+
+---
+
+## 18. Subtitle Rendering Performance (Phase 15)
+
+**Problem:** Per-frame `NSImage→TIFF→CGImage` conversion for subtitle burn-in was ~30x slower than needed.
+
+**Solution:**
+- Pre-render ALL subtitle images once before export using `CGBitmapContext` (capsule-sized ~400x40px, not full 1920x1080)
+- Cache rendered images keyed by subtitle text
+- Translate small CIImage to correct position during compositing
+
+---
+
+## 19. Shared Resources & Singletons (Phase 17)
+
+**Problem:** Multiple `CIContext` instances (6 across compositing, rendering, segmentation) wasted GPU memory. Per-API-call Tokio thread pools added ~4ms startup overhead.
+
+**Solution:**
+- `SharedCIContext` singleton consolidates all CIContext instances (thread-safe, Metal-backed)
+- `ScreenCaptureService` uses `OSAllocatedUnfairLock<CaptureState>` for cross-queue state (6 shared properties)
+- Rust shared Tokio runtime via `LazyLock<Runtime>` — no more per-call thread pools
+
+**Key lesson:** `OSAllocatedUnfairLock.withLock` closures are `@Sendable` — AV types can't be captured/returned. Use `nonisolated(unsafe)` where the lock pattern doesn't fit.

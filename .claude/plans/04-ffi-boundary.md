@@ -25,10 +25,11 @@ The FFI surface is intentionally small. Only audio processing, AI API calls, and
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `transcribe_audio` | `async (audio_path: String, api_key: String, provider: TranscriptionProvider) → Transcript` | Upload audio to OpenAI whisper-1, return word-level transcript |
-| `generate_title` | `async (transcript_text: String, api_key: String, provider: LlmProvider) → String` | Generate concise title via gpt-4o-mini |
-| `generate_summary` | `async (transcript_text: String, api_key: String, provider: LlmProvider) → String` | Generate 2-3 sentence summary via gpt-4o-mini |
-| `generate_chapters` | `async (transcript_text: String, api_key: String, provider: LlmProvider) → Vec<Chapter>` | Divide transcript into chapters via gpt-4o-mini |
+| `transcribe_audio` | `(audio_path: String, api_key: String, provider: TranscriptionProvider, model: String) → Transcript` | Upload audio to OpenAI whisper-1, return word-level transcript |
+| `generate_title` | `(transcript_text: String, api_key: String, provider: LlmProvider) → String` | Generate concise title via gpt-4o-mini |
+| `generate_summary` | `(transcript_text: String, api_key: String, provider: LlmProvider) → String` | Generate 2-3 sentence summary via gpt-4o-mini |
+| `generate_chapters` | `(transcript_text: String, api_key: String, provider: LlmProvider) → Vec<Chapter>` | Divide transcript into chapters via gpt-4o-mini |
+| `format_paragraphs` | `(transcript_text: String, api_key: String, provider: LlmProvider) → String` | Add paragraph breaks to raw transcript via gpt-4o-mini |
 
 `LlmProvider` stays in the interface for forward compatibility. In v1, only `OpenAi` is enabled; `Claude` returns `CloomError::InvalidInput`.
 
@@ -38,7 +39,7 @@ The FFI surface is intentionally small. Only audio processing, AI API calls, and
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `export_gif` | `async (frames_manifest_path: String, output_path: String, width: u32, fps: u32, quality: u8, progress: GifProgressCallback)` | Read PNG manifest, encode GIF via gifski |
+| `export_gif` | `(manifest_path: String, output_path: String, config: GifConfig, progress: Box<dyn GifProgressCallback>) → String` | Read PNG manifest, encode GIF via gifski |
 
 ### Utility Functions
 
@@ -59,6 +60,7 @@ FillerWord { word: String, start_ms: u64, end_ms: u64, count: u32 }
 TranscriptWord { word: String, start_ms: u64, end_ms: u64, confidence: f32 }
 Transcript { full_text: String, words: Vec<TranscriptWord>, language: String }
 Chapter { id: String, title: String, start_ms: u64 }
+GifConfig { width: u32, height: u32, fps: u8, quality: u8, repeat_count: i16 }
 ```
 
 ### Enums

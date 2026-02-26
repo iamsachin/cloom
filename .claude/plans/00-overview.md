@@ -16,7 +16,7 @@ A free, local, standalone macOS screen recording app that replicates Loom's UI/U
 - **Storage:** Local-only (SwiftData)
 - **AI:** API-based (OpenAI only in v1; transcription via `whisper-1`; LLM via `gpt-4o-mini`; provider abstraction retained for future expansion) — Rust owns API clients
 - **GIF Export:** gifski via Rust FFI (Swift extracts PNG frames, Rust encodes GIF)
-- **Features:** All categories A-K (see 01-features.md); some deferred (B6 virtual backgrounds, K1 analytics, K2 comments)
+- **Features:** All categories A-L (see 01-features.md); some deferred (B6 virtual backgrounds, K1 analytics, K2 comments, K4 beauty filter)
 - **Distribution:** Direct DMG sharing (outside App Store) with Developer ID signing + Apple notarization + stapling (not yet implemented)
 
 ## Design Principle
@@ -37,12 +37,20 @@ Rust owns compute-heavy processing and external API calls:
 - GIF export (gifski encoder with PNG manifest input)
 
 ## Implementation Status
-- **Phases 1A–11:** Complete (project skeleton through cleanup & tests)
-- **Phase 12 (Advanced):** Not started — local analytics, timestamped comments, performance optimization, beauty filter
-- **Phase 13 (Pre-Release):** Not started — signing, notarization, DMG, branding
+- **Phases 1A–17:** Complete (project skeleton through performance & code quality audit)
+  - 1A–3: Foundation (skeleton → recording modes → compositing)
+  - 4–7: Features (annotations → editor → AI → player)
+  - 8–11: Polish & tests (library → settings → cleanup → 43 Rust + 32 Swift tests)
+  - 12: Code quality & file splitting (no file over ~280 lines)
+  - 13: Bookmarks + performance audit (5 optimizations)
+  - 14: App icon & branding
+  - 15: Audio export fixes & subtitle embedding (hard-burn + SRT)
+  - 16: Mic sensitivity setting
+  - 17: Performance & code quality audit (SharedCIContext, PersonSegmenter throttling, shared Tokio runtime, etc.)
+- **Phase 18 (Pre-Release):** Not started — Developer ID signing, notarization, DMG packaging
 
 ## Prerequisites
 - Xcode 26.2+ (for macOS 26 SDK)
 - Rust toolchain (`rustup` + `cargo`)
 - UniFFI CLI is local to the Rust crate (`cd cloom-core && cargo run --bin uniffi-bindgen`), NOT a global install
-- Apple Developer Program membership (required for Developer ID signing + notarization — Phase 13)
+- Apple Developer Program membership (required for Developer ID signing + notarization — Phase 18)

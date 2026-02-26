@@ -15,15 +15,18 @@ cloom/
 │   │   ├── AI/
 │   │   │   ├── AIOrchestrator.swift           # actor: transcribe → fillers → LLM → silence → persist
 │   │   │   ├── AIProcessingTracker.swift      # Loading spinner state for library cards
+│   │   │   ├── AudioExtractor.swift           # Extract audio track from MP4
 │   │   │   └── KeychainService.swift          # API key storage (file-based ~/Library/Application Support/Cloom/)
 │   │   ├── Annotations/
-│   │   │   ├── AnnotationCanvasWindow.swift   # Transparent NSPanel overlay for drawing
+│   │   │   ├── AnnotationCanvasRenderer.swift # All drawing code (extracted from CanvasView)
 │   │   │   ├── AnnotationCanvasView.swift     # SwiftUI Canvas with mouse/pressure tracking
-│   │   │   ├── AnnotationStore.swift          # @Observable store for real-time stroke editing
+│   │   │   ├── AnnotationCanvasWindow.swift   # Transparent NSPanel overlay for drawing
+│   │   │   ├── AnnotationInputHandler.swift   # Mouse events, eraser (extracted from CanvasView)
 │   │   │   ├── AnnotationModels.swift         # AnnotationTool, StrokePoint, StrokeColor, AnnotationStroke, ClickRipple, SpotlightState
 │   │   │   ├── AnnotationRenderer.swift       # Burns annotations as CIImage into video frames
-│   │   │   ├── AnnotationToolbarPanel.swift   # NSPanel for tool/color/width controls
+│   │   │   ├── AnnotationStore.swift          # @Observable store for real-time stroke editing
 │   │   │   ├── AnnotationToolbarContentView.swift  # SwiftUI toolbar content
+│   │   │   ├── AnnotationToolbarPanel.swift   # NSPanel for tool/color/width controls
 │   │   │   ├── ClickEmphasisMonitor.swift     # CGEvent tap for click ripple effects
 │   │   │   └── CursorSpotlightMonitor.swift   # Cursor position tracking for spotlight
 │   │   ├── App/
@@ -40,85 +43,106 @@ cloom/
 │   │   │       ├── cloom_coreFFI.h
 │   │   │       └── cloom_coreFFI.modulemap
 │   │   ├── Capture/
-│   │   │   ├── CaptureMode.swift              # enum: fullScreen, window, region, webcamOnly
-│   │   │   ├── ScreenCaptureService.swift     # SCStreamOutput per-frame pipeline + audio
-│   │   │   ├── ScreenCapturePermission.swift  # TCC permission check
-│   │   │   ├── ContentPicker.swift            # SCContentSharingPicker wrapper
-│   │   │   ├── RegionSelectionWindow.swift    # Rubber-band NSPanel for region selection
+│   │   │   ├── BubbleContentView.swift        # NSView for webcam bubble click/drag (extracted from WebcamBubbleWindow)
+│   │   │   ├── BubbleLayerBuilder.swift       # Panel creation, emoji frame, rebuild (extracted from WebcamBubbleWindow)
 │   │   │   ├── CameraService.swift            # AVCaptureSession wrapper, frame callback
-│   │   │   ├── PersonSegmenter.swift          # VNGeneratePersonSegmentationRequest blur
-│   │   │   ├── WebcamBubbleWindow.swift       # Circular/shaped draggable NSPanel
-│   │   │   ├── WebcamRecordingService.swift   # Webcam-only AVAssetWriter recording
-│   │   │   ├── WebcamShape.swift              # enum: circle, roundedRect, pill
-│   │   │   ├── WebcamFrame.swift               # Emoji frame decorations (geometric/tropical/celebration)
+│   │   │   ├── CaptureMode.swift              # enum: fullScreen, window, region, webcamOnly
+│   │   │   ├── ContentPicker.swift            # SCContentSharingPicker wrapper
 │   │   │   ├── EmojiFrameRenderer.swift       # Shared sticker positioning + CGImage rendering
+│   │   │   ├── MicGainProcessor.swift         # Mic sensitivity/gain applied to mic samples
+│   │   │   ├── PersonSegmenter.swift          # VNGeneratePersonSegmentationRequest blur (throttled to every 5th frame)
+│   │   │   ├── RegionSelectionWindow.swift    # Rubber-band NSPanel for region selection
+│   │   │   ├── ScreenCapturePermission.swift  # TCC permission check
+│   │   │   ├── ScreenCaptureService.swift     # SCStreamOutput per-frame pipeline + audio (OSAllocatedUnfairLock)
+│   │   │   ├── ScreenCaptureService+Configuration.swift  # Filter builder, stream config, CaptureError
+│   │   │   ├── ScreenCaptureService+StreamOutput.swift   # SCStreamOutput/Delegate implementations
+│   │   │   ├── WebcamBubbleWindow.swift       # Circular/shaped draggable NSPanel
+│   │   │   ├── WebcamFrame.swift              # Emoji frame decorations (geometric/tropical/celebration)
 │   │   │   ├── WebcamImageAdjustments.swift   # CIColorControls + CIHighlightShadowAdjust + CITemperatureAndTint
-│   │   │   └── NoiseCancellationProcessor.swift  # RMS noise gate on mic samples
+│   │   │   ├── WebcamRecordingService.swift   # Webcam-only AVAssetWriter recording
+│   │   │   └── WebcamShape.swift              # enum: circle, roundedRect, pill
 │   │   ├── Compositing/
+│   │   │   ├── ExportProgressWindow.swift     # Export/stitch progress modal
+│   │   │   ├── SegmentStitcher.swift          # AVMutableComposition segment concatenation + audio mixdown
 │   │   │   ├── VideoWriter.swift              # actor: AVAssetWriter, HEVC, dual audio inputs
 │   │   │   ├── WebcamCompositor.swift         # Real-time CIContext circular overlay, Metal-backed
-│   │   │   ├── SegmentStitcher.swift          # AVMutableComposition segment concatenation
-│   │   │   └── ExportProgressWindow.swift     # Export/stitch progress modal
+│   │   │   ├── WebcamCompositor+EmojiFrame.swift  # Emoji frame rendering + cache
+│   │   │   └── WebcamCompositor+ShapeMask.swift   # Shape mask generation + cache
 │   │   ├── Data/
-│   │   │   ├── VideoModel.swift               # @Model VideoRecord
+│   │   │   ├── BookmarkModel.swift            # @Model BookmarkRecord (timestamped bookmarks)
+│   │   │   ├── ChapterModel.swift             # @Model ChapterRecord
+│   │   │   ├── CommentModel.swift             # @Model VideoComment (not yet used)
+│   │   │   ├── EditDecisionListModel.swift    # @Model EditDecisionList (trim, cuts, stitch, speed)
 │   │   │   ├── FolderModel.swift              # @Model FolderRecord (hierarchical)
 │   │   │   ├── TagModel.swift                 # @Model TagRecord (color-coded)
 │   │   │   ├── TranscriptModel.swift          # @Model TranscriptRecord + TranscriptWordRecord
-│   │   │   ├── ChapterModel.swift             # @Model ChapterRecord
-│   │   │   ├── EditDecisionListModel.swift    # @Model EditDecisionList (trim, cuts, stitch, speed)
-│   │   │   ├── CommentModel.swift             # @Model VideoComment (not yet used)
+│   │   │   ├── VideoModel.swift               # @Model VideoRecord
 │   │   │   └── ViewEventModel.swift           # @Model ViewEvent (not yet used)
 │   │   ├── Editor/
-│   │   │   ├── EditorView.swift               # Main editor window (1000x700)
-│   │   │   ├── EditorState.swift              # @MainActor @ObservableObject editing state
-│   │   │   ├── EditorCompositionBuilder.swift # EDL → AVMutableComposition
-│   │   │   ├── TimelineView.swift             # EditorTimelineView (waveform + thumbnails + playhead)
-│   │   │   ├── TrimHandlesView.swift          # Yellow drag handles + grayed overlay
-│   │   │   ├── CutRegionOverlay.swift         # Red hatched cut regions
-│   │   │   ├── VideoPreviewView.swift         # AVPlayer + PiP/fullscreen coordinator
+│   │   │   ├── BookmarksPanelView.swift       # Bookmark list sidebar (add/edit/delete, seek on click)
 │   │   │   ├── CaptionOverlayView.swift       # Karaoke word-by-word highlight
-│   │   │   ├── TranscriptPanelView.swift      # Right sidebar, click-to-seek, auto-scroll
 │   │   │   ├── ChapterNavigationView.swift    # Popover + timeline markers
-│   │   │   ├── StitchPanelView.swift          # Multi-clip drag-to-reorder
+│   │   │   ├── CutRegionOverlay.swift         # Red hatched cut regions
+│   │   │   ├── EditorCompositionBuilder.swift # EDL → AVMutableComposition (multi-track audio)
+│   │   │   ├── EditorExportView.swift         # Quality picker + brightness/contrast + subtitle mode
+│   │   │   ├── EditorInfoPanel.swift          # Info sidebar (title, summary, metadata)
+│   │   │   ├── EditorState.swift              # @Observable @MainActor editing state
+│   │   │   ├── EditorState+Bookmarks.swift    # Bookmark CRUD extension
+│   │   │   ├── EditorToolbarView.swift        # Playback/cut/chapter/export controls
+│   │   │   ├── EditorView.swift               # Main editor window (1000x700)
+│   │   │   ├── GifExportService.swift         # Rust gifski FFI bridge
 │   │   │   ├── SpeedControlView.swift         # 0.25x–4x popover
+│   │   │   ├── StitchPanelView.swift          # Multi-clip drag-to-reorder
+│   │   │   ├── SubtitleExportService.swift    # Hard-burn + SRT sidecar subtitle export
 │   │   │   ├── ThumbnailPickerView.swift      # Frame selection + "Use Current Frame"
 │   │   │   ├── ThumbnailStripGenerator.swift  # Preview strip for timeline
-│   │   │   ├── WaveformGenerator.swift        # Audio waveform peaks
-│   │   │   ├── EditorExportView.swift         # Quality picker + brightness/contrast adjustments
-│   │   │   └── GifExportService.swift         # Rust gifski FFI bridge
+│   │   │   ├── TimelineView.swift             # EditorTimelineView (waveform + thumbnails + playhead + bookmarks)
+│   │   │   ├── TranscriptPanelView.swift      # Right sidebar, click-to-seek, auto-scroll
+│   │   │   ├── TrimHandlesView.swift          # Yellow drag handles + grayed overlay
+│   │   │   ├── VideoPreviewView.swift         # AVPlayer + PiP/fullscreen coordinator
+│   │   │   └── WaveformGenerator.swift        # Audio waveform peaks
 │   │   ├── Library/
-│   │   │   ├── LibraryView.swift              # Grid + hover preview + sort/filter
-│   │   │   ├── LibrarySidebarView.swift       # Folders + tags navigation
-│   │   │   ├── VideoCardView.swift            # Thumbnail + metadata + context menu
-│   │   │   ├── TagEditorView.swift            # 8-preset color picker + CRUD
 │   │   │   ├── BulkTagSheet.swift             # Bulk tag assignment
-│   │   │   └── FolderPickerSheet.swift        # Move videos to folders
+│   │   │   ├── FolderPickerSheet.swift        # Move videos to folders
+│   │   │   ├── LibraryFilterModels.swift      # Sort/filter enums (extracted from LibraryView)
+│   │   │   ├── LibrarySidebarView.swift       # Folders + tags navigation
+│   │   │   ├── LibraryVideoGrid.swift         # Grid item, context menu, selection badge (extracted from LibraryView)
+│   │   │   ├── LibraryView.swift              # Grid + hover preview + sort/filter
+│   │   │   ├── TagEditorView.swift            # 8-preset color picker + CRUD
+│   │   │   └── VideoCardView.swift            # Thumbnail + metadata + context menu
 │   │   ├── Player/
 │   │   │   └── PlayerView.swift               # AVPlayer wrapper (legacy, most player in Editor/)
 │   │   ├── Recording/
-│   │   │   ├── RecordingCoordinator.swift         # @MainActor central orchestrator (~350 lines)
-│   │   │   ├── RecordingCoordinator+Capture.swift       # Capture setup extension
+│   │   │   ├── BubbleControlPill.swift            # Floating pill on webcam bubble
+│   │   │   ├── CountdownOverlayWindow.swift       # 3-2-1 countdown
+│   │   │   ├── DiscardConfirmationWindow.swift    # Discard alert
+│   │   │   ├── RecordingCoordinator.swift         # @MainActor central orchestrator
+│   │   │   ├── RecordingCoordinator+Annotations.swift  # Canvas/toolbar management
+│   │   │   ├── RecordingCoordinator+Capture.swift      # Capture setup extension
 │   │   │   ├── RecordingCoordinator+CaptureDelegate.swift # AVCaptureDelegate conformance
-│   │   │   ├── RecordingCoordinator+PostRecording.swift   # Post-recording pipeline
-│   │   │   ├── RecordingCoordinator+UI.swift              # Window management
+│   │   │   ├── RecordingCoordinator+PauseResume.swift  # Pause/resume/segment management
+│   │   │   ├── RecordingCoordinator+PostRecording.swift # Post-recording pipeline
+│   │   │   ├── RecordingCoordinator+Toggles.swift      # Mic/camera/blur/annotation toggles
+│   │   │   ├── RecordingCoordinator+UI.swift            # Window management
+│   │   │   ├── RecordingCoordinator+Webcam.swift        # Webcam start/stop/preview/adjustments
 │   │   │   ├── RecordingState.swift               # enum: idle, selectingContent, countdown, recording, paused, stopping
 │   │   │   ├── RecordingToolbarPanel.swift        # NSPanel with mode/toggle controls
-│   │   │   ├── BubbleControlPill.swift            # Floating pill on webcam bubble
-│   │   │   ├── DiscardConfirmationWindow.swift    # Discard alert
-│   │   │   ├── CountdownOverlayWindow.swift       # 3-2-1 countdown
 │   │   │   └── RegionHighlightOverlay.swift       # Region selection feedback
 │   │   ├── Settings/
-│   │   │   ├── SettingsView.swift                 # TabView shell (~24 lines)
-│   │   │   ├── GeneralSettingsTab.swift           # Launch at startup, notifications, appearance
-│   │   │   ├── RecordingSettingsTab.swift         # FPS, quality, mic/camera device pickers
-│   │   │   ├── WebcamSettingsTab.swift            # Shape, adjustments, theme, temperature/tint
 │   │   │   ├── AISettingsTab.swift                # API key (file-based), auto-transcribe toggle
+│   │   │   ├── GeneralSettingsTab.swift           # Launch at startup, notifications, appearance
+│   │   │   ├── MicLevelMonitor.swift              # Real-time mic level display (30Hz timer)
+│   │   │   ├── RecordingSettings.swift            # @AppStorage backing types + VideoQuality enum
+│   │   │   ├── RecordingSettingsTab.swift         # FPS, quality, mic sensitivity, device pickers
+│   │   │   ├── SettingsView.swift                 # TabView shell (~24 lines)
 │   │   │   ├── ShortcutsSettingsTab.swift         # Global hotkey recorder
-│   │   │   └── RecordingSettings.swift            # @AppStorage backing types + VideoQuality enum
+│   │   │   └── WebcamSettingsTab.swift            # Shape, adjustments, theme, temperature/tint
 │   │   └── Shared/
+│   │       ├── LabeledSlider.swift                # Reusable slider component (extracted from WebcamSettingsTab)
+│   │       ├── SharedCIContext.swift               # Thread-safe singleton CIContext (Metal-backed)
 │   │       └── ThumbnailGenerator.swift           # Shared thumbnail utility
 │   └── Resources/
-│       ├── Assets.xcassets
+│       ├── Assets.xcassets                        # App icon + menu bar icon
 │       ├── Info.plist                             # TCC usage descriptions
 │       └── Cloom.entitlements                     # App sandbox + capabilities
 │
@@ -131,15 +155,19 @@ cloom/
 │   ├── Cargo.lock
 │   ├── src/
 │   │   ├── lib.rs                     # UniFFI scaffolding + CloomError + hello_from_rust
+│   │   ├── runtime.rs                 # Shared Tokio runtime (LazyLock singleton)
 │   │   ├── gif_export.rs             # gifski PNG manifest → GIF encoder
+│   │   ├── gif_export_tests.rs       # GIF export tests (extracted from gif_export.rs)
 │   │   ├── ai/
 │   │   │   ├── mod.rs
 │   │   │   ├── transcribe.rs         # OpenAI whisper-1 multipart upload
-│   │   │   └── llm.rs               # OpenAI gpt-4o-mini: title/summary/chapters
+│   │   │   ├── llm.rs               # OpenAI gpt-4o-mini: title/summary/chapters/paragraphs
+│   │   │   └── llm_tests.rs         # LLM client tests (extracted from llm.rs)
 │   │   └── audio/
 │   │       ├── mod.rs
 │   │       ├── filler.rs            # Single + multi-word filler detection
-│   │       └── silence.rs           # Symphonia decode + RMS silence detection
+│   │       ├── silence.rs           # Symphonia decode + RMS silence detection
+│   │       └── silence_tests.rs     # Silence detection tests (extracted from silence.rs)
 │   └── tests/
 │       └── fixtures/                 # Test data
 │           ├── chapters_response.json
@@ -154,32 +182,33 @@ cloom/
 └── .gitignore
 ```
 
-## Module Summary (87 Swift files, 8 Rust files)
+## Module Summary (109 Swift files, 12 Rust files)
 
 | Module | Files | Description |
 |--------|-------|-------------|
-| AI/ | 3 | AI orchestration pipeline, API key storage |
-| Annotations/ | 9 | Drawing tools, canvas, click/cursor effects, renderer |
+| AI/ | 4 | AI orchestration pipeline, audio extraction, API key storage |
+| Annotations/ | 11 | Drawing tools, canvas, input handler, renderer, click/cursor effects |
 | App/ | 6 | App entry, state, hotkeys, permissions, onboarding, theme |
 | Bridge/ | 3 | UniFFI generated bindings (gitignored) |
-| Capture/ | 13 | Screen capture, camera, webcam UI, shapes, themes, adjustments, noise |
-| Compositing/ | 4 | VideoWriter, webcam compositor, segment stitcher, export progress |
-| Data/ | 8 | SwiftData models |
-| Editor/ | 17 | Timeline, trim, cut, stitch, speed, export, GIF, captions, transcript, chapters |
-| Library/ | 6 | Grid, sidebar, cards, tags, folders |
+| Capture/ | 18 | Screen capture, camera, webcam UI, shapes, themes, adjustments, mic gain |
+| Compositing/ | 6 | VideoWriter, webcam compositor (+ shape/emoji extensions), segment stitcher, export progress |
+| Data/ | 9 | SwiftData models (VideoRecord, FolderRecord, TagRecord, BookmarkRecord, etc.) |
+| Editor/ | 22 | Timeline, trim, cut, stitch, speed, export, GIF, subtitles, captions, transcript, chapters, bookmarks |
+| Library/ | 8 | Grid, sidebar, cards, tags, folders, filter models |
 | Player/ | 1 | Legacy AVPlayer wrapper |
-| Recording/ | 11 | Coordinator (split into 5 files), toolbar, pill, discard, countdown |
-| Settings/ | 7 | Tabbed settings (5 tabs + shell + backing types) |
-| Shared/ | 1 | Thumbnail generator |
+| Recording/ | 15 | Coordinator (split into 8 files), toolbar, pill, discard, countdown, region overlay |
+| Settings/ | 8 | Tabbed settings (5 tabs + shell + backing types + mic level monitor) |
+| Shared/ | 3 | Thumbnail generator, SharedCIContext, LabeledSlider |
 
 ## Critical Files (by importance)
 
-1. `CloomApp/Sources/Recording/RecordingCoordinator.swift` + extensions — Central state machine, heart of the app
-2. `CloomApp/Sources/Capture/ScreenCaptureService.swift` — SCStreamOutput per-frame pipeline
+1. `CloomApp/Sources/Recording/RecordingCoordinator.swift` + 7 extensions — Central state machine, heart of the app
+2. `CloomApp/Sources/Capture/ScreenCaptureService.swift` + 2 extensions — SCStreamOutput per-frame pipeline
 3. `CloomApp/Sources/Compositing/VideoWriter.swift` — AVAssetWriter actor, HEVC encoding
-4. `CloomApp/Sources/Compositing/WebcamCompositor.swift` — Real-time webcam overlay
+4. `CloomApp/Sources/Compositing/WebcamCompositor.swift` + 2 extensions — Real-time webcam overlay
 5. `CloomApp/Sources/Annotations/AnnotationRenderer.swift` — Real-time annotation burn-in
 6. `CloomApp/Sources/Data/VideoModel.swift` — SwiftData video record
-7. `CloomApp/Sources/Editor/EditorView.swift` — Main editor UI
-8. `cloom-core/src/lib.rs` — FFI entry point
-9. `build.sh` — Glue between Rust and Swift worlds
+7. `CloomApp/Sources/Editor/EditorState.swift` + bookmark extension — @Observable editing state
+8. `CloomApp/Sources/Editor/EditorView.swift` — Main editor UI
+9. `cloom-core/src/lib.rs` — FFI entry point
+10. `build.sh` — Glue between Rust and Swift worlds

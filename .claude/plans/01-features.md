@@ -141,14 +141,14 @@ Status indicators: **Done** = implemented, **Deferred** = planned for later phas
 
 | Code | Feature | Description | Status |
 |------|---------|-------------|--------|
-| J1 | Video quality settings | VideoQuality enum: low (2Mbps), medium (5Mbps), high (10Mbps) | Done |
+| J1 | Video quality settings | VideoQuality enum: low (4Mbps), medium (10Mbps), high (20Mbps) | Done |
 | J2 | Frame rate settings | 24/30/60 FPS via @AppStorage | Done |
 | J3 | Codec | HEVC primary with H.264 fallback (no user-facing codec selection) | Done |
 | J4 | Launch at startup | SMAppService.mainApp register/unregister, toggle in Settings > General | Done |
 | J5 | Keyboard shortcut customization | ShortcutRecorderButton with UCKeyTranslate display strings, UserDefaults persistence | Done |
 | J6 | Dark mode | Theme.swift semantic Color extensions, appearance picker System/Light/Dark in Settings | Done |
 | J7 | Notifications | UNUserNotificationCenter, recording-complete with "Open Library" action | Done |
-| J8 | Noise cancellation | NoiseCancellationProcessor noise gate (RMS threshold -40dB on mic samples) | Done |
+| J8 | Mic gain / sensitivity | MicGainProcessor applies configurable gain to mic samples; sensitivity slider in Settings | Done |
 | J9 | Onboarding | PermissionChecker + OnboardingView with live status polling for Screen Recording/Camera/Mic/Accessibility | Done |
 | J10 | Crash recovery | cleanupOrphanedTempFiles in AppState.init, scans /tmp for cloom_segment_* and cloom_audio_* | Done |
 | J11 | Disk space monitoring | checkDiskSpace <1GB guard, storage summary in LibraryView toolbar | Done |
@@ -156,22 +156,25 @@ Status indicators: **Done** = implemented, **Deferred** = planned for later phas
 
 ---
 
-## K: Analytics & Advanced — Planned (Phase 12)
+## K: Analytics & Advanced — Partial
 
 | Code | Feature | Description | Status |
 |------|---------|-------------|--------|
-| K1 | Local view analytics | Track view count, watch time, completion rate (models exist, UI not built) | Planned |
-| K2 | Timestamped comments | Add comments at specific video timestamps (model exists, UI not built) | Planned |
-| K3 | Performance optimization | Profiling and optimization pass | Planned |
-| K4 | Beauty / soft-focus filter | Person segmentation + CIGaussianBlur skin smoothing | Planned |
+| K1 | Local view analytics | Track view count, watch time, completion rate (models exist, UI not built) | Deferred |
+| K2 | Timestamped comments | Add comments at specific video timestamps (model exists, UI not built) | Deferred |
+| K3 | Performance optimization | SharedCIContext singleton, PersonSegmenter throttling, shared Tokio runtime, cached rendering, etc. (Phase 17) | Done |
+| K4 | Beauty / soft-focus filter | Person segmentation + CIGaussianBlur skin smoothing | Deferred |
+| K5 | Bookmarks | Timestamped bookmarks in editor with timeline markers, panel UI, "B" key shortcut (Phase 13) | Done |
+| K6 | Subtitle embedding | Hard-burn + SRT sidecar export, EDL-aware timing, pre-rendered image cache (Phase 15) | Done |
+| K7 | Multi-track audio export | All source audio tracks exported, AVMutableAudioMix mixdown for web player compat (Phase 15) | Done |
 
 ---
 
-## L: Pre-Release — Planned (Phase 13)
+## L: Pre-Release — Partial
 
 | Code | Feature | Description | Status |
 |------|---------|-------------|--------|
-| L1 | Developer ID signing | Code signing for distribution outside App Store | Planned |
-| L2 | Notarization + DMG | Apple notarization + stapled DMG packaging | Planned |
-| L3 | App icon + branding | App icon and branding assets | Planned |
-| L4 | Release notes | Changelog and release documentation | Planned |
+| L1 | Developer ID signing | Code signing for distribution outside App Store | Planned (Phase 18) |
+| L2 | Notarization + DMG | Apple notarization + stapled DMG packaging | Planned (Phase 18) |
+| L3 | App icon + branding | 1024x1024 master icon + all macOS sizes + custom menu bar icon (Phase 14) | Done |
+| L4 | Release notes | Changelog and release documentation | Planned (Phase 18) |

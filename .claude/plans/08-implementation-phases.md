@@ -232,56 +232,101 @@ UI tests were removed — MenuBarExtra apps aren't hittable by XCUIApplication, 
 
 ---
 
-## Phase 12: Code Quality & File Splitting — Not Started
+## Phase 12: Code Quality & File Splitting — Complete
 
 **Goal:** Split large files into focused, single-responsibility modules. Target: no file over ~300 lines, no file with more than ~10 functions.
 
-### Swift — High Priority (400+ lines)
-| # | Task | File | Lines/Funcs |
-|---|------|------|-------------|
-| 93 | Split LibraryView — extract toolbar/filter, video grid, context menus | Library/ | 454 lines, 8 funcs |
-| 94 | Split WebcamBubbleWindow — extract shape rendering, drag, size cycling | Capture/ | 420 lines, 17 funcs |
-| 95 | Split AnnotationCanvasView — extract per-tool drawing, gesture handling | Annotations/ | 417 lines, 16 funcs |
+### Swift — High Priority (400+ lines) — Complete
+| # | Task | Result |
+|---|------|--------|
+| 93 | Split LibraryView | 454→~230 lines. Extracted LibraryFilterModels.swift, LibraryVideoGrid.swift |
+| 93b | Split RecordingCoordinator | 383→~210 lines. Extracted +Toggles, +PauseResume |
+| 93c | Split AIOrchestrator | 344→~275 lines. Extracted AudioExtractor.swift |
+| 94 | Split WebcamBubbleWindow | 420→~160 lines. Extracted BubbleContentView, BubbleLayerBuilder |
+| 95 | Split AnnotationCanvasView | 417→~95 lines. Extracted AnnotationCanvasRenderer, AnnotationInputHandler |
 
-### Swift — Medium Priority (300–400 lines)
-| # | Task | File | Lines/Funcs |
-|---|------|------|-------------|
-| 96 | Split EditorView — extract toolbar, sidebar toggle, sub-view sections | Editor/ | 354 lines, 6 funcs |
-| 97 | Split ScreenCaptureService — extract stream config, filter, delegate | Capture/ | 337 lines, 16 funcs |
-| 98 | Split WebcamSettingsTab — extract preview and setting groups | Settings/ | 312 lines, 4 funcs |
-| 99 | Split WebcamCompositor — extract shape masking, emoji frame rendering | Compositing/ | 305 lines, 9 funcs |
-| 100 | Split RecordingCoordinator+UI — further decompose window management | Recording/ | 302 lines, 13 funcs |
+### Swift — Medium Priority (300–400 lines) — Complete
+| # | Task | Result |
+|---|------|--------|
+| 96 | Split EditorView | 354→~120 lines. Extracted EditorToolbarView, EditorInfoPanel |
+| 97 | Split ScreenCaptureService | 337→~115 lines. Extracted +Configuration, +StreamOutput |
+| 98 | Split WebcamSettingsTab | Extracted LabeledSlider to Shared/ |
+| 99 | Split WebcamCompositor | 305→~155 lines. Extracted +ShapeMask, +EmojiFrame |
+| 100 | Split RecordingCoordinator+UI | 302→~105 lines. Extracted +Annotations, +Webcam |
 
-### Rust — Medium Priority
-| # | Task | File | Lines/Funcs |
-|---|------|------|-------------|
-| 101 | Split gif_export.rs — separate manifest, frame decoding, encoding | export/ | 371 lines, 11 fns |
-| 102 | Split silence.rs — separate detection from WAV parsing, merging | audio/ | 335 lines, 8 fns |
-| 103 | Split llm.rs — separate prompts, API client, response parsers | ai/ | 302 lines, 18 fns |
-
-### General Cleanup
-| # | Task | Description |
-|---|------|-------------|
-| 104 | Review unused imports, dead helpers, overly broad responsibilities | All modules |
-| 105 | Ensure consistent error handling patterns across services | All modules |
+### Rust — Test Extraction — Complete
+| # | Task | Result |
+|---|------|--------|
+| 101 | Extract gif_export.rs tests | 371→~175 lines → gif_export_tests.rs |
+| 102 | Extract silence.rs tests | 335→~175 lines → silence_tests.rs |
+| 103 | Extract llm.rs tests | 302→~210 lines → llm_tests.rs |
 
 ---
 
-## Phase 13: Advanced — Not Started
+## Phase 13: Bookmarks + Performance Audit — Complete
 
 | # | Task | Module | Features |
 |---|------|--------|----------|
-| 78 | Local view analytics (track views, watch time) | Data/, Library/ | K1 |
-| 79 | Timestamped comments | Editor/, Data/ | K2 |
-| 80 | Performance optimization + profiling | All | K3 |
-| 88 | Beauty / soft-focus filter (person segmentation + CIGaussianBlur skin smoothing) | Capture/ | K4 |
+| 79 | BookmarkRecord model + VideoRecord relationship | Data/ | K5 |
+| 79b–e | Bookmarks UI (panel, timeline markers, toolbar, "B" shortcut) | Editor/ | K5 |
+| 80a–e | Performance fixes (async thumbnails, frame dropout, waveform, captions, storage caching) | Various | K3 |
 
 ---
 
-## Phase 14: Pre-Release — Not Started
+## Phase 14: App Icon & Branding — Complete
+
+| # | Task | Module | Features |
+|---|------|--------|----------|
+| 82 | App icon (1024x1024 + all macOS sizes) + custom menu bar icon | Resources/ | L3 |
+
+---
+
+## Phase 15: Audio Export Fixes & Subtitle Embedding — Complete
+
+| # | Task | Module | Features |
+|---|------|--------|----------|
+| 107 | Fix multi-track audio export (all tracks + AVMutableAudioMix) | Editor/ | K7 |
+| 108–109 | Audio mixdown for web player compatibility | Compositing/, Recording/ | K7 |
+| 110–113 | Subtitle embedding (hard-burn + SRT sidecar, EDL-aware, pre-rendered cache) | Editor/ | K6 |
+
+---
+
+## Phase 16: Mic Sensitivity Setting — Complete
+
+| # | Task | Module | Features |
+|---|------|--------|----------|
+| 106 | Mic sensitivity slider + live level meter in Settings | Settings/, Capture/ | J8 update |
+
+---
+
+## Phase 17: Performance & Code Quality Audit — Complete
+
+| # | Task | Module | Features |
+|---|------|--------|----------|
+| 114 | SharedCIContext singleton (6 instances → 1) | Shared/ | K3 |
+| 115 | PersonSegmenter throttling (every 5th frame + cached mask) | Capture/ | K3 |
+| 116–118 | MicLevelMonitor fix, ScreenCaptureService data race fix, VideoWriter guard | Various | K3 |
+| 119 | Cached stroke overlay in AnnotationRenderer | Annotations/ | K3 |
+| 120–122 | GIF export speed, streaming waveform, capsule-sized subtitle render | Editor/, Rust | K3 |
+| 123–125 | Shared Tokio runtime, pre-computed lowercase, Vec pre-allocation | Rust | K3 |
+| 126–128 | NSCache limits, parallel AI tasks, library search debounce | Various | K3 |
+
+---
+
+## Phase 18: Pre-Release — Not Started
 
 | # | Task | Module | Features |
 |---|------|--------|----------|
 | 81 | Developer ID signing + notarization + DMG packaging | Build/Release | L1-L2 |
-| 82 | App icon + branding assets | Resources/ | L3 |
 | 83 | Release notes + changelog | Docs | L4 |
+
+---
+
+## Deferred Features
+
+| Feature | Original Phase | Reason |
+|---------|---------------|--------|
+| B6 — Virtual backgrounds | Phase 2 | Low priority, complex segmentation |
+| K1 — Local view analytics | Phase 13 | No value without shared links |
+| K2 — Timestamped comments | Phase 13 | Low priority for local-only app |
+| K4 — Beauty / soft-focus filter | Phase 10 | Removed in polish pass |
