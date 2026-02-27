@@ -95,6 +95,7 @@ final class AppState: ObservableObject {
         let orphaned = contents.filter { url in
             let name = url.lastPathComponent
             return name.hasPrefix("cloom_segment_") || name.hasPrefix("cloom_audio_")
+                || name.hasPrefix("cloom-gif-") || name.hasPrefix("cloom_audio_chunk_")
         }
 
         guard !orphaned.isEmpty else { return }

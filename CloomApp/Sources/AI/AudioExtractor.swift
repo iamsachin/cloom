@@ -64,3 +64,65 @@ func extractAudioFromVideo(videoPath: String) async throws -> String {
 
     return outputURL.path
 }
+
+/// Split an audio file into chunks under `maxChunkBytes` for the Whisper API.
+/// Returns an array of (filePath, offsetMs) tuples.
+/// If the file is already small enough, returns a single entry with offset 0.
+func splitAudioForTranscription(audioPath: String, maxChunkBytes: Int = 20 * 1024 * 1024) async throws -> [(path: String, offsetMs: Int64)] {
+    let fileURL = URL(fileURLWithPath: audioPath)
+    let fileSize = try FileManager.default.attributesOfItem(atPath: audioPath)[.size] as? Int ?? 0
+
+    if fileSize <= maxChunkBytes {
+        return [(path: audioPath, offsetMs: 0)]
+    }
+
+    let asset = AVURLAsset(url: fileURL)
+    let duration = try await asset.load(.duration)
+    let totalSeconds = CMTimeGetSeconds(duration)
+
+    guard totalSeconds > 0 else {
+        return [(path: audioPath, offsetMs: 0)]
+    }
+
+    // Estimate number of chunks needed, then compute chunk duration
+    let chunkCount = Int(ceil(Double(fileSize) / Double(maxChunkBytes)))
+    let chunkDurationSeconds = totalSeconds / Double(chunkCount)
+
+    var chunks: [(path: String, offsetMs: Int64)] = []
+    let tempDir = FileManager.default.temporaryDirectory
+
+    for i in 0..<chunkCount {
+        let startSeconds = Double(i) * chunkDurationSeconds
+        let endSeconds = min(startSeconds + chunkDurationSeconds, totalSeconds)
+        let startTime = CMTime(seconds: startSeconds, preferredTimescale: 1000)
+        let chunkDuration = CMTime(seconds: endSeconds - startSeconds, preferredTimescale: 1000)
+        let timeRange = CMTimeRange(start: startTime, duration: chunkDuration)
+
+        let composition = AVMutableComposition()
+        let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+        for srcTrack in audioTracks {
+            if let compTrack = composition.addMutableTrack(
+                withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid
+            ) {
+                try compTrack.insertTimeRange(timeRange, of: srcTrack, at: .zero)
+            }
+        }
+
+        let chunkURL = tempDir.appendingPathComponent("cloom_audio_chunk_\(i)_\(UUID().uuidString).m4a")
+
+        guard let session = AVAssetExportSession(
+            asset: composition, presetName: AVAssetExportPresetAppleM4A
+        ) else {
+            logger.warning("Failed to create export session for chunk \(i)")
+            continue
+        }
+
+        try await session.export(to: chunkURL, as: .m4a)
+
+        let offsetMs = Int64(startSeconds * 1000)
+        chunks.append((path: chunkURL.path, offsetMs: offsetMs))
+        logger.info("Audio chunk \(i + 1)/\(chunkCount): \(String(format: "%.1f", startSeconds))s–\(String(format: "%.1f", endSeconds))s")
+    }
+
+    return chunks
+}

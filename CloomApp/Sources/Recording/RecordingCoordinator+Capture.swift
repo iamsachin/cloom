@@ -132,6 +132,11 @@ extension RecordingCoordinator {
         let renderer = AnnotationRenderer(store: store)
         self.annotationRenderer = renderer
 
+        // Create recording metrics and wire to capture service
+        let metrics = RecordingMetrics()
+        self.recordingMetrics = metrics
+        captureService.recordingMetrics = metrics
+
         // Start webcam bubble + camera feed if camera is enabled
         if cameraEnabled {
             startWebcam()

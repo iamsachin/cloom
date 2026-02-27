@@ -448,14 +448,14 @@ private struct ReadyToolbarContentView: View {
 
             // Record button
             Button(action: onRecord) {
-                Circle()
-                    .fill(.red)
-                    .frame(width: 24, height: 24)
-                    .overlay {
-                        Image(systemName: "record.circle")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
+                ZStack {
+                    Circle()
+                        .fill(.red)
+                        .frame(width: 24, height: 24)
+                    Circle()
+                        .fill(.white)
+                        .frame(width: 8, height: 8)
+                }
             }
             .buttonStyle(.plain)
             .help("Start recording")

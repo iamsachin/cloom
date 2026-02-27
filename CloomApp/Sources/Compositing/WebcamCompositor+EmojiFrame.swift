@@ -9,19 +9,31 @@ struct FrameImageCacheKey: Hashable {
 }
 
 /// Thread-safe cache for emoji frame CGImages to avoid re-rendering every video frame.
+/// Bounded to `maxEntries` with insertion-order eviction.
 struct FrameImageCache {
     private var cache: [FrameImageCacheKey: CGImage] = [:]
+    private var insertionOrder: [FrameImageCacheKey] = []
+    private let maxEntries = 8
 
     mutating func get(key: FrameImageCacheKey) -> CGImage? {
         cache[key]
     }
 
     mutating func set(key: FrameImageCacheKey, image: CGImage) {
+        if cache[key] == nil {
+            // Evict oldest entries when at capacity
+            while insertionOrder.count >= maxEntries {
+                let oldest = insertionOrder.removeFirst()
+                cache.removeValue(forKey: oldest)
+            }
+            insertionOrder.append(key)
+        }
         cache[key] = image
     }
 
     mutating func clear() {
         cache.removeAll()
+        insertionOrder.removeAll()
     }
 }
 

@@ -25,6 +25,9 @@ struct CaptureState: @unchecked Sendable {
 final class ScreenCaptureService: NSObject {
     weak var delegate: CaptureServiceDelegate?
 
+    /// Optional recording metrics — set by coordinator before starting capture.
+    var recordingMetrics: RecordingMetrics?
+
     private var stream: SCStream?
     private var currentConfig: SCStreamConfiguration?
 
@@ -72,6 +75,7 @@ final class ScreenCaptureService: NSObject {
         try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: audioQueue)
         try stream.addStreamOutput(self, type: .microphone, sampleHandlerQueue: audioQueue)
 
+        writer.metrics = recordingMetrics
         await writer.start()
         let pool = writer.exposedPixelBufferPool
         // CVPixelBufferPool isn't Sendable but is safe here — set before capture starts.

@@ -21,6 +21,13 @@ actor SegmentStitcher {
     func stitch(segments: [URL], to outputURL: URL, progress: @escaping @Sendable (Double) -> Void) async throws {
         guard !segments.isEmpty else { throw StitchError.noSegments }
 
+        // Always clean up temp segment files, even on failure
+        defer {
+            for segmentURL in segments {
+                try? FileManager.default.removeItem(at: segmentURL)
+            }
+        }
+
         if segments.count == 1 {
             // Single segment — mixdown audio for web player compatibility
             try await mixdownAudio(inputURL: segments[0], to: outputURL)
@@ -108,10 +115,6 @@ actor SegmentStitcher {
         do {
             try await exportSession.export(to: outputURL, as: .mp4)
             progress(1.0)
-            // Clean up temp segment files
-            for segmentURL in segments {
-                try? FileManager.default.removeItem(at: segmentURL)
-            }
             logger.info("Stitched \(segments.count) segments → \(outputURL.lastPathComponent)")
         } catch {
             throw StitchError.exportFailed(error.localizedDescription)

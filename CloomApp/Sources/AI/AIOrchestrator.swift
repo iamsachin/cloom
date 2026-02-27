@@ -49,15 +49,33 @@ actor AIOrchestrator {
             extractedAudioPath = audioPath
         }
 
-        // Step 1: Transcription
+        // Step 1: Transcription (with chunking for large files)
         let transcript: Transcript
         do {
-            transcript = try transcribeAudio(
-                audioPath: extractedAudioPath,
-                apiKey: apiKey,
-                provider: .openAi,
-                model: ""
-            )
+            let chunks = try await splitAudioForTranscription(audioPath: extractedAudioPath)
+            if chunks.count > 1 {
+                logger.info("Audio split into \(chunks.count) chunks for transcription")
+                let paths = chunks.map(\.path)
+                let offsets = chunks.map(\.offsetMs)
+                transcript = try transcribeAudioChunked(
+                    chunkPaths: paths,
+                    offsetMs: offsets,
+                    apiKey: apiKey,
+                    provider: .openAi,
+                    model: ""
+                )
+                // Clean up chunk files
+                for chunk in chunks where chunk.path != extractedAudioPath {
+                    try? FileManager.default.removeItem(atPath: chunk.path)
+                }
+            } else {
+                transcript = try transcribeAudio(
+                    audioPath: extractedAudioPath,
+                    apiKey: apiKey,
+                    provider: .openAi,
+                    model: ""
+                )
+            }
             logger.info("Transcription complete: \(transcript.words.count) words")
         } catch {
             logger.error("Transcription failed: \(error)")
@@ -294,21 +312,23 @@ actor AIOrchestrator {
     }
 
     /// Build a transcript string with periodic timestamps so the LLM can generate accurate chapter markers.
-    /// Format: "[MM:SS] word word word [MM:SS] word word..."
+    /// Format: "[M:SS.s] word word word [M:SS.s] word word..."
+    /// Uses sub-second precision every ~2s for accurate chapter placement.
     static func buildTimestampedTranscript(from words: [TranscriptWord]) -> String {
         guard !words.isEmpty else { return "" }
 
         var result = ""
-        var lastTimestampMs: Int64 = -10_000 // force first timestamp
+        var lastTimestampMs: Int64 = -2_000 // force first timestamp
 
         for w in words {
-            // Insert a timestamp marker every ~10 seconds
-            if w.startMs - lastTimestampMs >= 10_000 {
-                let totalSec = Int(w.startMs / 1000)
-                let m = totalSec / 60
-                let s = totalSec % 60
+            // Insert a timestamp marker every ~2 seconds for fine-grained chapter accuracy
+            if w.startMs - lastTimestampMs >= 2_000 {
+                let totalMs = Int(w.startMs)
+                let m = totalMs / 60_000
+                let s = (totalMs % 60_000) / 1000
+                let tenths = (totalMs % 1000) / 100
                 if !result.isEmpty { result += "\n" }
-                result += String(format: "[%d:%02d] ", m, s)
+                result += String(format: "[%d:%02d.%d] ", m, s, tenths)
                 lastTimestampMs = w.startMs
             }
             result += w.word + " "

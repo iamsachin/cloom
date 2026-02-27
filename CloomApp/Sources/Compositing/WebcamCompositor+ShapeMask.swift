@@ -72,14 +72,21 @@ struct ShapeMaskCacheKey: Hashable {
 
 struct ShapeMaskCache {
     private var cache: [ShapeMaskCacheKey: CIImage] = [:]
+    private var insertionOrder: [ShapeMaskCacheKey] = []
+    private let maxEntries = 4
 
     func get(_ key: ShapeMaskCacheKey) -> CIImage? {
         cache[key]
     }
 
     mutating func set(_ key: ShapeMaskCacheKey, value: CIImage) {
-        if cache.count > 3 {
-            cache.removeAll()
+        if cache[key] == nil {
+            // Evict oldest when at capacity
+            while insertionOrder.count >= maxEntries {
+                let oldest = insertionOrder.removeFirst()
+                cache.removeValue(forKey: oldest)
+            }
+            insertionOrder.append(key)
         }
         cache[key] = value
     }

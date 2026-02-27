@@ -31,7 +31,7 @@ actor WaveformGenerator {
         var combinedPeaks = [Float](repeating: 0, count: peakCount)
 
         for audioTrack in audioTracks {
-            let trackPeaks = try readTrackPeaks(asset: asset, track: audioTrack, peakCount: peakCount, micSensitivity: micSensitivity)
+            let trackPeaks = try await readTrackPeaks(asset: asset, track: audioTrack, peakCount: peakCount, micSensitivity: micSensitivity)
             for i in 0..<peakCount {
                 combinedPeaks[i] = max(combinedPeaks[i], trackPeaks[i])
             }
@@ -42,7 +42,7 @@ actor WaveformGenerator {
         return combinedPeaks
     }
 
-    private func readTrackPeaks(asset: AVURLAsset, track: AVAssetTrack, peakCount: Int, micSensitivity: Int) throws -> [Float] {
+    private func readTrackPeaks(asset: AVURLAsset, track: AVAssetTrack, peakCount: Int, micSensitivity: Int) async throws -> [Float] {
         let reader = try AVAssetReader(asset: asset)
 
         let outputSettings: [String: Any] = [
@@ -61,44 +61,67 @@ actor WaveformGenerator {
             return [Float](repeating: 0, count: peakCount)
         }
 
-        // Streaming peak calculation — O(peakCount) memory instead of O(total_samples).
-        // First pass: count total samples to compute samplesPerPeak.
-        var totalSamples = 0
-        var buffers: [(CMBlockBuffer, Int)] = []
+        // Estimate total samples from track duration to avoid accumulating all buffers.
+        // PCM output is 16-bit, so default to 48kHz stereo (2 channels) as a reasonable estimate.
+        let duration = try await asset.load(.duration)
+        let durationSec = CMTimeGetSeconds(duration)
+        let sampleRate: Double = 48000
+        let channels: Double = 2
+        let estimatedSamples = Int(durationSec * sampleRate * channels)
+        let samplesPerPeak = max(1, estimatedSamples / peakCount)
+
+        // Single-pass streaming: process each buffer immediately, O(peakCount) memory
+        var peaks = [Float](repeating: 0, count: peakCount)
+        var globalSampleIndex = 0
 
         while let buffer = output.copyNextSampleBuffer() {
             guard let blockBuffer = CMSampleBufferGetDataBuffer(buffer) else { continue }
             let length = CMBlockBufferGetDataLength(blockBuffer)
-            let sampleCount = length / MemoryLayout<Int16>.size
-            totalSamples += sampleCount
-            buffers.append((blockBuffer, length))
-        }
 
-        guard totalSamples > 0 else {
-            return [Float](repeating: 0, count: peakCount)
-        }
+            // Try zero-copy access first, fall back to CMBlockBufferCopyDataBytes
+            var dataPointer: UnsafeMutablePointer<Int8>?
+            var lengthAtOffset: Int = 0
+            let status = CMBlockBufferGetDataPointer(
+                blockBuffer, atOffset: 0, lengthAtOffsetOut: &lengthAtOffset,
+                totalLengthOut: nil, dataPointerOut: &dataPointer
+            )
 
-        let samplesPerPeak = max(1, totalSamples / peakCount)
-        var peaks = [Float](repeating: 0, count: peakCount)
-        var globalSampleIndex = 0
-
-        for (blockBuffer, length) in buffers {
-            var data = Data(count: length)
-            _ = data.withUnsafeMutableBytes { ptr in
-                guard let baseAddress = ptr.baseAddress else { return noErr }
-                return CMBlockBufferCopyDataBytes(blockBuffer, atOffset: 0, dataLength: length, destination: baseAddress)
-            }
-            data.withUnsafeBytes { raw in
-                let samples = raw.bindMemory(to: Int16.self)
-                for sample in samples {
-                    let binIndex = min(globalSampleIndex / samplesPerPeak, peakCount - 1)
-                    let absVal = Float(abs(sample)) / Float(Int16.max)
-                    if absVal > peaks[binIndex] {
-                        peaks[binIndex] = absVal
+            if status == noErr, let ptr = dataPointer, lengthAtOffset == length {
+                // Zero-copy path — contiguous block
+                let sampleCount = length / MemoryLayout<Int16>.size
+                ptr.withMemoryRebound(to: Int16.self, capacity: sampleCount) { samples in
+                    for i in 0..<sampleCount {
+                        let binIndex = min(globalSampleIndex / samplesPerPeak, peakCount - 1)
+                        let absVal = Float(abs(samples[i])) / Float(Int16.max)
+                        if absVal > peaks[binIndex] {
+                            peaks[binIndex] = absVal
+                        }
+                        globalSampleIndex += 1
                     }
-                    globalSampleIndex += 1
+                }
+            } else {
+                // Fallback: copy bytes for non-contiguous blocks
+                var data = Data(count: length)
+                data.withUnsafeMutableBytes { dest in
+                    guard let baseAddress = dest.baseAddress else { return }
+                    CMBlockBufferCopyDataBytes(blockBuffer, atOffset: 0, dataLength: length, destination: baseAddress)
+                }
+                data.withUnsafeBytes { raw in
+                    let samples = raw.bindMemory(to: Int16.self)
+                    for sample in samples {
+                        let binIndex = min(globalSampleIndex / samplesPerPeak, peakCount - 1)
+                        let absVal = Float(abs(sample)) / Float(Int16.max)
+                        if absVal > peaks[binIndex] {
+                            peaks[binIndex] = absVal
+                        }
+                        globalSampleIndex += 1
+                    }
                 }
             }
+        }
+
+        guard globalSampleIndex > 0 else {
+            return [Float](repeating: 0, count: peakCount)
         }
 
         // Adaptive noise floor: use the median peak as the background noise level,
