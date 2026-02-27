@@ -1,9 +1,12 @@
 import SwiftUI
 import SwiftData
 
-struct EditorView: View {
+// MARK: - Editor Content View
+
+struct EditorContentView: View {
     let videoID: String
 
+    @Environment(NavigationState.self) private var navigationState
     @Query private var videos: [VideoRecord]
     @Environment(\.modelContext) private var modelContext
     @State private var editorState: EditorState?
@@ -40,8 +43,14 @@ struct EditorView: View {
                 )
             }
         }
-        .frame(minWidth: 800, minHeight: 550)
         .onAppear { setupEditor() }
+        .onChange(of: video) { _, newVideo in
+            // Auto-navigate back if video is deleted while editing
+            if newVideo == nil && editorState != nil {
+                editorState?.player.pause()
+                navigationState.goBackToLibrary()
+            }
+        }
         .onDisappear {
             editorState?.player.pause()
         }
@@ -115,6 +124,17 @@ struct EditorView: View {
             return .handled
         }
         .navigationTitle(state.videoRecord.title)
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    editorState?.player.pause()
+                    navigationState.goBack()
+                } label: {
+                    Label("Back", systemImage: "chevron.left")
+                }
+                .keyboardShortcut("[", modifiers: .command)
+            }
+        }
         .sheet(isPresented: $showExportSheet) {
             EditorExportView(editorState: state)
         }

@@ -4,9 +4,9 @@ struct ProcessingCardView: View {
     let info: PostRecordingInfo
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             // Placeholder thumbnail
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 0)
                 .fill(.quaternary)
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .overlay {
@@ -18,16 +18,16 @@ struct ProcessingCardView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10, topTrailingRadius: 10))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(info.title)
-                    .font(.headline)
+                    .font(.subheadline.weight(.semibold))
                     .lineLimit(2)
 
-                HStack {
+                HStack(spacing: 4) {
                     ProgressView()
-                        .controlSize(.small)
+                        .controlSize(.mini)
                     Text(info.step.rawValue)
                         .font(.caption2)
                         .foregroundStyle(.orange)
@@ -35,15 +35,16 @@ struct ProcessingCardView: View {
                     Spacer()
 
                     Text("Just now")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
                 }
             }
-            .padding(.horizontal, 4)
+            .padding(.horizontal, 10)
+            .padding(.top, 8)
+            .padding(.bottom, 10)
         }
-        .padding(8)
-        .background(.background, in: RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .cardShadow, radius: 4, y: 2)
+        .background(.background, in: RoundedRectangle(cornerRadius: 10))
+        .shadow(color: .cardShadow, radius: 3, y: 1)
         .accessibilityLabel("Processing: \(info.title)")
     }
 }

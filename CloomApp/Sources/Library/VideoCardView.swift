@@ -16,66 +16,63 @@ struct VideoCardView: View {
     @State private var thumbnailImage: NSImage?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Thumbnail
-            Group {
-                if let nsImage = thumbnailImage {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .aspectRatio(16 / 9, contentMode: .fill)
-                        .clipped()
-                } else {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(.quaternary)
-                        .aspectRatio(16 / 9, contentMode: .fit)
-                        .overlay {
-                            Image(systemName: "play.circle.fill")
-                                .font(.largeTitle)
-                                .foregroundStyle(.secondary)
-                        }
+        VStack(alignment: .leading, spacing: 0) {
+            // Thumbnail with duration badge
+            ZStack(alignment: .bottomTrailing) {
+                Group {
+                    if let nsImage = thumbnailImage {
+                        Image(nsImage: nsImage)
+                            .resizable()
+                            .aspectRatio(16 / 9, contentMode: .fill)
+                            .clipped()
+                    } else {
+                        RoundedRectangle(cornerRadius: 0)
+                            .fill(.quaternary)
+                            .aspectRatio(16 / 9, contentMode: .fit)
+                            .overlay {
+                                Image(systemName: "film")
+                                    .font(.title2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                    }
                 }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay {
-                if isHovered {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.cardHoverOverlay)
-                        .overlay {
-                            Image(systemName: "play.circle.fill")
-                                .font(.system(size: 40))
-                                .foregroundStyle(.white.opacity(0.9))
-                                .shadow(radius: 4)
-                        }
-                }
-            }
 
+                // Duration badge
+                Text(formattedDuration)
+                    .font(.system(size: 11, weight: .medium).monospacedDigit())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.durationBadge, in: RoundedRectangle(cornerRadius: 4))
+                    .padding(8)
+            }
+            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10, topTrailingRadius: 10))
+
+            // Info section
             VStack(alignment: .leading, spacing: 4) {
                 Text(video.title)
-                    .font(.headline)
+                    .font(.subheadline.weight(.semibold))
                     .lineLimit(2)
+                    .foregroundStyle(.primary)
 
-                HStack {
-                    Text(formattedDuration)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
+                HStack(spacing: 4) {
                     if AIProcessingTracker.shared.isProcessing(video.id) {
                         ProgressView()
-                            .controlSize(.small)
+                            .controlSize(.mini)
                         Text("Transcribing...")
                             .font(.caption2)
                             .foregroundStyle(.orange)
                     } else if video.hasTranscript {
                         Image(systemName: "text.bubble.fill")
-                            .font(.caption)
-                            .foregroundStyle(.blue)
+                            .font(.system(size: 9))
+                            .foregroundStyle(.blue.opacity(0.8))
                     }
 
                     Spacer()
 
                     Text(relativeTime(from: video.createdAt))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
                 }
 
                 if let summary = video.summary, !summary.isEmpty {
@@ -91,13 +88,14 @@ struct VideoCardView: View {
                     tagPills
                 }
             }
-            .padding(.horizontal, 4)
+            .padding(.horizontal, 10)
+            .padding(.top, 8)
+            .padding(.bottom, 10)
         }
-        .padding(8)
-        .background(.background, in: RoundedRectangle(cornerRadius: 12))
-        .shadow(color: isHovered ? .cardShadowHover : .cardShadow, radius: isHovered ? 8 : 4, y: isHovered ? 4 : 2)
-        .scaleEffect(isHovered ? 1.02 : 1.0)
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .background(.background, in: RoundedRectangle(cornerRadius: 10))
+        .shadow(color: isHovered ? .cardShadowHover : .cardShadow, radius: isHovered ? 6 : 3, y: isHovered ? 3 : 1)
+        .brightness(isHovered ? 0.03 : 0)
+        .animation(.easeOut(duration: 0.15), value: isHovered)
         .onHover { hovering in
             isHovered = hovering
         }
@@ -127,7 +125,7 @@ struct VideoCardView: View {
 
     @ViewBuilder
     private var tagPills: some View {
-        let maxDisplay = 3
+        let maxDisplay = 2
         let displayTags = Array(video.tags.prefix(maxDisplay))
         let remaining = video.tags.count - maxDisplay
 
@@ -136,21 +134,21 @@ struct VideoCardView: View {
                 HStack(spacing: 3) {
                     Circle()
                         .fill(Color(hex: tag.color))
-                        .frame(width: 6, height: 6)
+                        .frame(width: 5, height: 5)
                     Text(tag.name)
                         .font(.system(size: 9))
                         .lineLimit(1)
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Color(hex: tag.color).opacity(0.15), in: Capsule())
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1.5)
+                .background(Color(hex: tag.color).opacity(0.12), in: Capsule())
             }
             if remaining > 0 {
                 Text("+\(remaining)")
                     .font(.system(size: 9))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tertiary)
                     .padding(.horizontal, 4)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, 1.5)
                     .background(.quaternary, in: Capsule())
             }
         }

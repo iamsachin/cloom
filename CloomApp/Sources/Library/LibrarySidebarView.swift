@@ -8,6 +8,7 @@ enum SidebarSelection: Hashable {
 }
 
 struct LibrarySidebarView: View {
+    @Query private var allVideos: [VideoRecord]
     @Query(sort: \FolderRecord.name) private var allFolders: [FolderRecord]
     @Query(sort: \TagRecord.name) private var allTags: [TagRecord]
     @Binding var selection: SidebarSelection?
@@ -32,13 +33,22 @@ struct LibrarySidebarView: View {
         allFolders.filter { $0.parent == nil }
     }
 
-    var body: some View {
-        List(selection: $selection) {
-            // All Videos
-            Label("All Videos", systemImage: "film.stack")
-                .tag(SidebarSelection.allVideos)
+    private var storageSummary: String {
+        let count = allVideos.count
+        let totalBytes = allVideos.reduce(Int64(0)) { $0 + $1.fileSizeBytes }
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return "\(count) video\(count == 1 ? "" : "s") · \(formatter.string(fromByteCount: totalBytes))"
+    }
 
-            // Folders section
+    var body: some View {
+        VStack(spacing: 0) {
+            List(selection: $selection) {
+                // All Videos
+                Label("All Videos", systemImage: "film.stack")
+                    .tag(SidebarSelection.allVideos)
+
+                // Folders section
             Section {
                 ForEach(flatFolders) { item in
                     folderLabel(item.folder)
@@ -60,6 +70,7 @@ struct LibrarySidebarView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                .padding(.trailing, 4)
             }
 
             // Tags section
@@ -79,7 +90,17 @@ struct LibrarySidebarView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                .padding(.trailing, 4)
             }
+            }
+
+            Divider()
+
+            Text(storageSummary)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
         }
         .navigationTitle("Library")
         .alert("New Folder", isPresented: $showNewFolderAlert) {
