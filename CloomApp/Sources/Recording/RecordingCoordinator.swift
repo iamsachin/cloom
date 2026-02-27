@@ -35,7 +35,6 @@ final class RecordingCoordinator: ObservableObject {
 
     // Webcam enhancements
     var imageAdjuster: WebcamImageAdjuster?
-    var bubbleControlPill: BubbleControlPill?
     var webcamRecordingService: WebcamRecordingService?
     var webcamSettingsObserver: NSObjectProtocol?
 
@@ -119,6 +118,24 @@ final class RecordingCoordinator: ObservableObject {
         )
     }
 
+    func confirmRecording() {
+        guard state.isReady else { return }
+        recordingToolbar.dismiss()
+        state = .countdown(3)
+        showCountdownOverlay(count: 3)
+        startCountdownTimer()
+    }
+
+    func cancelReadyState() {
+        guard state.isReady else { return }
+        recordingToolbar.dismiss()
+        if cameraEnabled {
+            stopWebcam()
+        }
+        cleanupAnnotations()
+        state = .idle
+    }
+
     func cancelContentSelection() {
         state = .idle
     }
@@ -132,8 +149,6 @@ final class RecordingCoordinator: ObservableObject {
         recordingToolbar.dismiss()
         regionHighlight.dismiss()
         cleanupAnnotations()
-        bubbleControlPill?.dismiss()
-        bubbleControlPill = nil
 
         let tracker = PostRecordingTracker.shared
         let recordingTitle = currentOutputURL?.deletingPathExtension().lastPathComponent ?? "Recording"

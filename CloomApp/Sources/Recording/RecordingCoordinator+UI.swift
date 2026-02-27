@@ -7,6 +7,20 @@ private let logger = Logger(subsystem: "com.cloom.app", category: "RecordingCoor
 
 extension RecordingCoordinator {
 
+    func showReadyToolbar() {
+        recordingToolbar.showReady(
+            micEnabled: micEnabled,
+            cameraEnabled: cameraEnabled,
+            onToggleMic: { [weak self] in self?.toggleMic() },
+            onToggleCamera: { [weak self] in self?.toggleCamera() },
+            onToggleAnnotations: { [weak self] in self?.toggleAnnotations() },
+            onToggleClickEmphasis: { [weak self] in self?.toggleClickEmphasis() },
+            onToggleCursorSpotlight: { [weak self] in self?.toggleCursorSpotlight() },
+            onRecord: { [weak self] in self?.confirmRecording() },
+            onCancel: { [weak self] in self?.cancelReadyState() }
+        )
+    }
+
     func showRecordingToolbar(startedAt: Date) {
         recordingToolbar.show(
             startedAt: startedAt,
@@ -35,8 +49,6 @@ extension RecordingCoordinator {
         recordingToolbar.dismiss()
         regionHighlight.dismiss()
         cleanupAnnotations()
-        bubbleControlPill?.dismiss()
-        bubbleControlPill = nil
 
         Task {
             if isWebcamOnly {

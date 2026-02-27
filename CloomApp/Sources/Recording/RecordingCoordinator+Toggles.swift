@@ -8,7 +8,7 @@ extension RecordingCoordinator {
 
     func toggleMic() {
         micEnabled.toggle()
-        guard state.isRecording else { return }
+        guard state.isActiveOrPaused else { return }
         Task {
             do {
                 try await captureService.updateConfiguration(micEnabled: micEnabled)
@@ -21,7 +21,7 @@ extension RecordingCoordinator {
     func toggleCamera() {
         cameraEnabled.toggle()
         if cameraEnabled {
-            if state.isRecording && compositor == nil {
+            if state.isActiveOrPaused && compositor == nil {
                 let comp = WebcamCompositor()
                 self.compositor = comp
                 captureService.updateCompositor(comp)
@@ -32,7 +32,9 @@ extension RecordingCoordinator {
             }
         } else {
             stopWebcam()
-            captureService.updateCompositor(nil)
+            if state.isActiveOrPaused {
+                captureService.updateCompositor(nil)
+            }
         }
     }
 

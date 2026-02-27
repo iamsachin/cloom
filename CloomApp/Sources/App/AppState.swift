@@ -67,6 +67,8 @@ final class AppState: ObservableObject {
             guard let self else { return }
             if self.recordingState.isIdle {
                 self.startRecording()
+            } else if self.recordingState.isReady {
+                self.confirmRecording()
             } else if self.recordingState.isActiveOrPaused {
                 self.stopRecording()
             }
@@ -153,6 +155,14 @@ final class AppState: ObservableObject {
 
     func discardRecording() {
         recordingCoordinator.discardRecording()
+    }
+
+    func confirmRecording() {
+        recordingCoordinator.confirmRecording()
+    }
+
+    func cancelReadyState() {
+        recordingCoordinator.cancelReadyState()
     }
 
     func startWebcamOnlyRecording() {
