@@ -3,54 +3,126 @@ import SwiftUI
 struct OnboardingView: View {
     @ObservedObject var permissionChecker: PermissionChecker
     @Environment(\.dismissWindow) private var dismissWindow
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    @AppStorage("showPostOnboardingHint") private var showPostOnboardingHint: Bool = false
+
+    private var requiredPermissions: [PermissionKind] {
+        PermissionKind.allCases.filter { !$0.isOptional }
+    }
+
+    private var optionalPermissions: [PermissionKind] {
+        PermissionKind.allCases.filter { $0.isOptional }
+    }
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 20) {
             // Header
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 Image(nsImage: NSImage(named: "AppIcon") ?? NSApp.applicationIconImage ?? NSImage())
                     .resizable()
-                    .frame(width: 80, height: 80)
+                    .frame(width: 72, height: 72)
 
                 Text("Welcome to Cloom")
                     .font(.largeTitle)
                     .fontWeight(.bold)
 
-                Text("Cloom needs a few permissions to record your screen, camera, and microphone.")
+                Text("Grant permissions to start recording, and optionally set up AI features.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .frame(maxWidth: 400)
+                    .frame(maxWidth: 560)
             }
-            .padding(.top, 8)
 
-            // Permission rows
-            Form {
-                ForEach(PermissionKind.allCases) { kind in
-                    permissionRow(for: kind)
+            // Two-column layout
+            HStack(alignment: .top, spacing: 0) {
+                // Left column — Required permissions
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Required")
+                        .font(.headline)
+                        .padding(.bottom, 8)
+                        .padding(.horizontal, 4)
+
+                    Form {
+                        ForEach(requiredPermissions) { kind in
+                            permissionRow(for: kind)
+                        }
+                    }
+                    .formStyle(.grouped)
+                }
+                .frame(maxWidth: .infinity)
+
+                Divider()
+                    .padding(.vertical, 8)
+
+                // Right column — Optional (Accessibility + AI) + CTA
+                VStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack(spacing: 6) {
+                            Text("Optional")
+                                .font(.headline)
+                        }
+                        .padding(.bottom, 8)
+                        .padding(.horizontal, 4)
+
+                        Form {
+                            ForEach(optionalPermissions) { kind in
+                                permissionRow(for: kind)
+                            }
+
+                            Section {
+                                APIKeyInputView()
+                            } header: {
+                                Text("AI Features")
+                            } footer: {
+                                Text("Enable AI-powered transcription, summaries, and chapter detection. You can add this later in Settings \u{203A} AI.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .formStyle(.grouped)
+                    }
+
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            }
+
+            // Footer CTA
+            VStack(spacing: 6) {
+                Button {
+                    hasCompletedOnboarding = true
+                    showPostOnboardingHint = true
+                    permissionChecker.stopPolling()
+                    dismissWindow(id: "onboarding")
+                } label: {
+                    Text("Let's Record!")
+                        .frame(maxWidth: 280)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(!permissionChecker.requiredGranted)
+                .tint(permissionChecker.requiredGranted ? .accentColor : .gray)
+
+                if !permissionChecker.requiredGranted {
+                    Text("Grant the required permissions to continue")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
             }
-            .formStyle(.grouped)
-
-            // Footer
-            Button("Get Started") {
-                permissionChecker.stopPolling()
-                dismissWindow(id: "onboarding")
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(!permissionChecker.requiredGranted)
-            .padding(.bottom, 8)
+            .padding(.bottom, 12)
         }
         .padding(.horizontal, 24)
-        .frame(width: 520, height: 620)
+        .padding(.top, 16)
+        .frame(width: 820, height: 620)
         .onAppear {
-            if permissionChecker.allGranted {
-                dismissWindow(id: "onboarding")
+            if !hasCompletedOnboarding && permissionChecker.allGranted {
+                Task { @MainActor in
+                    hasCompletedOnboarding = true
+                    dismissWindow(id: "onboarding")
+                }
                 return
             }
             permissionChecker.startPolling()
-            // Bring window to front above other apps
             NSApp.activate()
             DispatchQueue.main.async {
                 NSApp.windows
@@ -76,33 +148,13 @@ struct OnboardingView: View {
                 .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(kind.displayName)
-                        .font(.headline)
-
-                    if kind.isOptional {
-                        Text("Optional")
-                            .font(.caption2)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.quaternary, in: Capsule())
-                    }
-                }
+                Text(kind.displayName)
+                    .font(.headline)
 
                 Text(kind.description)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-
-                if kind.isOptional && !granted {
-                    Text("You can grant this later — you'll be prompted when using global hotkeys, click emphasis, or cursor spotlight.")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 1)
-                }
             }
 
             Spacer()

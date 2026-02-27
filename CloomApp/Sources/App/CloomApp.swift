@@ -7,6 +7,7 @@ struct CloomApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var appState = AppState()
     @StateObject private var permissionChecker = PermissionChecker()
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
 
     var body: some Scene {
         MenuBarExtra("Cloom", image: "MenuBarIcon") {
@@ -21,7 +22,7 @@ struct CloomApp: App {
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
-        .defaultLaunchBehavior(.presented)
+        .defaultLaunchBehavior(hasCompletedOnboarding ? .automatic : .presented)
 
         Window("Cloom Library", id: "library") {
             MainWindowView()
@@ -32,6 +33,7 @@ struct CloomApp: App {
 
         Settings {
             SettingsView()
+                .environmentObject(permissionChecker)
         }
     }
 }
@@ -41,9 +43,10 @@ struct MenuBarView: View {
     @EnvironmentObject var permissionChecker: PermissionChecker
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
+    @AppStorage("showPostOnboardingHint") private var showPostOnboardingHint: Bool = false
 
     var body: some View {
-        if !permissionChecker.allGranted {
+        if !permissionChecker.requiredGranted {
             Button("Complete Setup...") {
                 NSApp.activate()
                 openWindow(id: "onboarding")
@@ -60,17 +63,25 @@ struct MenuBarView: View {
 
         Divider()
 
-        if appState.recordingState.isIdle {
+        if appState.recordingState.isIdle && permissionChecker.requiredGranted {
+            if showPostOnboardingHint {
+                Text("You're all set! Start your first recording below.")
+                    .font(.caption)
+            }
+
             Menu("Start Recording") {
                 Button("Full Screen") {
+                    showPostOnboardingHint = false
                     appState.startRecording()
                 }
 
                 Button("Choose Window or Display...") {
+                    showPostOnboardingHint = false
                     appState.startRecordingWithPicker()
                 }
 
                 Button("Select Region...") {
+                    showPostOnboardingHint = false
                     appState.recordingCoordinator.cancelContentSelection()
                     appState.recordingCoordinator.startRegionSelection()
                 }
@@ -78,10 +89,15 @@ struct MenuBarView: View {
                 Divider()
 
                 Button("Webcam Only") {
+                    showPostOnboardingHint = false
                     appState.startWebcamOnlyRecording()
                 }
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
+
+        } else if appState.recordingState.isIdle && !permissionChecker.requiredGranted {
+            Text("Start Recording")
+                .foregroundStyle(.secondary)
 
         } else if appState.recordingState.isRecording || appState.recordingState.isPaused {
             Button("Stop Recording") {

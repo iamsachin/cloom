@@ -5,6 +5,8 @@ struct GeneralSettingsTab: View {
     @AppStorage("launchAtLogin") private var launchAtLogin: Bool = false
     @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
     @AppStorage("appearanceMode") private var appearanceMode: String = "system"
+    @EnvironmentObject var permissionChecker: PermissionChecker
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Form {
@@ -36,7 +38,45 @@ struct GeneralSettingsTab: View {
                 default: NSApp.appearance = nil
                 }
             }
+
+            Section("Permissions & Setup") {
+                ForEach(PermissionKind.allCases) { kind in
+                    HStack {
+                        Image(systemName: permissionChecker.statuses[kind] == true
+                              ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundStyle(permissionChecker.statuses[kind] == true ? .green : .red)
+
+                        Text(kind.displayName)
+
+                        if kind.isOptional {
+                            Text("Optional")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(.quaternary, in: Capsule())
+                        }
+
+                        Spacer()
+
+                        if permissionChecker.statuses[kind] != true {
+                            Button("Grant") {
+                                permissionChecker.requestPermission(kind)
+                            }
+                            .controlSize(.small)
+                        }
+                    }
+                }
+
+                Button("Re-open Welcome Setup...") {
+                    NSApp.activate()
+                    openWindow(id: "onboarding")
+                }
+            }
         }
         .formStyle(.grouped)
+        .onAppear {
+            permissionChecker.checkAll()
+        }
     }
 }
