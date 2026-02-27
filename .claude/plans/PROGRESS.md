@@ -448,16 +448,33 @@ Split large files into focused, single-responsibility modules following best pra
 ---
 
 ## Phase 19: Pre-Recording Setup Flow
-**Status:** Not started
+**Status:** Complete
+**Date:** 2026-02-27
 
-Fix the start-recording experience. Currently clicking "Start Recording" immediately begins capture, so toggling mic/webcam on creates an awkward startup segment in the video. Instead, entering recording mode should show the toolbar first (preview state) and only begin actual capture when the user clicks the record button on the toolbar.
+- [x] Task 129 — Add "ready" state to RecordingState (new `.ready` case + `isReady` computed property)
+- [x] Task 130 — Update RecordingCoordinator to enter ready state on "Start Recording" (`beginPreRecordingFlow()` → `.ready` state, `showReadyToolbar()`, webcam preview if camera enabled; skips screen capture permission check for webcam-only mode)
+- [x] Task 131 — Add record button to recording toolbar (ReadyToolbarContentView with green "Ready" indicator, mic/camera/annotations/click-emphasis/spotlight toggles, red circle record button, cancel X button; `showReady()` method on RecordingToolbarPanel)
+- [x] Task 132 — Camera preview in ready state (`startWebcam()` called in ready state; `toggleCamera()` updated to work in `.ready` state without touching capture service)
+- [x] Task 133 — Cancel from ready state (`cancelReadyState()` stops webcam, dismisses toolbar, cleans up annotations, returns to `.idle`)
+- [x] Task 134 — Update menu bar and global hotkeys (Cmd+Shift+R: idle → ready → recording → stop; menu bar shows "Start Recording" + "Cancel Setup" in ready state; `menuStatusText` shows "Ready to record...")
 
-- [ ] Task 129 — Add "ready" state to RecordingState (new `.ready` case between `.idle` and `.countdown`; toolbar shows with mic/camera/annotation toggles but no frames are being written yet)
-- [ ] Task 130 — Update RecordingCoordinator to enter ready state on "Start Recording" (open toolbar + webcam bubble + annotation canvas in preview mode; SCStream and VideoWriter remain stopped until user confirms)
-- [ ] Task 131 — Add record button to recording toolbar (prominent red circle button; clicking it transitions from `.ready` → `.countdown` → `.recording` as before)
-- [ ] Task 132 — Camera preview in ready state (start AVCaptureSession for webcam bubble preview without writing frames; user can toggle camera on/off, adjust shape/frame before committing)
-- [ ] Task 133 — Cancel from ready state (Escape or close toolbar returns to `.idle`, tears down preview resources without creating any files)
-- [ ] Task 134 — Update menu bar and global hotkeys (Cmd+Shift+R from idle enters ready state; from ready state starts recording; menu bar reflects new state with "Cancel Setup" option)
+### Additional Changes
+- [x] Removed BubbleControlPill from webcam bubble (no longer needed — controls are on the toolbar)
+- [x] Fixed onboarding window not auto-presenting after TCC reset (`.defaultLaunchBehavior` now checks `permissionChecker.requiredGranted` in addition to `hasCompletedOnboarding`)
+
+### Files Modified
+- `RecordingState.swift` — added `.ready` case + `isReady`
+- `RecordingCoordinator.swift` — added `confirmRecording()`, `cancelReadyState()`; removed `bubbleControlPill` property + dismiss calls
+- `RecordingCoordinator+Capture.swift` — `beginPreRecordingFlow()` → `.ready` state; extracted `enterReadyState()` helper; removed pill creation from `beginWebcamOnlyCapture()`
+- `RecordingCoordinator+UI.swift` — added `showReadyToolbar()`; removed pill dismiss from `performDiscard()`
+- `RecordingCoordinator+Toggles.swift` — toggles work in `.ready` state (preview only)
+- `RecordingCoordinator+Webcam.swift` — removed pill dismiss from `stopWebcam()`
+- `RecordingCoordinator+CaptureDelegate.swift` — removed pill creation from `captureDidStart()` + dismiss from `captureDidFail()`
+- `RecordingToolbarPanel.swift` — added `showReady()` + `ReadyToolbarContentView`
+- `CloomApp.swift` — ready state menu bar branch; fixed onboarding `.defaultLaunchBehavior`
+- `AppState.swift` — `confirmRecording()` / `cancelReadyState()` passthroughs; hotkey update
+
+**Milestone verified:** Build succeeds (0 errors, 1 pre-existing warning). Start Recording → Ready toolbar → toggle controls → click record → countdown → capture. Cancel returns to idle. Hotkeys cycle correctly. Onboarding auto-presents when permissions missing.
 
 ---
 
@@ -477,7 +494,21 @@ Deep analysis of app behavior during extended recordings (~30 minutes). Identify
 
 ---
 
-## Phase 21: Pre-Release
+## Phase 21: Google Drive Integration
+**Status:** Not started
+
+Upload recordings to the user's personal Google Drive and share via Drive links. No proprietary sharing platform — users stay in full control of their own files.
+
+- [ ] Task 145 — Google OAuth 2.0 authentication (PKCE flow via ASWebAuthenticationSession, refresh token persistence in file-based secure storage, scope: `drive.file` for app-created files only, account info display in Settings)
+- [ ] Task 146 — Google Drive upload service (Rust or Swift actor: resumable upload API for large video files, progress tracking, retry on transient failures, upload to configurable folder)
+- [ ] Task 147 — Upload UI in editor/library (upload button on editor toolbar + context menu on library cards, progress indicator, cancel upload, success state with Drive link)
+- [ ] Task 148 — Share link generation (create Drive sharing link with configurable permissions — viewer/commenter, copy link to clipboard, show shared status on video card)
+- [ ] Task 149 — Settings > Cloud tab (connect/disconnect Google account, default upload folder picker, auto-upload toggle, upload quality selection, storage usage display)
+- [ ] Task 150 — Upload history & sync state (track upload status per VideoRecord — not uploaded/uploading/uploaded/failed, Drive file ID stored on model, re-upload after re-export, delete from Drive option)
+
+---
+
+## Phase 22: Pre-Release
 **Status:** Not started
 
 - [ ] Task 81 — Developer ID signing + notarization + DMG packaging

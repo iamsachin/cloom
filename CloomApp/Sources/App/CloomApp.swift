@@ -22,7 +22,7 @@ struct CloomApp: App {
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
-        .defaultLaunchBehavior(hasCompletedOnboarding ? .automatic : .presented)
+        .defaultLaunchBehavior(hasCompletedOnboarding && permissionChecker.requiredGranted ? .automatic : .presented)
 
         Window("Cloom Library", id: "library") {
             MainWindowView()
@@ -99,6 +99,16 @@ struct MenuBarView: View {
             Text("Start Recording")
                 .foregroundStyle(.secondary)
 
+        } else if appState.recordingState.isReady {
+            Button("Start Recording") {
+                appState.confirmRecording()
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
+
+            Button("Cancel Setup") {
+                appState.cancelReadyState()
+            }
+
         } else if appState.recordingState.isRecording || appState.recordingState.isPaused {
             Button("Stop Recording") {
                 appState.stopRecording()
@@ -149,6 +159,7 @@ struct MenuBarView: View {
 
     private var menuStatusText: String {
         switch appState.recordingState {
+        case .ready: "Ready to record..."
         case .countdown(let n): "Starting in \(n)..."
         case .stopping: "Stopping..."
         case .selectingContent: "Selecting content..."

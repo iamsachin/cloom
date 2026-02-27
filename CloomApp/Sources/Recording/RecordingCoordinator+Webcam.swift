@@ -44,8 +44,6 @@ extension RecordingCoordinator {
         stopObservingWebcamSettings()
         cameraService?.stop()
         webcamBubble?.dismiss()
-        bubbleControlPill?.dismiss()
-        bubbleControlPill = nil
         compositor = nil
         imageAdjuster = nil
     }

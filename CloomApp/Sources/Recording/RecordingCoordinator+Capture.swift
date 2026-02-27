@@ -9,7 +9,7 @@ private let logger = Logger(subsystem: "com.cloom.app", category: "RecordingCoor
 extension RecordingCoordinator {
 
     func beginPreRecordingFlow() {
-        if pendingFilter == nil {
+        if pendingFilter == nil && selectedMode != .webcamOnly {
             Task {
                 do {
                     _ = try await SCShareableContent.current
@@ -18,15 +18,19 @@ extension RecordingCoordinator {
                     state = .idle
                     return
                 }
-                state = .countdown(3)
-                showCountdownOverlay(count: 3)
-                startCountdownTimer()
+                enterReadyState()
             }
         } else {
-            state = .countdown(3)
-            showCountdownOverlay(count: 3)
-            startCountdownTimer()
+            enterReadyState()
         }
+    }
+
+    private func enterReadyState() {
+        state = .ready
+        if cameraEnabled {
+            startWebcam()
+        }
+        showReadyToolbar()
     }
 
     // MARK: - Countdown
@@ -219,22 +223,6 @@ extension RecordingCoordinator {
                 recordingStartedAt = now
                 webcamBubble?.show()
                 showRecordingToolbar(startedAt: now)
-
-                // Show bubble control pill
-                if let bubblePanel = webcamBubble?.windowPanel {
-                    let pill = BubbleControlPill()
-                    pill.show(
-                        bubbleWindow: bubblePanel,
-                        startedAt: now,
-                        pausedDuration: 0,
-                        isPaused: false,
-                        onStop: { [weak self] in self?.stopRecording() },
-                        onPause: { [weak self] in self?.pauseRecording() },
-                        onResume: { [weak self] in self?.resumeRecording() },
-                        onDiscard: { [weak self] in self?.discardRecording() }
-                    )
-                    self.bubbleControlPill = pill
-                }
             } catch {
                 logger.error("Failed to start webcam-only capture: \(error)")
                 state = .idle
