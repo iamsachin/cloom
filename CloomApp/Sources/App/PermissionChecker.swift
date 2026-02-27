@@ -59,7 +59,12 @@ final class PermissionChecker: ObservableObject {
     }
 
     init() {
-        checkAll()
+        // Populate synchronously without publishing to avoid
+        // "Publishing changes from within view updates" when
+        // @StateObject initialises during body evaluation.
+        for kind in PermissionKind.allCases {
+            statuses[kind] = checkPermission(kind)
+        }
     }
 
     // MARK: - Non-prompting checks
