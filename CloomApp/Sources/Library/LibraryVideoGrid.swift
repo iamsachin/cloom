@@ -4,7 +4,7 @@ import AppKit
 
 // MARK: - Video Grid Item & Context Menu
 
-extension LibraryView {
+extension LibraryContentView {
 
     @ViewBuilder
     func videoGridItem(_ video: VideoRecord) -> some View {
@@ -12,7 +12,7 @@ extension LibraryView {
             if isSelecting {
                 toggleSelection(video.id)
             } else {
-                openWindow(value: video.id)
+                navigationState.openEditor(videoID: video.id)
             }
         } label: {
             VideoCardView(video: video)
@@ -54,7 +54,7 @@ extension LibraryView {
     @ViewBuilder
     func videoContextMenu(_ video: VideoRecord) -> some View {
         Button("Open") {
-            openWindow(value: video.id)
+            navigationState.openEditor(videoID: video.id)
         }
 
         Divider()

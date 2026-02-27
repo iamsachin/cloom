@@ -24,19 +24,11 @@ struct CloomApp: App {
         .defaultLaunchBehavior(.presented)
 
         Window("Cloom Library", id: "library") {
-            LibraryView()
+            MainWindowView()
                 .environmentObject(appState)
                 .modelContainer(appState.modelContainer)
         }
-        .defaultSize(width: 900, height: 600)
-
-        WindowGroup("Editor", for: String.self) { $videoID in
-            if let videoID {
-                EditorView(videoID: videoID)
-                    .modelContainer(appState.modelContainer)
-            }
-        }
-        .defaultSize(width: 1000, height: 700)
+        .defaultSize(width: 1100, height: 700)
 
         Settings {
             SettingsView()

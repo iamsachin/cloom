@@ -17,6 +17,11 @@
 - Keep files under ~300 lines and functions under ~30 lines. If a file grows beyond that, split it.
 - No file should have more than ~10 public methods. Extract helpers, services, or extensions when it does.
 - Prefer composition over large monolithic types — e.g., use extensions (`+Feature.swift`) or dedicated helper types.
+- Follow the general architectural design principles of the project — consult plan docs and existing code patterns before introducing new patterns or abstractions.
+
+## Testing
+- After every significant change (new feature, refactor, bug fix, architectural change), update existing tests or add new tests to cover the changes.
+- Ensure all existing tests still pass after modifications.
 
 ## Git & Commits
 - At natural checkpoints (feature complete, bug fixed, refactor done, etc.), ask the user if they'd like to commit the changes so far before continuing.

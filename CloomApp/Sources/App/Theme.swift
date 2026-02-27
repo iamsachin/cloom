@@ -76,6 +76,33 @@ extension Color {
         })
     }
 
+    /// Duration badge background — dark pill on thumbnail
+    static var durationBadge: Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.isDarkMode
+                ? NSColor.black.withAlphaComponent(0.70)
+                : NSColor.black.withAlphaComponent(0.60)
+        })
+    }
+
+    /// List row hover — light: black@4%, dark: white@6%
+    static var listRowHover: Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.isDarkMode
+                ? NSColor.white.withAlphaComponent(0.06)
+                : NSColor.black.withAlphaComponent(0.04)
+        })
+    }
+
+    /// Subtle card background — light: white@95%, dark: white@5%
+    static var cardBackgroundSubtle: Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.isDarkMode
+                ? NSColor.white.withAlphaComponent(0.05)
+                : NSColor.white.withAlphaComponent(0.95)
+        })
+    }
+
     /// Region dim overlay (outside captured area) — light: black@25%, dark: black@35%
     static var regionDim: Color {
         Color(nsColor: NSColor(name: nil) { appearance in

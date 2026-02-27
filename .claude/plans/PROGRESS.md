@@ -398,7 +398,56 @@ Split large files into focused, single-responsibility modules following best pra
 
 ---
 
-## Phase 18: Pre-Release
+## Phase 18: Single-Window Layout + Visual Redesign
+**Status:** Complete
+**Date:** 2026-02-27
+
+### Phase 1: Navigation Foundation
+- [x] Created NavigationState (@Observable, library/editor mode, grid/list view style, UserDefaults persistence)
+- [x] Created MainWindowView (NavigationSplitView root, sidebar + detail mode switch, Escape key back)
+- [x] Created LibraryContentView (extracted from LibraryView — filtering, sorting, search, grid/list rendering)
+- [x] Created EditorContentView (wraps editor with back button, auto-navigate on video deletion)
+- [x] Updated CloomApp.swift (removed Editor WindowGroup, single Window with MainWindowView)
+- [x] Updated LibraryVideoGrid.swift (re-targeted to LibraryContentView, replaced openWindow with navigationState)
+- [x] Deleted LibraryView.swift + EditorView.swift (replaced by new files)
+
+### Phase 2: List View + View Toggle
+- [x] Created LibraryListRowView (compact row: thumbnail, title, duration, date, tags)
+- [x] Added grid/list segmented picker to toolbar
+- [x] List view with hover highlight, context menus, selection mode support
+
+### Phase 3: Visual Redesign
+- [x] Redesigned VideoCardView (duration badge overlay, cleaner typography, subtle hover brightness)
+- [x] Added Theme colors (durationBadge, listRowHover, cardBackgroundSubtle)
+- [x] Updated ProcessingCardView to match new card style
+- [x] Tag pills: max 2 shown, thinner capsules
+
+### Phase 4: Polish + Cleanup
+- [x] Deleted legacy PlayerView.swift + Player/ directory
+- [x] Added opacity transitions between Library ↔ Editor
+- [x] Edge case: video deleted while in editor → auto-navigate back to library
+- [x] Escape key returns to library from editor
+- [x] ViewStyle persisted to UserDefaults
+- [x] Ran xcodegen generate for new files
+- [x] Updated plan docs (02-project-structure.md, 05-swift-modules.md)
+
+### New Files
+- `CloomApp/Sources/App/NavigationState.swift`
+- `CloomApp/Sources/App/MainWindowView.swift`
+- `CloomApp/Sources/Library/LibraryContentView.swift`
+- `CloomApp/Sources/Library/LibraryListRowView.swift`
+- `CloomApp/Sources/Editor/EditorContentView.swift`
+
+### Deleted Files
+- `CloomApp/Sources/Library/LibraryView.swift`
+- `CloomApp/Sources/Editor/EditorView.swift`
+- `CloomApp/Sources/Player/PlayerView.swift`
+
+**Milestone verified:** Build succeeds (0 errors, 1 warning). Single-window navigation with library ↔ editor mode switching. Grid/list toggle. Visual redesign with duration badges, clean typography, subtle hover effects. Back navigation via chevron button, Cmd+[, or Escape. Sidebar visible in both modes.
+
+---
+
+## Phase 19: Pre-Release
 **Status:** Not started
 
 - [ ] Task 81 — Developer ID signing + notarization + DMG packaging

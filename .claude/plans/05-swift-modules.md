@@ -1,10 +1,11 @@
 # Swift Modules Detail
 
-## App/ — Application Lifecycle & Menu Bar (6 files)
+## App/ — Application Lifecycle & Navigation (8 files)
 
 **Responsibilities:**
-- `@main` SwiftUI App with `MenuBarExtra` + `WindowGroup` scenes
-- Window management (library, editor, floating panels, settings)
+- `@main` SwiftUI App with `MenuBarExtra` + single `Window` scene (no separate Editor window)
+- Single-window navigation: library and editor modes in one window via `NavigationState`
+- `MainWindowView` with `NavigationSplitView` — sidebar + detail switching
 - Global keyboard shortcuts via CGEvent tap
 - Launch-at-startup via `SMAppService`
 - Notification scheduling via `UNUserNotificationCenter`
@@ -12,14 +13,16 @@
 - Dark mode theme management
 
 **Key Types:**
-- `CloomApp: App` — top-level, MenuBarExtra + WindowGroup
+- `CloomApp: App` — top-level, MenuBarExtra + single Window (library)
+- `NavigationState: @Observable @MainActor` — navigation mode (library/editor), view style (grid/list), navigation stack, UserDefaults persistence
+- `MainWindowView` — root view: NavigationSplitView with sidebar + detail mode switch, Escape key handling
 - `AppState: @MainActor ObservableObject` — global state (recording, mic/camera toggles, modelContainer, crash recovery, disk monitoring)
 - `PermissionChecker: @MainActor ObservableObject` — live polling for Screen Recording, Camera, Mic, Accessibility TCC permissions
 - `OnboardingView` — step-by-step permission setup with live status indicators
 - `GlobalHotkeyManager` — singleton, CGEvent tap for Cmd+Shift+R (toggle recording) and Cmd+Shift+P (toggle pause), ShortcutRecorderButton for customization, UserDefaults persistence
-- `Theme` — semantic Color extensions with NSColor dynamic provider, 9 adaptive colors, System/Light/Dark picker
+- `Theme` — semantic Color extensions with NSColor dynamic provider, 12 adaptive colors, System/Light/Dark picker
 
-**macOS APIs:** `MenuBarExtra`, `Settings` scene, `WindowGroup`, `SMAppService`, `CGEvent` tap, `UNUserNotificationCenter`, `NSAppearance`
+**macOS APIs:** `MenuBarExtra`, `Settings` scene, `Window`, `SMAppService`, `CGEvent` tap, `UNUserNotificationCenter`, `NSAppearance`
 
 ---
 

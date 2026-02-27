@@ -2,17 +2,17 @@ import SwiftUI
 import SwiftData
 import AppKit
 
-// MARK: - Library View
+// MARK: - Library Content View
 
-struct LibraryView: View {
+struct LibraryContentView: View {
     @Query(sort: \VideoRecord.createdAt, order: .reverse) var videos: [VideoRecord]
     @Query(sort: \FolderRecord.name) var allFolders: [FolderRecord]
     @Query(sort: \TagRecord.name) var allTags: [TagRecord]
-    @EnvironmentObject var appState: AppState
-    @Environment(\.openWindow) var openWindow
+    @Environment(NavigationState.self) var navigationState
     @Environment(\.modelContext) var modelContext
 
-    @State var sidebarSelection: SidebarSelection? = .allVideos
+    @Binding var sidebarSelection: SidebarSelection?
+
     @State var isSelecting = false
     @State var selectedIDs: Set<String> = []
     @State var showDeleteConfirmation = false
@@ -28,17 +28,6 @@ struct LibraryView: View {
 
     // Bulk tag
     @State var showBulkTagPicker = false
-
-    // Cached storage summary
-    @State private var cachedStorageSummary = ""
-
-    var body: some View {
-        NavigationSplitView {
-            LibrarySidebarView(selection: $sidebarSelection)
-        } detail: {
-            detailContent
-        }
-    }
 
     // MARK: - Filtered & Sorted Videos
 
@@ -82,7 +71,7 @@ struct LibraryView: View {
         return result
     }
 
-    private var navigationTitle: String {
+    var navigationTitle: String {
         let count = filteredVideos.count
         switch sidebarSelection {
         case .allVideos, .none:
@@ -100,93 +89,116 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: - Detail Content
+    // MARK: - Body
+
+    var body: some View {
+        Group {
+            if filteredVideos.isEmpty && debouncedSearchText.isEmpty && sidebarSelection == .allVideos
+                && !PostRecordingTracker.shared.isProcessing {
+                ContentUnavailableView(
+                    "No Recordings Yet",
+                    systemImage: "record.circle",
+                    description: Text("Start a recording from the menu bar to get started.")
+                )
+            } else if filteredVideos.isEmpty && !PostRecordingTracker.shared.isProcessing {
+                ContentUnavailableView.search(text: debouncedSearchText.isEmpty ? "No videos" : debouncedSearchText)
+            } else {
+                switch navigationState.viewStyle {
+                case .grid:
+                    gridContent
+                case .list:
+                    listContent
+                }
+            }
+        }
+        .navigationTitle(navigationTitle)
+        .searchable(text: $searchText, prompt: "Search videos...")
+        .onChange(of: searchText) { _, newValue in
+            searchDebounceTask?.cancel()
+            searchDebounceTask = Task {
+                try? await Task.sleep(for: .milliseconds(300))
+                guard !Task.isCancelled else { return }
+                debouncedSearchText = newValue
+            }
+        }
+        .toolbar { toolbarContent }
+        .confirmationDialog(
+            "Delete \(selectedIDs.count) recording\(selectedIDs.count == 1 ? "" : "s")?",
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) { deleteSelected() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will permanently delete the selected recordings and their files from disk.")
+        }
+        .sheet(isPresented: $showMoveToFolderPicker) {
+            FolderPickerSheet(
+                folders: allFolders.filter { $0.parent == nil },
+                onSelect: { folder in
+                    moveVideosToFolder(videoIDs: moveTargetVideoIDs, folder: folder)
+                }
+            )
+        }
+        .sheet(isPresented: $showBulkTagPicker) {
+            BulkTagSheet(
+                tags: allTags,
+                videoIDs: selectedIDs,
+                videos: videos
+            )
+        }
+    }
+
+    // MARK: - Grid Content
 
     @ViewBuilder
-    private var detailContent: some View {
-        if filteredVideos.isEmpty && debouncedSearchText.isEmpty && sidebarSelection == .allVideos
-            && !PostRecordingTracker.shared.isProcessing {
-            ContentUnavailableView(
-                "No Recordings Yet",
-                systemImage: "record.circle",
-                description: Text("Start a recording from the menu bar to get started.")
-            )
-        } else if filteredVideos.isEmpty && !PostRecordingTracker.shared.isProcessing {
-            ContentUnavailableView.search(text: debouncedSearchText.isEmpty ? "No videos" : debouncedSearchText)
-        } else {
-            ScrollView {
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 250), spacing: 16)],
-                    spacing: 16
-                ) {
-                    if let info = PostRecordingTracker.shared.activeRecording {
-                        ProcessingCardView(info: info)
-                    }
-                    ForEach(filteredVideos, id: \.id) { video in
-                        videoGridItem(video)
-                    }
-                }
-                .padding()
-            }
-            .navigationTitle(navigationTitle)
-            .searchable(text: $searchText, prompt: "Search videos...")
-            .onChange(of: searchText) { _, newValue in
-                searchDebounceTask?.cancel()
-                searchDebounceTask = Task {
-                    try? await Task.sleep(for: .milliseconds(300))
-                    guard !Task.isCancelled else { return }
-                    debouncedSearchText = newValue
-                }
-            }
-            .onAppear { updateStorageSummary() }
-            .onChange(of: videos.count) { updateStorageSummary() }
-            .toolbar { toolbarContent }
-            .confirmationDialog(
-                "Delete \(selectedIDs.count) recording\(selectedIDs.count == 1 ? "" : "s")?",
-                isPresented: $showDeleteConfirmation,
-                titleVisibility: .visible
+    private var gridContent: some View {
+        ScrollView {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 280), spacing: 20)],
+                spacing: 20
             ) {
-                Button("Delete", role: .destructive) { deleteSelected() }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This will permanently delete the selected recordings and their files from disk.")
+                if let info = PostRecordingTracker.shared.activeRecording {
+                    ProcessingCardView(info: info)
+                }
+                ForEach(filteredVideos, id: \.id) { video in
+                    videoGridItem(video)
+                }
             }
-            .sheet(isPresented: $showMoveToFolderPicker) {
-                FolderPickerSheet(
-                    folders: allFolders.filter { $0.parent == nil },
-                    onSelect: { folder in
-                        moveVideosToFolder(videoIDs: moveTargetVideoIDs, folder: folder)
-                    }
-                )
+            .padding()
+        }
+    }
+
+    // MARK: - List Content
+
+    @ViewBuilder
+    private var listContent: some View {
+        ScrollView {
+            LazyVStack(spacing: 2) {
+                ForEach(filteredVideos, id: \.id) { video in
+                    LibraryListRowView(
+                        video: video,
+                        isSelecting: isSelecting,
+                        isSelected: selectedIDs.contains(video.id),
+                        onTap: {
+                            if isSelecting {
+                                toggleSelection(video.id)
+                            } else {
+                                navigationState.openEditor(videoID: video.id)
+                            }
+                        }
+                    )
+                    .contextMenu { videoContextMenu(video) }
+                }
             }
-            .sheet(isPresented: $showBulkTagPicker) {
-                BulkTagSheet(
-                    tags: allTags,
-                    videoIDs: selectedIDs,
-                    videos: videos
-                )
-            }
+            .padding(.vertical, 4)
         }
     }
 
     // MARK: - Toolbar
 
-    private func updateStorageSummary() {
-        let count = videos.count
-        let totalBytes = videos.reduce(Int64(0)) { $0 + $1.fileSizeBytes }
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        cachedStorageSummary = "\(count) video\(count == 1 ? "" : "s") · \(formatter.string(fromByteCount: totalBytes))"
-    }
-
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .automatic) {
-            Text(cachedStorageSummary)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-
         if isSelecting {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button(selectedIDs.count == filteredVideos.count ? "Deselect All" : "Select All") {
@@ -221,6 +233,18 @@ struct LibraryView: View {
                 }
             }
         } else {
+            ToolbarItem(placement: .primaryAction) {
+                @Bindable var navState = navigationState
+                Picker("View", selection: $navState.viewStyle) {
+                    Image(systemName: "square.grid.2x2")
+                        .tag(NavigationState.ViewStyle.grid)
+                    Image(systemName: "list.bullet")
+                        .tag(NavigationState.ViewStyle.list)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 70)
+            }
+
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Picker("Sort", selection: $sortOrder) {

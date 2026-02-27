@@ -30,9 +30,11 @@ cloom/
 │   │   │   ├── ClickEmphasisMonitor.swift     # CGEvent tap for click ripple effects
 │   │   │   └── CursorSpotlightMonitor.swift   # Cursor position tracking for spotlight
 │   │   ├── App/
-│   │   │   ├── CloomApp.swift                 # @main, MenuBarExtra, WindowGroup scenes
+│   │   │   ├── CloomApp.swift                 # @main, MenuBarExtra, single Window scene
 │   │   │   ├── AppState.swift                 # @MainActor global state, cleanup, disk monitoring
 │   │   │   ├── GlobalHotkeyManager.swift      # CGEvent tap hotkeys (Cmd+Shift+R, etc.)
+│   │   │   ├── MainWindowView.swift           # Single-window root: NavigationSplitView + mode switch
+│   │   │   ├── NavigationState.swift          # @Observable navigation state (library/editor mode, view style)
 │   │   │   ├── PermissionChecker.swift        # TCC permission detection + request
 │   │   │   ├── OnboardingView.swift           # Permission setup flow with live status
 │   │   │   └── Theme.swift                    # Dark mode semantic colors
@@ -84,12 +86,12 @@ cloom/
 │   │   │   ├── ChapterNavigationView.swift    # Popover + timeline markers
 │   │   │   ├── CutRegionOverlay.swift         # Red hatched cut regions
 │   │   │   ├── EditorCompositionBuilder.swift # EDL → AVMutableComposition (multi-track audio)
+│   │   │   ├── EditorContentView.swift        # Editor in-window view with back navigation
 │   │   │   ├── EditorExportView.swift         # Quality picker + brightness/contrast + subtitle mode
 │   │   │   ├── EditorInfoPanel.swift          # Info sidebar (title, summary, metadata)
 │   │   │   ├── EditorState.swift              # @Observable @MainActor editing state
 │   │   │   ├── EditorState+Bookmarks.swift    # Bookmark CRUD extension
 │   │   │   ├── EditorToolbarView.swift        # Playback/cut/chapter/export controls
-│   │   │   ├── EditorView.swift               # Main editor window (1000x700)
 │   │   │   ├── GifExportService.swift         # Rust gifski FFI bridge
 │   │   │   ├── SpeedControlView.swift         # 0.25x–4x popover
 │   │   │   ├── StitchPanelView.swift          # Multi-clip drag-to-reorder
@@ -104,14 +106,14 @@ cloom/
 │   │   ├── Library/
 │   │   │   ├── BulkTagSheet.swift             # Bulk tag assignment
 │   │   │   ├── FolderPickerSheet.swift        # Move videos to folders
-│   │   │   ├── LibraryFilterModels.swift      # Sort/filter enums (extracted from LibraryView)
+│   │   │   ├── LibraryContentView.swift       # Detail content: grid/list views, filtering, sorting, search
+│   │   │   ├── LibraryFilterModels.swift      # Sort/filter enums
+│   │   │   ├── LibraryListRowView.swift       # Compact list row with thumbnail, title, duration, date
 │   │   │   ├── LibrarySidebarView.swift       # Folders + tags navigation
-│   │   │   ├── LibraryVideoGrid.swift         # Grid item, context menu, selection badge (extracted from LibraryView)
-│   │   │   ├── LibraryView.swift              # Grid + hover preview + sort/filter
+│   │   │   ├── LibraryVideoGrid.swift         # Grid item, context menu, selection badge
+│   │   │   ├── ProcessingCardView.swift       # Post-recording processing placeholder card
 │   │   │   ├── TagEditorView.swift            # 8-preset color picker + CRUD
-│   │   │   └── VideoCardView.swift            # Thumbnail + metadata + context menu
-│   │   ├── Player/
-│   │   │   └── PlayerView.swift               # AVPlayer wrapper (legacy, most player in Editor/)
+│   │   │   └── VideoCardView.swift            # Thumbnail + duration badge + metadata card
 │   │   ├── Recording/
 │   │   │   ├── BubbleControlPill.swift            # Floating pill on webcam bubble
 │   │   │   ├── CountdownOverlayWindow.swift       # 3-2-1 countdown
@@ -182,20 +184,19 @@ cloom/
 └── .gitignore
 ```
 
-## Module Summary (109 Swift files, 12 Rust files)
+## Module Summary (110 Swift files, 12 Rust files)
 
 | Module | Files | Description |
 |--------|-------|-------------|
 | AI/ | 4 | AI orchestration pipeline, audio extraction, API key storage |
 | Annotations/ | 11 | Drawing tools, canvas, input handler, renderer, click/cursor effects |
-| App/ | 6 | App entry, state, hotkeys, permissions, onboarding, theme |
+| App/ | 8 | App entry, state, navigation, main window, hotkeys, permissions, onboarding, theme |
 | Bridge/ | 3 | UniFFI generated bindings (gitignored) |
 | Capture/ | 18 | Screen capture, camera, webcam UI, shapes, themes, adjustments, mic gain |
 | Compositing/ | 6 | VideoWriter, webcam compositor (+ shape/emoji extensions), segment stitcher, export progress |
 | Data/ | 9 | SwiftData models (VideoRecord, FolderRecord, TagRecord, BookmarkRecord, etc.) |
-| Editor/ | 22 | Timeline, trim, cut, stitch, speed, export, GIF, subtitles, captions, transcript, chapters, bookmarks |
-| Library/ | 8 | Grid, sidebar, cards, tags, folders, filter models |
-| Player/ | 1 | Legacy AVPlayer wrapper |
+| Editor/ | 22 | EditorContentView, timeline, trim, cut, stitch, speed, export, GIF, subtitles, captions, transcript, chapters, bookmarks |
+| Library/ | 10 | Grid, list, sidebar, cards, processing card, tags, folders, filter models |
 | Recording/ | 15 | Coordinator (split into 8 files), toolbar, pill, discard, countdown, region overlay |
 | Settings/ | 8 | Tabbed settings (5 tabs + shell + backing types + mic level monitor) |
 | Shared/ | 3 | Thumbnail generator, SharedCIContext, LabeledSlider |
@@ -209,6 +210,6 @@ cloom/
 5. `CloomApp/Sources/Annotations/AnnotationRenderer.swift` — Real-time annotation burn-in
 6. `CloomApp/Sources/Data/VideoModel.swift` — SwiftData video record
 7. `CloomApp/Sources/Editor/EditorState.swift` + bookmark extension — @Observable editing state
-8. `CloomApp/Sources/Editor/EditorView.swift` — Main editor UI
+8. `CloomApp/Sources/Editor/EditorContentView.swift` — Main editor UI (in-window)
 9. `cloom-core/src/lib.rs` — FFI entry point
 10. `build.sh` — Glue between Rust and Swift worlds
