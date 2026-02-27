@@ -135,6 +135,10 @@ final class RecordingCoordinator: ObservableObject {
         bubbleControlPill?.dismiss()
         bubbleControlPill = nil
 
+        let tracker = PostRecordingTracker.shared
+        let recordingTitle = currentOutputURL?.deletingPathExtension().lastPathComponent ?? "Recording"
+        tracker.start(title: recordingTitle)
+
         Task {
             if isWebcamOnly {
                 await webcamRecordingService?.stopRecording()
@@ -144,9 +148,11 @@ final class RecordingCoordinator: ObservableObject {
                 imageAdjuster = nil
 
                 guard let finalURL = currentOutputURL else {
+                    tracker.finish()
                     state = .idle
                     return
                 }
+                tracker.updateStep(.extractingMetadata)
                 await handleRecordingFinished(outputURL: finalURL)
             } else {
                 stopWebcam()
@@ -160,12 +166,14 @@ final class RecordingCoordinator: ObservableObject {
                 }
 
                 guard let finalURL = currentOutputURL else {
+                    tracker.finish()
                     state = .idle
                     return
                 }
 
                 if segmentURLs.count <= 1 {
                     if let segmentURL = segmentURLs.first {
+                        tracker.updateStep(.mixingAudio)
                         do {
                             try await stitcher.mixdownAudio(inputURL: segmentURL, to: finalURL)
                         } catch {
@@ -173,8 +181,10 @@ final class RecordingCoordinator: ObservableObject {
                             try? FileManager.default.moveItem(at: segmentURL, to: finalURL)
                         }
                     }
+                    tracker.updateStep(.extractingMetadata)
                     await handleRecordingFinished(outputURL: finalURL)
                 } else {
+                    tracker.updateStep(.stitchingSegments)
                     let progressWindow = ExportProgressWindow()
                     self.exportProgressWindow = progressWindow
                     progressWindow.show(message: "Stitching segments...")
@@ -186,9 +196,11 @@ final class RecordingCoordinator: ObservableObject {
                             }
                         }
                         progressWindow.dismiss()
+                        tracker.updateStep(.extractingMetadata)
                         await handleRecordingFinished(outputURL: finalURL)
                     } catch {
                         progressWindow.dismiss()
+                        tracker.finish()
                         logger.error("Failed to stitch segments: \(error)")
                         state = .idle
                     }

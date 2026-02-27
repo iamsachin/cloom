@@ -11,6 +11,7 @@ private let logger = Logger(subsystem: "com.cloom.app", category: "RecordingCoor
 extension RecordingCoordinator {
 
     func handleRecordingFinished(outputURL: URL) async {
+        let tracker = PostRecordingTracker.shared
         let asset = AVURLAsset(url: outputURL)
 
         let duration: CMTime
@@ -42,6 +43,7 @@ extension RecordingCoordinator {
             fileSize = 0
         }
 
+        tracker.updateStep(.generatingThumbnail)
         let thumbnailPath = await ThumbnailGenerator.generateThumbnail(for: outputURL) ?? ""
 
         let recordingType: String
@@ -53,6 +55,7 @@ extension RecordingCoordinator {
             recordingType = "screenOnly"
         }
 
+        tracker.updateStep(.saving)
         let context = ModelContext(modelContainer)
         let durationMs = Int64(duration.seconds * 1000)
         let record = VideoRecord(
@@ -70,8 +73,10 @@ extension RecordingCoordinator {
         do {
             try context.save()
             logger.info("Saved recording: \(record.title) (\(durationMs)ms)")
+            tracker.finish()
         } catch {
             logger.error("Failed to save recording: \(error)")
+            tracker.finish()
         }
 
         // Launch AI pipeline in background

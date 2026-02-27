@@ -104,13 +104,14 @@ struct LibraryView: View {
 
     @ViewBuilder
     private var detailContent: some View {
-        if filteredVideos.isEmpty && debouncedSearchText.isEmpty && sidebarSelection == .allVideos {
+        if filteredVideos.isEmpty && debouncedSearchText.isEmpty && sidebarSelection == .allVideos
+            && !PostRecordingTracker.shared.isProcessing {
             ContentUnavailableView(
                 "No Recordings Yet",
                 systemImage: "record.circle",
                 description: Text("Start a recording from the menu bar to get started.")
             )
-        } else if filteredVideos.isEmpty {
+        } else if filteredVideos.isEmpty && !PostRecordingTracker.shared.isProcessing {
             ContentUnavailableView.search(text: debouncedSearchText.isEmpty ? "No videos" : debouncedSearchText)
         } else {
             ScrollView {
@@ -118,6 +119,9 @@ struct LibraryView: View {
                     columns: [GridItem(.adaptive(minimum: 250), spacing: 16)],
                     spacing: 16
                 ) {
+                    if let info = PostRecordingTracker.shared.activeRecording {
+                        ProcessingCardView(info: info)
+                    }
                     ForEach(filteredVideos, id: \.id) { video in
                         videoGridItem(video)
                     }
