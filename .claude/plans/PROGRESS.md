@@ -447,8 +447,40 @@ Split large files into focused, single-responsibility modules following best pra
 
 ---
 
-## Phase 19: Pre-Release
+## Phase 19: Pre-Recording Setup Flow
+**Status:** Not started
+
+Fix the start-recording experience. Currently clicking "Start Recording" immediately begins capture, so toggling mic/webcam on creates an awkward startup segment in the video. Instead, entering recording mode should show the toolbar first (preview state) and only begin actual capture when the user clicks the record button on the toolbar.
+
+- [ ] Task 129 — Add "ready" state to RecordingState (new `.ready` case between `.idle` and `.countdown`; toolbar shows with mic/camera/annotation toggles but no frames are being written yet)
+- [ ] Task 130 — Update RecordingCoordinator to enter ready state on "Start Recording" (open toolbar + webcam bubble + annotation canvas in preview mode; SCStream and VideoWriter remain stopped until user confirms)
+- [ ] Task 131 — Add record button to recording toolbar (prominent red circle button; clicking it transitions from `.ready` → `.countdown` → `.recording` as before)
+- [ ] Task 132 — Camera preview in ready state (start AVCaptureSession for webcam bubble preview without writing frames; user can toggle camera on/off, adjust shape/frame before committing)
+- [ ] Task 133 — Cancel from ready state (Escape or close toolbar returns to `.idle`, tears down preview resources without creating any files)
+- [ ] Task 134 — Update menu bar and global hotkeys (Cmd+Shift+R from idle enters ready state; from ready state starts recording; menu bar reflects new state with "Cancel Setup" option)
+
+---
+
+## Phase 20: Long Recording Stress Test
+**Status:** Not started
+
+Deep analysis of app behavior during extended recordings (~30 minutes). Identify performance degradation, memory leaks, export bottlenecks, and reliability issues.
+
+- [ ] Task 135 — Memory profiling during 30-min recording (Instruments: track heap growth, leaked objects, VM regions over time; identify any unbounded buffers or caches)
+- [ ] Task 136 — CPU/GPU profiling during 30-min recording (Instruments: Time Profiler + Metal System Trace; check compositor frame drops, encoding backpressure, thermal throttling)
+- [ ] Task 137 — File I/O & disk usage analysis (monitor temp segment sizes, AVAssetWriter output growth rate, disk space consumption curve; verify cleanup of intermediate files)
+- [ ] Task 138 — Export pipeline stress test (export a 30-min recording with each quality preset; measure wall-clock time, peak memory, CPU saturation; test with subtitles + EDL edits)
+- [ ] Task 139 — Audio sync verification (check for audio drift over 30 minutes — compare waveform peaks at 1, 10, 20, 30 min marks between source and export)
+- [ ] Task 140 — Pause/resume durability (record 30 min with 5+ pause/resume cycles; verify segment stitching, no gaps, no duplicate frames)
+- [ ] Task 141 — AI pipeline at scale (transcribe a 30-min recording — check Whisper API chunking, LLM context limits for long transcripts, chapter generation quality)
+- [ ] Task 142 — Fix any issues discovered (address performance regressions, memory leaks, export failures, or reliability bugs found in Tasks 135–141)
+
+---
+
+## Phase 21: Pre-Release
 **Status:** Not started
 
 - [ ] Task 81 — Developer ID signing + notarization + DMG packaging
 - [ ] Task 83 — Release notes + changelog
+- [ ] Task 143 — Check for updates (query GitHub Releases API for latest version, compare with bundled CFBundleShortVersionString, show update-available banner in library with download link to GitHub release page; also add "Check for Updates..." item in the menu bar dropdown)
+- [ ] Task 144 — About section (new Settings tab or window showing app icon, current version from CFBundleShortVersionString + build number, credits/acknowledgements, link to GitHub repo, "Check for Updates" button reusing Task 143 logic)
