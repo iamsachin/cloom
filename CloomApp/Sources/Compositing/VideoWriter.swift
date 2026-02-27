@@ -22,12 +22,20 @@ actor VideoWriter {
     /// Set once in start() before capture begins; read-only from capture queue thereafter.
     nonisolated(unsafe) var exposedPixelBufferPool: CVPixelBufferPool?
 
+    /// Optional metrics reporter — set by coordinator before capture starts.
+    nonisolated(unsafe) weak var metrics: RecordingMetrics?
+
     private var firstVideoPTS: CMTime?
     private var firstSystemAudioPTS: CMTime?
     private var firstMicAudioPTS: CMTime?
     private var started = false
     private var frameCount: Int64 = 0
     private var dropCount: Int64 = 0
+
+    /// Audio samples that arrived before the first video frame.
+    /// Flushed once firstVideoPTS is set.
+    private var earlyAudioBuffer: [(CMSampleBuffer, AudioSourceType)] = []
+    private static let maxEarlyAudioSamples = 50
 
     init(outputURL: URL, settings: RecordingSettings, width: Int, height: Int) throws {
         let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mp4)
@@ -97,6 +105,12 @@ actor VideoWriter {
 
         if firstVideoPTS == nil {
             firstVideoPTS = pts
+            // Flush any audio samples that arrived before this first video frame
+            let buffered = earlyAudioBuffer
+            earlyAudioBuffer.removeAll()
+            for (sample, sourceType) in buffered {
+                appendAudio(sample, sourceType: sourceType)
+            }
         }
 
         guard let offset = firstVideoPTS else { return }
@@ -104,14 +118,21 @@ actor VideoWriter {
 
         guard videoInput.isReadyForMoreMediaData else {
             dropCount += 1
-            if dropCount % 100 == 0 {
-                logger.warning("Dropped \(self.dropCount) video frames total")
+            let total = frameCount + dropCount
+            let shouldLog = dropCount == 1 || dropCount == 5 || dropCount == 10
+                || dropCount == 25 || dropCount == 50 || dropCount == 100
+                || dropCount % 100 == 0
+            if shouldLog {
+                let rate = total > 0 ? Double(dropCount) / Double(total) * 100.0 : 0
+                logger.warning("Dropped \(self.dropCount) video frames (drop rate: \(String(format: "%.1f", rate))%)")
             }
+            metrics?.reportDrop()
             return
         }
 
         pixelBufferAdaptor.append(pixelBuffer, withPresentationTime: normalizedPTS)
         frameCount += 1
+        metrics?.reportFrame()
     }
 
     func appendAudio(_ sampleBuffer: CMSampleBuffer, sourceType: AudioSourceType) {
@@ -129,8 +150,13 @@ actor VideoWriter {
             input = micAudioInput
         }
 
-        // Use video PTS offset for normalization (audio should align with video)
-        guard let videoOffset = firstVideoPTS else { return }
+        // Buffer early audio samples until the first video frame arrives
+        guard let videoOffset = firstVideoPTS else {
+            if earlyAudioBuffer.count < Self.maxEarlyAudioSamples {
+                earlyAudioBuffer.append((sampleBuffer, sourceType))
+            }
+            return
+        }
 
         let normalizedPTS = CMTimeSubtract(pts, videoOffset)
         guard normalizedPTS.seconds >= 0 else { return }

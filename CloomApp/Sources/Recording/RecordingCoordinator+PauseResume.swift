@@ -28,22 +28,18 @@ extension RecordingCoordinator {
 
         pausedDuration += Date().timeIntervalSince(pausedAt)
         segmentIndex += 1
+        recordingMetrics?.reportSegment()
 
         let settings = currentSettings ?? RecordingSettings.fromDefaults()
         let segmentURL = makeSegmentURL()
         segmentURLs.append(segmentURL)
 
+        // Reuse existing compositor and renderer — they hold no segment-specific state
         let activeCompositor: WebcamCompositor?
-        if cameraEnabled {
-            let comp = WebcamCompositor()
-            self.compositor = comp
+        if cameraEnabled, let comp = self.compositor {
             activeCompositor = comp
             webcamBubble?.onLayoutChanged = { [weak self] layout in
                 self?.compositor?.updateBubbleLayout(layout)
-            }
-            comp.imageAdjuster = imageAdjuster
-            if let bubble = webcamBubble {
-                comp.updateBubbleLayout(bubble.currentLayout())
             }
             cameraService?.onFrame = { [weak self] pixelBuffer, ciImage in
                 guard let self else { return }
@@ -56,14 +52,7 @@ extension RecordingCoordinator {
             activeCompositor = nil
         }
 
-        let activeRenderer: AnnotationRenderer?
-        if let store = annotationStore {
-            let renderer = AnnotationRenderer(store: store)
-            self.annotationRenderer = renderer
-            activeRenderer = renderer
-        } else {
-            activeRenderer = nil
-        }
+        let activeRenderer = self.annotationRenderer
 
         Task {
             do {

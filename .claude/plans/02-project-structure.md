@@ -127,6 +127,7 @@ cloom/
 │   │   │   ├── RecordingCoordinator+Toggles.swift      # Mic/camera/blur/annotation toggles
 │   │   │   ├── RecordingCoordinator+UI.swift            # Window management
 │   │   │   ├── RecordingCoordinator+Webcam.swift        # Webcam start/stop/preview/adjustments
+│   │   │   ├── RecordingMetrics.swift              # Frame/drop/segment/memory instrumentation (60s periodic + final log)
 │   │   │   ├── RecordingState.swift               # enum: idle, selectingContent, countdown, recording, paused, stopping
 │   │   │   ├── RecordingToolbarPanel.swift        # NSPanel with mode/toggle controls
 │   │   │   └── RegionHighlightOverlay.swift       # Region selection feedback
@@ -148,7 +149,8 @@ cloom/
 │       ├── Info.plist                             # TCC usage descriptions
 │       └── Cloom.entitlements                     # App sandbox + capabilities
 │
-├── CloomTests/                        # Swift unit tests (32 tests)
+├── CloomTests/                        # Swift unit tests (37 tests)
+│   ├── CacheTests.swift               # FrameImageCache + ShapeMaskCache eviction behavior
 │   ├── DataModelTests.swift           # VideoRecord, FolderRecord, TagRecord, EDL, Transcript, Chapter, Bookmark
 │   └── RecordingSettingsTests.swift   # VideoQuality enum, RecordingSettings defaults
 │

@@ -11,6 +11,9 @@ extension RecordingCoordinator: CaptureServiceDelegate {
         state = .recording(startedAt: now)
         recordingStartedAt = now
 
+        // Start recording instrumentation (metrics created in beginCapture)
+        recordingMetrics?.start()
+
         if case .region(_, let rect) = selectedMode {
             regionHighlight.show(region: rect)
         }

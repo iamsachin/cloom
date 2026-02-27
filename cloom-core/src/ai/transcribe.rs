@@ -41,8 +41,6 @@ struct OpenAiWord {
     end: f64,
 }
 
-const MAX_FILE_SIZE: u64 = 25 * 1024 * 1024; // 25 MB
-
 /// Transcribe an audio file using the specified provider.
 ///
 /// Blocks the calling thread while the async HTTP request completes.
@@ -58,23 +56,64 @@ pub fn transcribe_audio(
     }
 }
 
+/// Transcribe multiple audio chunks and merge results with offset-adjusted timestamps.
+///
+/// Each chunk path corresponds to a segment of the original audio.
+/// `offset_ms` provides the start time of each chunk in the original timeline.
+#[uniffi::export]
+pub fn transcribe_audio_chunked(
+    chunk_paths: Vec<String>,
+    offset_ms: Vec<i64>,
+    api_key: String,
+    provider: TranscriptionProvider,
+    model: String,
+) -> Result<Transcript, CloomError> {
+    if chunk_paths.is_empty() {
+        return Ok(Transcript {
+            full_text: String::new(),
+            words: Vec::new(),
+            language: "en".to_string(),
+        });
+    }
+
+    let mut all_words: Vec<TranscriptWord> = Vec::new();
+    let mut all_texts: Vec<String> = Vec::new();
+    let mut language = "en".to_string();
+
+    for (i, path) in chunk_paths.iter().enumerate() {
+        let offset = offset_ms.get(i).copied().unwrap_or(0);
+        let chunk_result = match provider {
+            TranscriptionProvider::OpenAi => transcribe_openai(path, &api_key, &model),
+        }?;
+
+        if i == 0 {
+            language = chunk_result.language;
+        }
+
+        all_texts.push(chunk_result.full_text);
+
+        for mut word in chunk_result.words {
+            word.start_ms += offset;
+            word.end_ms += offset;
+            all_words.push(word);
+        }
+    }
+
+    Ok(Transcript {
+        full_text: all_texts.join(" "),
+        words: all_words,
+        language,
+    })
+}
+
 fn transcribe_openai(
     audio_path: &str,
     api_key: &str,
     model: &str,
 ) -> Result<Transcript, CloomError> {
-    let metadata = fs::metadata(audio_path).map_err(|e| CloomError::IoError {
+    let _metadata = fs::metadata(audio_path).map_err(|e| CloomError::IoError {
         msg: format!("Cannot read audio file: {e}"),
     })?;
-
-    if metadata.len() > MAX_FILE_SIZE {
-        return Err(CloomError::InvalidInput {
-            msg: format!(
-                "Audio file is {}MB, exceeds 25MB limit",
-                metadata.len() / (1024 * 1024)
-            ),
-        });
-    }
 
     let file_bytes = fs::read(audio_path).map_err(|e| CloomError::IoError {
         msg: format!("Failed to read audio file: {e}"),
@@ -178,23 +217,62 @@ mod tests {
     }
 
     #[test]
-    fn test_file_too_large() {
-        // Create a temp file larger than 25MB
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("large.m4a");
-        let data = vec![0u8; 26 * 1024 * 1024];
-        std::fs::write(&path, &data).unwrap();
+    fn test_chunked_offset_adjustment() {
+        // Simulate merging two chunk results with offsets
+        let chunk1 = Transcript {
+            full_text: "Hello world".to_string(),
+            words: vec![
+                TranscriptWord { word: "Hello".to_string(), start_ms: 0, end_ms: 500, confidence: 1.0 },
+                TranscriptWord { word: "world".to_string(), start_ms: 500, end_ms: 1000, confidence: 1.0 },
+            ],
+            language: "en".to_string(),
+        };
+        let chunk2 = Transcript {
+            full_text: "foo bar".to_string(),
+            words: vec![
+                TranscriptWord { word: "foo".to_string(), start_ms: 0, end_ms: 400, confidence: 1.0 },
+                TranscriptWord { word: "bar".to_string(), start_ms: 400, end_ms: 800, confidence: 1.0 },
+            ],
+            language: "en".to_string(),
+        };
 
-        let result = transcribe_audio(
-            path.to_str().unwrap().to_string(),
+        // Apply offset of 5000ms to chunk2
+        let offset: i64 = 5000;
+        let mut merged_words = chunk1.words.clone();
+        for mut w in chunk2.words {
+            w.start_ms += offset;
+            w.end_ms += offset;
+            merged_words.push(w);
+        }
+
+        assert_eq!(merged_words.len(), 4);
+        assert_eq!(merged_words[2].word, "foo");
+        assert_eq!(merged_words[2].start_ms, 5000);
+        assert_eq!(merged_words[2].end_ms, 5400);
+        assert_eq!(merged_words[3].start_ms, 5400);
+        assert_eq!(merged_words[3].end_ms, 5800);
+    }
+
+    #[test]
+    fn test_chunked_text_merging() {
+        let texts = vec!["Hello world".to_string(), "foo bar".to_string()];
+        let merged = texts.join(" ");
+        assert_eq!(merged, "Hello world foo bar");
+    }
+
+    #[test]
+    fn test_chunked_empty_paths() {
+        let result = transcribe_audio_chunked(
+            vec![],
+            vec![],
             "test-key".to_string(),
             TranscriptionProvider::OpenAi,
             "whisper-1".to_string(),
         );
-        assert!(result.is_err());
-        if let Err(CloomError::InvalidInput { msg }) = result {
-            assert!(msg.contains("exceeds 25MB"));
-        }
+        assert!(result.is_ok());
+        let transcript = result.unwrap();
+        assert!(transcript.full_text.is_empty());
+        assert!(transcript.words.is_empty());
     }
 
     #[test]

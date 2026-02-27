@@ -58,6 +58,7 @@ final class RecordingCoordinator: ObservableObject {
     var recordingStartedAt: Date?
     let stitcher = SegmentStitcher()
     var exportProgressWindow: ExportProgressWindow?
+    var recordingMetrics: RecordingMetrics?
 
     init(modelContainer: ModelContainer) {
         self.modelContainer = modelContainer
@@ -149,6 +150,10 @@ final class RecordingCoordinator: ObservableObject {
         recordingToolbar.dismiss()
         regionHighlight.dismiss()
         cleanupAnnotations()
+
+        // Stop recording instrumentation
+        recordingMetrics?.stop()
+        recordingMetrics = nil
 
         let tracker = PostRecordingTracker.shared
         let recordingTitle = currentOutputURL?.deletingPathExtension().lastPathComponent ?? "Recording"
