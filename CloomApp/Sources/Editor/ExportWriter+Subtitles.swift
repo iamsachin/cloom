@@ -38,25 +38,30 @@ extension ExportWriter {
 
         nonisolated(unsafe) let input = writerInput
 
+        let phraseIndex = OSAllocatedUnfairLock(initialState: 0)
+
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             let queue = DispatchQueue(label: "com.cloom.export.subtitle")
-            var phraseIndex = 0
 
             input.requestMediaDataWhenReady(on: queue) {
                 while input.isReadyForMoreMediaData {
-                    guard phraseIndex < phrases.count else {
+                    let idx = phraseIndex.withLock { $0 }
+                    guard idx < phrases.count else {
                         input.markAsFinished()
                         continuation.resume()
                         return
                     }
 
-                    let phrase = phrases[phraseIndex]
+                    let phrase = phrases[idx]
                     if let sb = buildTx3gSampleBuffer(phrase: phrase, formatDescription: fd) {
                         input.append(sb)
                     }
 
-                    phraseIndex += 1
-                    progress(Double(phraseIndex) / Double(phrases.count))
+                    let newIdx = phraseIndex.withLock { val -> Int in
+                        val += 1
+                        return val
+                    }
+                    progress(Double(newIdx) / Double(phrases.count))
                 }
             }
         }
