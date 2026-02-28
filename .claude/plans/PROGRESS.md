@@ -518,16 +518,46 @@ Code audit and fixes to ensure Cloom survives 30-minute recordings without crash
 ---
 
 ## Phase 21: Google Drive Integration
-**Status:** Not started
+**Status:** Complete
+**Date:** 2026-02-27
 
-Upload recordings to the user's personal Google Drive and share via Drive links. No proprietary sharing platform — users stay in full control of their own files.
+Manual upload-to-Google-Drive with shareable links. Google Sign-In SDK for OAuth, Swift actor for resumable uploads, file-based token backup via SDK Keychain.
 
-- [ ] Task 145 — Google OAuth 2.0 authentication (PKCE flow via ASWebAuthenticationSession, refresh token persistence in file-based secure storage, scope: `drive.file` for app-created files only, account info display in Settings)
-- [ ] Task 146 — Google Drive upload service (Rust or Swift actor: resumable upload API for large video files, progress tracking, retry on transient failures, upload to configurable folder)
-- [ ] Task 147 — Upload UI in editor/library (upload button on editor toolbar + context menu on library cards, progress indicator, cancel upload, success state with Drive link)
-- [ ] Task 148 — Share link generation (create Drive sharing link with configurable permissions — viewer/commenter, copy link to clipboard, show shared status on video card)
-- [ ] Task 149 — Settings > Cloud tab (connect/disconnect Google account, default upload folder picker, auto-upload toggle, upload quality selection, storage usage display)
-- [ ] Task 150 — Upload history & sync state (track upload status per VideoRecord — not uploaded/uploading/uploaded/failed, Drive file ID stored on model, re-upload after re-export, delete from Drive option)
+- [x] Task 150 — Data model: 4 optional cloud fields on VideoRecord (driveFileId, shareUrl, uploadStatus, uploadedAt) + UploadStatus enum
+- [x] Task 145 — Google OAuth: GoogleSignIn-iOS SPM package, GoogleAuthConfig, GoogleAuthService (@Observable @MainActor singleton), onOpenURL handler, session restore in AppDelegate
+- [x] Task 149 — Settings > Cloud tab: OAuth Client ID TextField, Google account connect/disconnect, status display
+- [x] Task 146 — DriveUploadService actor: resumable upload with 5MB chunks, retry with exponential backoff, share link creation, file deletion; DriveUploadManager (@Observable @MainActor singleton) coordinates uploads with progress tracking
+- [x] Task 147 — Upload integrated into Export sheet: "Upload to Drive" button in EditorExportView (exports with settings then uploads), library context menu retains raw upload
+- [x] Task 148 — Cloud status indicators: VideoCardView (green link icon / progress / red error), LibraryListRowView (same), EditorInfoPanel (Cloud section with share link + copy button + upload date)
+
+### New Files (7)
+- `CloomApp/Sources/Data/UploadStatus.swift`
+- `CloomApp/Sources/Cloud/GoogleAuthConfig.swift`
+- `CloomApp/Sources/Cloud/GoogleAuthService.swift`
+- `CloomApp/Sources/Cloud/DriveUploadService.swift`
+- `CloomApp/Sources/Cloud/DriveUploadManager.swift`
+- `CloomApp/Sources/Settings/CloudSettingsTab.swift`
+- `CloomTests/CloudTests.swift`
+
+### Deleted Files (1)
+- `CloomApp/Sources/Cloud/ShareUploadButton.swift` — merged into EditorExportView
+
+### Modified Files (12)
+- `VideoModel.swift` (+4 optional fields)
+- `project.yml` (+GoogleSignIn SPM package)
+- `Info.plist` (+CFBundleURLTypes for OAuth)
+- `CloomApp.swift` (+onOpenURL, +restoreSession)
+- `SettingsView.swift` (+Cloud tab)
+- `EditorToolbarView.swift` (-ShareUploadButton, upload moved to export sheet)
+- `EditorExportView.swift` (+Upload to Drive button, progress, success state)
+- `DriveUploadManager.swift` (+uploadExportedFile, refactored shared performUpload)
+- `LibraryVideoGrid.swift` (+context menu items)
+- `VideoCardView.swift` (+cloud status icon)
+- `LibraryListRowView.swift` (+cloud icon)
+- `EditorInfoPanel.swift` (+cloud section)
+- `DataModelTests.swift` (+cloud field tests)
+
+**Milestone verified:** Build succeeds (0 errors, 1 warning). Data model extended. OAuth flow configured. Upload service with resumable chunks. Upload merged into Export sheet (exports with settings then uploads to Drive). Library context menu retains raw upload. Status indicators on cards/list/info panel. 6 new unit tests.
 
 ---
 

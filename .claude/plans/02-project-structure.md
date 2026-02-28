@@ -44,6 +44,13 @@ cloom/
 │   │   │       ├── cloom_core.swift
 │   │   │       ├── cloom_coreFFI.h
 │   │   │       └── cloom_coreFFI.modulemap
+│   │   ├── Cloud/
+│   │   │   ├── DriveUploadManager.swift         # @Observable @MainActor upload coordinator
+│   │   │   ├── DriveUploadService.swift         # actor: resumable upload to Google Drive v3
+│   │   │   ├── GoogleAuthConfig.swift           # OAuth config (reads from Secrets.googleClientID)
+│   │   │   ├── GoogleAuthService.swift          # @Observable @MainActor OAuth singleton
+│   │   │   ├── Secrets.swift                    # GITIGNORED — real OAuth Client ID
+│   │   │   └── Secrets.example                  # Template for contributors to copy
 │   │   ├── Capture/
 │   │   │   ├── BubbleContentView.swift        # NSView for webcam bubble click/drag (extracted from WebcamBubbleWindow)
 │   │   │   ├── BubbleLayerBuilder.swift       # Panel creation, emoji frame, rebuild (extracted from WebcamBubbleWindow)
@@ -78,6 +85,7 @@ cloom/
 │   │   │   ├── FolderModel.swift              # @Model FolderRecord (hierarchical)
 │   │   │   ├── TagModel.swift                 # @Model TagRecord (color-coded)
 │   │   │   ├── TranscriptModel.swift          # @Model TranscriptRecord + TranscriptWordRecord
+│   │   │   ├── UploadStatus.swift              # Upload status enum (uploading/uploaded/failed)
 │   │   │   ├── VideoModel.swift               # @Model VideoRecord
 │   │   │   └── ViewEventModel.swift           # @Model ViewEvent (not yet used)
 │   │   ├── Editor/
@@ -87,7 +95,7 @@ cloom/
 │   │   │   ├── CutRegionOverlay.swift         # Red hatched cut regions
 │   │   │   ├── EditorCompositionBuilder.swift # EDL → AVMutableComposition (multi-track audio)
 │   │   │   ├── EditorContentView.swift        # Editor in-window view with back navigation
-│   │   │   ├── EditorExportView.swift         # Quality picker + brightness/contrast + subtitle mode
+│   │   │   ├── EditorExportView.swift         # Export + Upload to Drive sheet (quality, subtitles, brightness/contrast)
 │   │   │   ├── EditorInfoPanel.swift          # Info sidebar (title, summary, metadata)
 │   │   │   ├── EditorState.swift              # @Observable @MainActor editing state
 │   │   │   ├── EditorState+Bookmarks.swift    # Bookmark CRUD extension
@@ -137,6 +145,7 @@ cloom/
 │   │   │   ├── MicLevelMonitor.swift              # Real-time mic level display (30Hz timer)
 │   │   │   ├── RecordingSettings.swift            # @AppStorage backing types + VideoQuality enum
 │   │   │   ├── RecordingSettingsTab.swift         # FPS, quality, mic sensitivity, device pickers
+│   │   │   ├── CloudSettingsTab.swift              # Google OAuth client ID + account management
 │   │   │   ├── SettingsView.swift                 # TabView shell (~24 lines)
 │   │   │   ├── ShortcutsSettingsTab.swift         # Global hotkey recorder
 │   │   │   └── WebcamSettingsTab.swift            # Shape, adjustments, theme, temperature/tint
@@ -149,8 +158,9 @@ cloom/
 │       ├── Info.plist                             # TCC usage descriptions
 │       └── Cloom.entitlements                     # App sandbox + capabilities
 │
-├── CloomTests/                        # Swift unit tests (37 tests)
+├── CloomTests/                        # Swift unit tests (43 tests)
 │   ├── CacheTests.swift               # FrameImageCache + ShapeMaskCache eviction behavior
+│   ├── CloudTests.swift               # UploadStatus + GoogleAuthConfig tests
 │   ├── DataModelTests.swift           # VideoRecord, FolderRecord, TagRecord, EDL, Transcript, Chapter, Bookmark
 │   └── RecordingSettingsTests.swift   # VideoQuality enum, RecordingSettings defaults
 │
@@ -186,7 +196,7 @@ cloom/
 └── .gitignore
 ```
 
-## Module Summary (110 Swift files, 12 Rust files)
+## Module Summary (117 Swift files, 12 Rust files)
 
 | Module | Files | Description |
 |--------|-------|-------------|

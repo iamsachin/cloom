@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct EditorInfoPanel: View {
     let videoRecord: VideoRecord
@@ -36,9 +37,55 @@ struct EditorInfoPanel: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+                cloudSection
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
+        }
+    }
+
+    @ViewBuilder
+    private var cloudSection: some View {
+        let status = UploadStatus(videoRecord.uploadStatus)
+        if status != nil || videoRecord.shareUrl != nil {
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Cloud")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
+
+                if let shareUrl = videoRecord.shareUrl, status == .uploaded {
+                    HStack {
+                        Label("Shared", systemImage: "link.circle.fill")
+                            .foregroundStyle(.green)
+
+                        Spacer()
+
+                        Button("Copy Link") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(shareUrl, forType: .string)
+                        }
+                        .controlSize(.small)
+                    }
+                } else if status == .uploading {
+                    Label("Uploading...", systemImage: "arrow.up.circle")
+                        .foregroundStyle(.orange)
+                } else if status == .failed {
+                    Label("Upload failed", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                }
+
+                if let uploadedAt = videoRecord.uploadedAt {
+                    Label(
+                        uploadedAt.formatted(date: .abbreviated, time: .shortened),
+                        systemImage: "clock"
+                    )
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 

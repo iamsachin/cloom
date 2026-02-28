@@ -37,6 +37,25 @@ final class VideoRecord {
     // AI-generated
     var hasTranscript: Bool
     var summary: String?
+
+    // Cloud upload
+    var driveFileId: String?
+    var shareUrl: String?
+    var uploadStatus: String?  // nil | "uploading" | "uploaded" | "failed"
+    var uploadedAt: Date?
+}
+```
+
+### UploadStatus
+
+```swift
+enum UploadStatus: String, Sendable, CaseIterable {
+    case uploading, uploaded, failed
+
+    init?(_ rawValue: String?) {
+        guard let rawValue else { return nil }
+        self.init(rawValue: rawValue)
+    }
 }
 ```
 

@@ -19,6 +19,9 @@ CloomApp/Sources/Bridge/Generated/
 .env.*.local
 settings.local.json
 
+# Secrets (OAuth credentials — never commit)
+CloomApp/Sources/Cloud/Secrets.swift
+
 # IDE and editor
 .vscode/
 .idea/

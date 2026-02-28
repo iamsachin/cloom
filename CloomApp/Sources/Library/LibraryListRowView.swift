@@ -65,6 +65,9 @@ struct LibraryListRowView: View {
                     }
                 }
 
+                // Cloud status
+                cloudStatusIcon
+
                 // Duration
                 Text(formattedDuration)
                     .font(.caption)
@@ -123,6 +126,25 @@ struct LibraryListRowView: View {
                 thumbnailCache.setObject(loaded, forKey: key)
                 thumbnailImage = loaded
             }
+        }
+    }
+
+    @ViewBuilder
+    private var cloudStatusIcon: some View {
+        let status = UploadStatus(video.uploadStatus)
+        if DriveUploadManager.shared.isUploading(video.id) {
+            ProgressView()
+                .controlSize(.mini)
+        } else if status == .uploaded {
+            Image(systemName: "link.circle.fill")
+                .font(.system(size: 10))
+                .foregroundStyle(.green)
+                .help("Shared on Google Drive")
+        } else if status == .failed {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 10))
+                .foregroundStyle(.red)
+                .help("Upload failed")
         }
     }
 
