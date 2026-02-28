@@ -95,15 +95,16 @@ cloom/
 │   │   │   ├── CutRegionOverlay.swift         # Red hatched cut regions
 │   │   │   ├── EditorCompositionBuilder.swift # EDL → AVMutableComposition (multi-track audio)
 │   │   │   ├── EditorContentView.swift        # Editor in-window view with back navigation
-│   │   │   ├── EditorExportView.swift         # Export + Upload to Drive sheet (quality, subtitles, brightness/contrast)
+│   │   │   ├── EditorExportView.swift         # Export + Upload to Drive sheet (quality, subtitles, brightness/contrast, passthrough)
 │   │   │   ├── EditorInfoPanel.swift          # Info sidebar (title, summary, metadata)
 │   │   │   ├── EditorState.swift              # @Observable @MainActor editing state
 │   │   │   ├── EditorState+Bookmarks.swift    # Bookmark CRUD extension
 │   │   │   ├── EditorToolbarView.swift        # Playback/cut/chapter/export controls
-│   │   │   ├── GifExportService.swift         # Rust gifski FFI bridge
+│   │   │   ├── ExportWriter.swift             # AVAssetReader/Writer + tx3g subtitle embedding (remux + re-encode)
+│   │   │   ├── GifExportService.swift         # Rust gifski FFI bridge (parallel frame extraction)
 │   │   │   ├── SpeedControlView.swift         # 0.25x–4x popover
 │   │   │   ├── StitchPanelView.swift          # Multi-clip drag-to-reorder
-│   │   │   ├── SubtitleExportService.swift    # Hard-burn + SRT sidecar subtitle export
+│   │   │   ├── SubtitleExportService.swift    # EDL-aware subtitle phrase building
 │   │   │   ├── ThumbnailPickerView.swift      # Frame selection + "Use Current Frame"
 │   │   │   ├── ThumbnailStripGenerator.swift  # Preview strip for timeline
 │   │   │   ├── TimelineView.swift             # EditorTimelineView (waveform + thumbnails + playhead + bookmarks)

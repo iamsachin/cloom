@@ -46,50 +46,42 @@ actor SegmentStitcher {
         var insertTime = CMTime.zero
         let trackProgress = 0.7 // 70% for track insertion
 
-        for (index, segmentURL) in segments.enumerated() {
-            let asset = AVURLAsset(url: segmentURL)
+        // Load all segment metadata in parallel
+        let metadata = try await loadSegmentMetadata(segments: segments)
 
-            let duration: CMTime
-            do {
-                duration = try await asset.load(.duration)
-            } catch {
-                logger.error("Failed to load duration for segment \(index): \(error)")
-                continue
-            }
-
-            let timeRange = CMTimeRange(start: .zero, duration: duration)
+        // Insert tracks sequentially (insertTime is cumulative)
+        for (index, meta) in metadata.enumerated() {
+            let timeRange = CMTimeRange(start: .zero, duration: meta.duration)
 
             // Insert video track
-            do {
-                let videoTracks = try await asset.loadTracks(withMediaType: .video)
-                if let sourceVideoTrack = videoTracks.first {
+            if let sourceVideoTrack = meta.videoTrack {
+                do {
                     try videoTrack.insertTimeRange(timeRange, of: sourceVideoTrack, at: insertTime)
+                } catch {
+                    logger.error("Failed to insert video track for segment \(index): \(error)")
                 }
-            } catch {
-                logger.error("Failed to insert video track for segment \(index): \(error)")
             }
 
             // Insert all audio tracks (grow composition tracks as needed)
-            do {
-                let audioTracks = try await asset.loadTracks(withMediaType: .audio)
-                for (i, sourceAudioTrack) in audioTracks.enumerated() {
-                    while i >= compAudioTracks.count {
-                        if let t = composition.addMutableTrack(
-                            withMediaType: .audio,
-                            preferredTrackID: kCMPersistentTrackID_Invalid
-                        ) {
-                            compAudioTracks.append(t)
-                        }
-                    }
-                    if i < compAudioTracks.count {
-                        try compAudioTracks[i].insertTimeRange(timeRange, of: sourceAudioTrack, at: insertTime)
+            for (i, sourceAudioTrack) in meta.audioTracks.enumerated() {
+                while i >= compAudioTracks.count {
+                    if let t = composition.addMutableTrack(
+                        withMediaType: .audio,
+                        preferredTrackID: kCMPersistentTrackID_Invalid
+                    ) {
+                        compAudioTracks.append(t)
                     }
                 }
-            } catch {
-                logger.error("Failed to insert audio track for segment \(index): \(error)")
+                if i < compAudioTracks.count {
+                    do {
+                        try compAudioTracks[i].insertTimeRange(timeRange, of: sourceAudioTrack, at: insertTime)
+                    } catch {
+                        logger.error("Failed to insert audio track \(i) for segment \(index): \(error)")
+                    }
+                }
             }
 
-            insertTime = CMTimeAdd(insertTime, duration)
+            insertTime = CMTimeAdd(insertTime, meta.duration)
             progress(trackProgress * Double(index + 1) / Double(segments.count))
         }
 
@@ -175,5 +167,34 @@ actor SegmentStitcher {
         // Clean up input file
         try? FileManager.default.removeItem(at: inputURL)
         logger.info("Mixed down \(audioTracks.count) audio tracks → \(outputURL.lastPathComponent)")
+    }
+
+    // MARK: - Parallel Metadata Loading
+
+    private struct SegmentMetadata: @unchecked Sendable {
+        let index: Int
+        let duration: CMTime
+        let videoTrack: AVAssetTrack?
+        let audioTracks: [AVAssetTrack]
+    }
+
+    private func loadSegmentMetadata(segments: [URL]) async throws -> [SegmentMetadata] {
+        try await withThrowingTaskGroup(of: SegmentMetadata.self) { group in
+            for (index, url) in segments.enumerated() {
+                group.addTask {
+                    let asset = AVURLAsset(url: url)
+                    let duration = try await asset.load(.duration)
+                    let video = try await asset.loadTracks(withMediaType: .video)
+                    let audio = try await asset.loadTracks(withMediaType: .audio)
+                    return SegmentMetadata(
+                        index: index, duration: duration,
+                        videoTrack: video.first, audioTracks: audio
+                    )
+                }
+            }
+            var results: [SegmentMetadata] = []
+            for try await m in group { results.append(m) }
+            return results.sorted { $0.index < $1.index }
+        }
     }
 }

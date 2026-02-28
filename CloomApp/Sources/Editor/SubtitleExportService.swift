@@ -1,28 +1,7 @@
 import AVFoundation
-import CoreImage
-import AppKit
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "SubtitleExport")
-
-// MARK: - SubtitleMode
-
-enum SubtitleMode: String, CaseIterable, Identifiable {
-    case none = "None"
-    case hardBurn = "Hard Burn"
-    case srtSidecar = "SRT File"
-    case both = "Both"
-
-    var id: String { rawValue }
-
-    var needsHardBurn: Bool {
-        self == .hardBurn || self == .both
-    }
-
-    var needsSRT: Bool {
-        self == .srtSidecar || self == .both
-    }
-}
 
 // MARK: - SubtitlePhrase
 
@@ -75,48 +54,6 @@ actor SubtitleExportService {
         return result
     }
 
-    /// Generate an SRT subtitle file.
-    func generateSRT(phrases: [SubtitlePhrase], outputURL: URL) throws {
-        var srt = ""
-        for (index, phrase) in phrases.enumerated() {
-            srt += "\(index + 1)\n"
-            srt += "\(formatSRTTime(ms: phrase.startMs)) --> \(formatSRTTime(ms: phrase.endMs))\n"
-            srt += "\(phrase.text)\n\n"
-        }
-        try srt.write(to: outputURL, atomically: true, encoding: .utf8)
-        logger.info("Generated SRT with \(phrases.count) phrases → \(outputURL.lastPathComponent)")
-    }
-
-    // MARK: - Hard-burn rendering (nonisolated for CIFilter handler)
-
-    /// Pre-render all subtitle phrase images once. Call before export starts.
-    /// Returns an array parallel to `phrases` — each entry is the rendered CIImage overlay.
-    nonisolated static func prerenderImages(
-        phrases: [SubtitlePhrase],
-        videoWidth: CGFloat,
-        videoHeight: CGFloat
-    ) -> [CIImage?] {
-        phrases.map { phrase in
-            renderTextImage(text: phrase.text, videoWidth: videoWidth, videoHeight: videoHeight)
-        }
-    }
-
-    /// Composite a pre-rendered subtitle image onto a video frame.
-    /// Uses binary search to find the active phrase, then looks up its cached image.
-    nonisolated static func burnSubtitle(
-        onto source: CIImage,
-        phrases: [SubtitlePhrase],
-        cache: [CIImage?],
-        frameTimeMs: Int64
-    ) -> CIImage {
-        guard let index = findActivePhraseIndex(in: phrases, at: frameTimeMs),
-              index < cache.count,
-              let textImage = cache[index] else {
-            return source
-        }
-        return textImage.composited(over: source)
-    }
-
     // MARK: - Private Helpers
 
     private func mapToCompositionTime(
@@ -144,98 +81,5 @@ actor SubtitleExportService {
         }
 
         return max(0, offset)
-    }
-
-    private nonisolated static func findActivePhraseIndex(
-        in phrases: [SubtitlePhrase],
-        at timeMs: Int64
-    ) -> Int? {
-        var lo = 0
-        var hi = phrases.count - 1
-
-        while lo <= hi {
-            let mid = (lo + hi) / 2
-            let phrase = phrases[mid]
-            if timeMs >= phrase.startMs && timeMs < phrase.endMs {
-                return mid
-            } else if timeMs < phrase.startMs {
-                hi = mid - 1
-            } else {
-                lo = mid + 1
-            }
-        }
-        return nil
-    }
-
-    private nonisolated static func renderTextImage(
-        text: String,
-        videoWidth: CGFloat,
-        videoHeight: CGFloat
-    ) -> CIImage? {
-        let fontSize: CGFloat = max(16, videoHeight * 0.035)
-        let padding: CGFloat = 12
-        let bottomMargin: CGFloat = videoHeight * 0.06
-
-        // Measure text first to allocate only the needed capsule size (not full video frame)
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: fontSize, weight: .semibold),
-            .foregroundColor: NSColor.white,
-        ]
-        let attrString = NSAttributedString(string: text, attributes: attrs)
-        let textSize = attrString.size()
-
-        let bgWidth = textSize.width + padding * 2
-        let bgHeight = textSize.height + padding
-
-        // Create a CGContext sized to the capsule only (not full video frame)
-        let capsuleW = Int(ceil(bgWidth))
-        let capsuleH = Int(ceil(bgHeight))
-        guard capsuleW > 0 && capsuleH > 0 else { return nil }
-
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let ctx = CGContext(
-            data: nil,
-            width: capsuleW,
-            height: capsuleH,
-            bitsPerComponent: 8,
-            bytesPerRow: capsuleW * 4,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
-        ) else { return nil }
-
-        // Draw background capsule at origin
-        let capsuleRect = CGRect(x: 0, y: 0, width: bgWidth, height: bgHeight)
-        let capsulePath = CGPath(roundedRect: capsuleRect, cornerWidth: bgHeight / 2, cornerHeight: bgHeight / 2, transform: nil)
-        ctx.setFillColor(CGColor(gray: 0, alpha: 0.65))
-        ctx.addPath(capsulePath)
-        ctx.fillPath()
-
-        // Draw text using NSGraphicsContext
-        let nsCtx = NSGraphicsContext(cgContext: ctx, flipped: false)
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = nsCtx
-        let textOrigin = CGPoint(
-            x: padding,
-            y: (bgHeight - textSize.height) / 2
-        )
-        attrString.draw(at: textOrigin)
-        NSGraphicsContext.restoreGraphicsState()
-
-        guard let cgImage = ctx.makeImage() else { return nil }
-
-        // Position the small capsule image at its correct location within the full video frame
-        let posX = (videoWidth - bgWidth) / 2
-        let posY = bottomMargin
-        return CIImage(cgImage: cgImage)
-            .transformed(by: CGAffineTransform(translationX: posX, y: posY))
-    }
-
-    private func formatSRTTime(ms: Int64) -> String {
-        let totalSeconds = ms / 1000
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        let seconds = totalSeconds % 60
-        let milliseconds = ms % 1000
-        return String(format: "%02d:%02d:%02d,%03d", hours, minutes, seconds, milliseconds)
     }
 }

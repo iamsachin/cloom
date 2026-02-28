@@ -561,7 +561,38 @@ Manual upload-to-Google-Drive with shareable links. Google Sign-In SDK for OAuth
 
 ---
 
-## Phase 22: Pre-Release
+## Phase 22: Export Speed Optimization
+**Status:** Complete
+**Date:** 2026-02-28
+
+### Quick Fixes
+- [x] Task 151 — Use SharedCIContext in export (replaced throwaway CIContext with SharedCIContext.instance singleton)
+
+### Passthrough Export
+- [x] Task 152 — Passthrough detection for unmodified exports (isExportUnmodified() checks trim/cuts/speed/brightness/contrast; unmodified + no subs → FileManager.copyItem; unmodified + subs → ExportWriter.remuxWithSubtitles)
+
+### Subtitle Overhaul
+- [x] Task 153 — Replace hard-burn + SRT with embedded tx3g subtitle track (ExportWriter enum with static methods for remux + edited export; tx3g binary format with CMSampleBuffer; simplified UI to "Include Subtitles" toggle)
+- [x] Task 156 — Clean up SubtitleExportService (removed SubtitleMode enum, hard-burn rendering, SRT generation, CIImage compositing; kept SubtitlePhrase, buildPhrases, mapToCompositionTime; ~241 lines → ~80 lines)
+
+### Parallelization
+- [x] Task 154 — Parallel GIF frame extraction (sliding window of 8 concurrent tasks via withThrowingTaskGroup; SendableGenerator wrapper for thread-safe AVAssetImageGenerator access)
+- [x] Task 155 — Parallel segment metadata loading in SegmentStitcher (withThrowingTaskGroup loads all segment durations + tracks concurrently, sorted by index for sequential insertion)
+
+### New Files
+- `CloomApp/Sources/Editor/ExportWriter.swift`
+
+### Modified Files
+- `CloomApp/Sources/Editor/EditorExportView.swift` — subtitle toggle, passthrough detection, ExportWriter integration, removed hard-burn/SRT code
+- `CloomApp/Sources/Editor/SubtitleExportService.swift` — removed SubtitleMode, hard-burn, SRT, rendering code (~241→80 lines)
+- `CloomApp/Sources/Editor/GifExportService.swift` — parallel frame extraction with sliding window
+- `CloomApp/Sources/Compositing/SegmentStitcher.swift` — parallel segment metadata loading
+
+**Milestone verified:** Build succeeds (0 errors, 53 pre-existing warnings). Passthrough for unmodified exports (instant file copy). Embedded tx3g subtitles (no re-encode for unmodified). Parallel GIF and segment loading.
+
+---
+
+## Phase 23: Pre-Release
 **Status:** Not started
 
 - [ ] Task 81 — Developer ID signing + notarization + DMG packaging
