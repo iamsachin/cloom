@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
 import AppKit
+import os.log
+
+private let logger = Logger(subsystem: "com.cloom.app", category: "LibraryContent")
 
 // MARK: - Library Content View
 
@@ -307,7 +310,7 @@ struct LibraryContentView: View {
             }
             modelContext.delete(video)
         }
-        try? modelContext.save()
+        do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
         selectedIDs.removeAll()
         isSelecting = false
     }
@@ -316,6 +319,6 @@ struct LibraryContentView: View {
         for video in videos where videoIDs.contains(video.id) {
             video.folder = folder
         }
-        try? modelContext.save()
+        do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
     }
 }

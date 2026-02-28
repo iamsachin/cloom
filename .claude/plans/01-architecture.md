@@ -29,12 +29,12 @@
 │  └─────────┘ └──────────────────────────────┘    │
 ├──────────── UniFFI Bridge ───────────────────────┤
 │               Rust (cloom-core)                  │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐         │
-│  │  audio   │ │   ai     │ │  export  │         │
-│  │(symphonia│ │(whisper-1│ │ (gifski) │         │
-│  │ + filler)│ │ gpt-4o-  │ │          │         │
-│  │          │ │  mini)   │ │          │         │
-│  └──────────┘ └──────────┘ └──────────┘         │
+│  ┌──────────┐ ┌──────────┐                       │
+│  │  audio   │ │   ai     │                       │
+│  │(symphonia│ │(whisper-1│                       │
+│  │ + filler)│ │ gpt-4o-  │                       │
+│  │          │ │  mini)   │                       │
+│  └──────────┘ └──────────┘                       │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -62,7 +62,7 @@ Pause stops the VideoWriter and creates a segment file. Resume starts a new segm
 
 2. **Non-destructive editing:** All edits stored as EditDecisionList (@Model in SwiftData). Original recording never modified. Edits applied via EditorCompositionBuilder → AVMutableComposition only during export.
 
-3. **Swift handles UI + macOS APIs + video processing + data persistence.** Rust handles AI API calls, audio analysis, and GIF export. Clean FFI boundary with minimal surface area.
+3. **Swift handles UI + macOS APIs + video processing + data persistence.** Rust handles AI API calls and audio analysis. Clean FFI boundary with minimal surface area.
 
 4. **UniFFI for FFI:** Generates idiomatic Swift from Rust. Uses `#[uniffi::export]` proc macros exclusively (no UDL files). Supports async, callbacks, complex types, error handling. Local binary (`cargo run --bin uniffi-bindgen`), not global CLI.
 

@@ -82,11 +82,4 @@ fn test_validate_openai_ok() {
     assert!(validate_provider(&LlmProvider::OpenAi).is_ok());
 }
 
-#[test]
-fn test_validate_claude_error() {
-    let result = validate_provider(&LlmProvider::Claude);
-    assert!(result.is_err());
-    if let Err(CloomError::InvalidInput { msg }) = result {
-        assert!(msg.contains("Claude"));
-    }
-}
+

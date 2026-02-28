@@ -141,14 +141,6 @@ struct MenuBarView: View {
 
         Divider()
 
-        Text("Rust FFI: \(appState.rustGreeting)")
-            .font(.caption)
-
-        Text("Core v\(appState.rustVersion)")
-            .font(.caption)
-
-        Divider()
-
         Button("Settings...") {
             NSApp.activate()
             openSettings()

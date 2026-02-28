@@ -4,12 +4,16 @@
 
 Services are concrete classes (not protocol-based). Testing uses in-memory SwiftData containers and direct assertions via `@Test` and `#expect`.
 
-### Unit Tests (CloomTests/ — 32 tests in 2 files)
+### Unit Tests (CloomTests/ — 6 files)
 
 | File | Test Count | What's Tested |
 |------|-----------|---------------|
 | DataModelTests.swift | ~25 | VideoRecord CRUD/defaults/unique ID, FolderRecord hierarchy/videoCount, TagRecord relationship/color, EditDecisionList defaults/cuts/stitch/hasEdits, TranscriptRecord words/defaults, ChapterRecord properties, BookmarkRecord properties/note/relationship/cascade/CRUD |
 | RecordingSettingsTests.swift | ~7 | VideoQuality bitrates/labels/identifiable/allCases, RecordingSettings defaults/custom/invalid raw value |
+| CacheTests.swift | ~7 | FrameImageCache + ShapeMaskCache eviction, update, clear behavior |
+| CloudTests.swift | ~4 | UploadStatus + GoogleAuthConfig tests |
+| FFIBridgeTests.swift | 2 | helloFromRust returns non-empty, cloomCoreVersion is valid semver |
+| LibraryFilterTests.swift | ~9 | LibrarySortOrder (7 comparators), TranscriptFilter allCases + identifiable |
 
 ### Why No UI Tests
 
@@ -51,17 +55,16 @@ Even skipping the onboarding screen, UI tests would only verify that views appea
 
 ---
 
-## Rust Testing (`cargo test` — 43 tests, all passing)
+## Rust Testing (`cargo test` — 38 tests, all passing)
 
 Tests use `#[cfg(test)]` modules. Large test modules are extracted to separate files via `#[path]` attributes (Phase 12).
 
 | Module | Test File | Test Count | What's Tested |
 |--------|-----------|-----------|---------------|
 | ai/transcribe.rs | (inline) | 6 | File not found, file too large (>25MB), response parsing (wiremock), no words, empty words, MIME detection |
-| ai/llm.rs | ai/llm_tests.rs | 11 | parse_chapters (valid/code-fenced/bare-fence/invalid/empty/unique-ids), truncate_transcript (short/long/boundary), validate_provider (OpenAI/Claude) |
+| ai/llm.rs | ai/llm_tests.rs | 10 | parse_chapters (valid/code-fenced/bare-fence/invalid/empty/unique-ids), truncate_transcript (short/long/boundary), validate_provider (OpenAI) |
 | audio/filler.rs | (inline) | 12 | Punctuation stripping, all singles, all multis, clean speech, consecutive, single word, sorting, count |
 | audio/silence.rs | audio/silence_tests.rs | 5 | File not found, all silent, sine wave, silence between tones, below min duration (programmatic WAV generation) |
-| gif_export.rs | gif_export_tests.rs | 7 | Empty manifest, manifest not found, single/multi frame, progress callback, PNG RGBA/RGB loading |
 | lib.rs | (inline) | 2 | hello_from_rust, cloom_core_version |
 
 ### Test Fixtures
@@ -76,7 +79,7 @@ Tests use `#[cfg(test)]` modules. Large test modules are extracted to separate f
 | Crate | Purpose |
 |-------|---------|
 | `wiremock 0.6` | HTTP mocking for AI API tests |
-| `tempfile 3` | Temporary files/dirs for GIF and silence tests |
+| `tempfile 3` | Temporary files/dirs for silence tests |
 | `tokio 1` (macros) | Async test utilities |
 
 ### Silence Detection Test Pattern (Programmatic WAV)
@@ -99,7 +102,7 @@ fn create_test_wav(samples: &[i16], sample_rate: u32) -> PathBuf {
 2. `cargo test --verbose` in cloom-core/
 3. Result: 43 tests pass
 
-### Job 2: swift-tests (macOS-26)
+### Job 2: swift-tests (macOS-15)
 1. Install Rust + aarch64-apple-darwin target
 2. Run `./build.sh` (build Rust + generate bindings)
 3. Run `xcodegen generate`

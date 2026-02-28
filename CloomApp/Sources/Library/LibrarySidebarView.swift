@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+import os.log
+
+private let logger = Logger(subsystem: "com.cloom.app", category: "LibrarySidebar")
 
 enum SidebarSelection: Hashable {
     case allVideos
@@ -158,7 +161,7 @@ struct LibrarySidebarView: View {
         if renamingFolderID == folder.id {
             TextField("Name", text: $renamingFolderName, onCommit: {
                 folder.name = renamingFolderName
-                try? modelContext.save()
+                do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
                 renamingFolderID = nil
             })
             .textFieldStyle(.plain)
@@ -203,7 +206,7 @@ struct LibrarySidebarView: View {
         if renamingTagID == tag.id {
             TextField("Name", text: $renamingTagName, onCommit: {
                 tag.name = renamingTagName
-                try? modelContext.save()
+                do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
                 renamingTagID = nil
             })
             .textFieldStyle(.plain)
@@ -255,7 +258,7 @@ struct LibrarySidebarView: View {
             folder.parent = parent
         }
         modelContext.insert(folder)
-        try? modelContext.save()
+        do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
     }
 
     private func performDeleteFolder() {
@@ -270,7 +273,7 @@ struct LibrarySidebarView: View {
             selection = .allVideos
         }
         modelContext.delete(folder)
-        try? modelContext.save()
+        do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
         folderToDelete = nil
     }
 
@@ -293,7 +296,7 @@ struct LibrarySidebarView: View {
             selection = .allVideos
         }
         modelContext.delete(tag)
-        try? modelContext.save()
+        do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
         tagToDelete = nil
     }
 }

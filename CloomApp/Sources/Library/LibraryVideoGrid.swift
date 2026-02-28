@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
 import AppKit
+import os.log
+
+private let logger = Logger(subsystem: "com.cloom.app", category: "LibraryVideoGrid")
 
 // MARK: - Video Grid Item & Context Menu
 
@@ -74,7 +77,7 @@ extension LibraryContentView {
         Menu("Move to Folder") {
             Button("Remove from Folder") {
                 video.folder = nil
-                try? modelContext.save()
+                do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
             }
             .disabled(video.folder == nil)
 
@@ -84,7 +87,7 @@ extension LibraryContentView {
             ForEach(Array(flat.enumerated()), id: \.offset) { _, item in
                 Button {
                     video.folder = item.folder
-                    try? modelContext.save()
+                    do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
                 } label: {
                     HStack {
                         if item.depth > 0 {
@@ -111,7 +114,7 @@ extension LibraryContentView {
                     } else {
                         video.tags.append(tag)
                     }
-                    try? modelContext.save()
+                    do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
                 } label: {
                     HStack {
                         Circle()

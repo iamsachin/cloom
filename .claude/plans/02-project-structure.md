@@ -50,7 +50,7 @@ cloom/
 │   │   │   ├── GoogleAuthConfig.swift           # OAuth config (reads from Secrets.googleClientID)
 │   │   │   ├── GoogleAuthService.swift          # @Observable @MainActor OAuth singleton
 │   │   │   ├── Secrets.swift                    # GITIGNORED — real OAuth Client ID
-│   │   │   └── Secrets.example                  # Template for contributors to copy
+│   │   │   └── Secrets.example.swift             # Template for contributors to copy
 │   │   ├── Capture/
 │   │   │   ├── BubbleContentView.swift        # NSView for webcam bubble click/drag (extracted from WebcamBubbleWindow)
 │   │   │   ├── BubbleLayerBuilder.swift       # Panel creation, emoji frame, rebuild (extracted from WebcamBubbleWindow)
@@ -101,10 +101,11 @@ cloom/
 │   │   │   ├── EditorState+Bookmarks.swift    # Bookmark CRUD extension
 │   │   │   ├── EditorToolbarView.swift        # Playback/cut/chapter/export controls
 │   │   │   ├── ExportWriter.swift             # AVAssetReader/Writer + tx3g subtitle embedding (remux + re-encode)
-│   │   │   ├── GifExportService.swift         # Rust gifski FFI bridge (parallel frame extraction)
+│   │   │   ├── ExportService.swift              # MP4 export logic (extracted from EditorExportView)
+│   │   │   ├── ExportWriter+Subtitles.swift    # tx3g subtitle track embedding extension
 │   │   │   ├── SpeedControlView.swift         # 0.25x–4x popover
 │   │   │   ├── StitchPanelView.swift          # Multi-clip drag-to-reorder
-│   │   │   ├── SubtitleExportService.swift    # EDL-aware subtitle phrase building
+│   │   │   ├── SubtitleExportService.swift    # EDL-aware subtitle phrase building + timing
 │   │   │   ├── ThumbnailPickerView.swift      # Frame selection + "Use Current Frame"
 │   │   │   ├── ThumbnailStripGenerator.swift  # Preview strip for timeline
 │   │   │   ├── TimelineView.swift             # EditorTimelineView (waveform + thumbnails + playhead + bookmarks)
@@ -138,7 +139,9 @@ cloom/
 │   │   │   ├── RecordingCoordinator+Webcam.swift        # Webcam start/stop/preview/adjustments
 │   │   │   ├── RecordingMetrics.swift              # Frame/drop/segment/memory instrumentation (60s periodic + final log)
 │   │   │   ├── RecordingState.swift               # enum: idle, selectingContent, countdown, recording, paused, stopping
-│   │   │   ├── RecordingToolbarPanel.swift        # NSPanel with mode/toggle controls
+│   │   │   ├── RecordingToolbarPanel.swift        # NSPanel window management
+│   │   │   ├── RecordingToolbarContentView.swift  # Recording-state toolbar SwiftUI view
+│   │   │   ├── ReadyToolbarContentView.swift      # Ready-state toolbar SwiftUI view
 │   │   │   └── RegionHighlightOverlay.swift       # Region selection feedback
 │   │   ├── Settings/
 │   │   │   ├── AISettingsTab.swift                # API key (file-based), auto-transcribe toggle
@@ -153,16 +156,20 @@ cloom/
 │   │   └── Shared/
 │   │       ├── LabeledSlider.swift                # Reusable slider component (extracted from WebcamSettingsTab)
 │   │       ├── SharedCIContext.swift               # Thread-safe singleton CIContext (Metal-backed)
-│   │       └── ThumbnailGenerator.swift           # Shared thumbnail utility
+│   │       ├── ThumbnailGenerator.swift           # Shared thumbnail utility
+│   │       └── ToolbarToggleButton.swift          # Reusable toggle button for toolbars
 │   └── Resources/
 │       ├── Assets.xcassets                        # App icon + menu bar icon
-│       ├── Info.plist                             # TCC usage descriptions
-│       └── Cloom.entitlements                     # App sandbox + capabilities
+│       ├── Info.plist                             # TCC usage descriptions + $(GOOGLE_REVERSED_CLIENT_ID)
+│       ├── Cloom.entitlements                     # App sandbox + capabilities
+│       └── Secrets.xcconfig.example               # Template for Google OAuth build-time variables
 │
-├── CloomTests/                        # Swift unit tests (43 tests)
+├── CloomTests/                        # Swift unit tests
 │   ├── CacheTests.swift               # FrameImageCache + ShapeMaskCache eviction behavior
 │   ├── CloudTests.swift               # UploadStatus + GoogleAuthConfig tests
 │   ├── DataModelTests.swift           # VideoRecord, FolderRecord, TagRecord, EDL, Transcript, Chapter, Bookmark
+│   ├── FFIBridgeTests.swift           # helloFromRust + cloomCoreVersion semver validation
+│   ├── LibraryFilterTests.swift       # LibrarySortOrder (7 cases) + TranscriptFilter tests
 │   └── RecordingSettingsTests.swift   # VideoQuality enum, RecordingSettings defaults
 │
 ├── cloom-core/                        # Rust library (Cargo project)
@@ -171,8 +178,6 @@ cloom/
 │   ├── src/
 │   │   ├── lib.rs                     # UniFFI scaffolding + CloomError + hello_from_rust
 │   │   ├── runtime.rs                 # Shared Tokio runtime (LazyLock singleton)
-│   │   ├── gif_export.rs             # gifski PNG manifest → GIF encoder
-│   │   ├── gif_export_tests.rs       # GIF export tests (extracted from gif_export.rs)
 │   │   ├── ai/
 │   │   │   ├── mod.rs
 │   │   │   ├── transcribe.rs         # OpenAI whisper-1 multipart upload
@@ -189,6 +194,8 @@ cloom/
 │           ├── chat_completion_response.json
 │           └── transcription_response.json
 │
+├── LICENSE                            # MIT license
+├── README.md                          # Project description, build instructions
 ├── libs/
 │   └── libcloom_core.a               # Compiled Rust static library (~50 MB)
 │
@@ -208,11 +215,11 @@ cloom/
 | Capture/ | 18 | Screen capture, camera, webcam UI, shapes, themes, adjustments, mic gain |
 | Compositing/ | 6 | VideoWriter, webcam compositor (+ shape/emoji extensions), segment stitcher, export progress |
 | Data/ | 9 | SwiftData models (VideoRecord, FolderRecord, TagRecord, BookmarkRecord, etc.) |
-| Editor/ | 22 | EditorContentView, timeline, trim, cut, stitch, speed, export, GIF, subtitles, captions, transcript, chapters, bookmarks |
+| Editor/ | 22 | EditorContentView, timeline, trim, cut, stitch, speed, export, subtitles, captions, transcript, chapters, bookmarks |
 | Library/ | 10 | Grid, list, sidebar, cards, processing card, tags, folders, filter models |
 | Recording/ | 15 | Coordinator (split into 8 files), toolbar, pill, discard, countdown, region overlay |
 | Settings/ | 8 | Tabbed settings (5 tabs + shell + backing types + mic level monitor) |
-| Shared/ | 3 | Thumbnail generator, SharedCIContext, LabeledSlider |
+| Shared/ | 4 | Thumbnail generator, SharedCIContext, LabeledSlider, ToolbarToggleButton |
 
 ## Critical Files (by importance)
 

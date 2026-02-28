@@ -8,6 +8,12 @@ private let logger = Logger(subsystem: "com.cloom.app", category: "RecordingCoor
 
 extension RecordingCoordinator {
 
+    private static func recordingTimestamp() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
+        return formatter.string(from: Date())
+    }
+
     func beginPreRecordingFlow() {
         if pendingFilter == nil && selectedMode != .webcamOnly {
             Task {
@@ -86,10 +92,7 @@ extension RecordingCoordinator {
             return
         }
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
-        let timestamp = dateFormatter.string(from: Date())
-        let filename = "Cloom Recording \(timestamp).mp4"
+        let filename = "Cloom Recording \(Self.recordingTimestamp()).mp4"
 
         guard let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first else {
             logger.error("Failed to locate desktop directory")
@@ -175,10 +178,7 @@ extension RecordingCoordinator {
     }
 
     func beginWebcamOnlyCapture() {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
-        let timestamp = dateFormatter.string(from: Date())
-        let filename = "Cloom Webcam \(timestamp).mp4"
+        let filename = "Cloom Webcam \(Self.recordingTimestamp()).mp4"
 
         guard let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first else {
             logger.error("Failed to locate desktop directory")

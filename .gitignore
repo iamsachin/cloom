@@ -21,6 +21,7 @@ settings.local.json
 
 # Secrets (OAuth credentials — never commit)
 CloomApp/Sources/Cloud/Secrets.swift
+CloomApp/Resources/Secrets.xcconfig
 
 # IDE and editor
 .vscode/

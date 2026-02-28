@@ -15,8 +15,9 @@ A free, local, standalone macOS screen recording app that replicates Loom's UI/U
 - **Rust:** Stable edition 2021, UniFFI 0.31
 - **Storage:** Local-only (SwiftData)
 - **AI:** API-based (OpenAI only in v1; transcription via `whisper-1`; LLM via `gpt-4o-mini`; provider abstraction retained for future expansion) — Rust owns API clients
-- **GIF Export:** gifski via Rust FFI (Swift extracts PNG frames, Rust encodes GIF)
-- **Features:** All categories A-L (see 01-features.md); some deferred (B6 virtual backgrounds, K1 analytics, K2 comments, K4 beauty filter)
+- **GIF Export:** Removed (Phase 24) — gifski dependency was AGPL-licensed; MP4-only export now
+- **License:** MIT
+- **Features:** All categories A-L (see 01-features.md); some deferred (B6 virtual backgrounds, K1 analytics, K2 comments, K4 beauty filter); H3 GIF export removed
 - **Distribution:** Direct DMG sharing (outside App Store) with Developer ID signing + Apple notarization + stapling (not yet implemented)
 
 ## Design Principle
@@ -34,10 +35,10 @@ Swift owns all Apple framework interactions **and** all video processing:
 Rust owns compute-heavy processing and external API calls:
 - AI API clients (OpenAI via reqwest + tokio; provider abstraction retained for future providers)
 - Audio analysis (silence detection via symphonia, filler word identification)
-- GIF export (gifski encoder with PNG manifest input)
+- ~~GIF export (removed — AGPL dependency)~~
 
 ## Implementation Status
-- **Phases 1A–17:** Complete (project skeleton through performance & code quality audit)
+- **Phases 1A–24:** Complete (project skeleton through open-source readiness)
   - 1A–3: Foundation (skeleton → recording modes → compositing)
   - 4–7: Features (annotations → editor → AI → player)
   - 8–11: Polish & tests (library → settings → cleanup → 43 Rust + 32 Swift tests)
@@ -47,7 +48,13 @@ Rust owns compute-heavy processing and external API calls:
   - 15: Audio export fixes & subtitle embedding (hard-burn + SRT)
   - 16: Mic sensitivity setting
   - 17: Performance & code quality audit (SharedCIContext, PersonSegmenter throttling, shared Tokio runtime, etc.)
-- **Phase 18 (Pre-Release):** Not started — Developer ID signing, notarization, DMG packaging
+  - 18: Single-window layout + visual redesign
+  - 19: Pre-recording setup flow
+  - 20: Long recording stress test
+  - 21: Google Drive integration
+  - 22: Export speed optimization
+  - 24: Open-source readiness (GIF removal, MIT license, OAuth injection, CI fixes, code quality, tests)
+- **Phase 23 (Pre-Release):** Not started — Developer ID signing, notarization, DMG packaging
 
 ## Prerequisites
 - Xcode 26.2+ (for macOS 26 SDK)

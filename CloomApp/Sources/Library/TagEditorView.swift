@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+import os.log
+
+private let logger = Logger(subsystem: "com.cloom.app", category: "TagEditor")
 
 struct TagEditorView: View {
     enum Mode {
@@ -89,7 +92,7 @@ struct TagEditorView: View {
             tag.name = trimmed
             tag.color = selectedColor
         }
-        try? modelContext.save()
+        do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
         dismiss()
     }
 }

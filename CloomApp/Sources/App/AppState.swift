@@ -9,9 +9,6 @@ private let logger = Logger(subsystem: "com.cloom.app", category: "AppState")
 final class AppState: ObservableObject {
     let modelContainer: ModelContainer
 
-    @Published var rustGreeting: String
-    @Published var rustVersion: String
-
     @Published var recordingState: RecordingState = .idle
     @Published var micEnabled: Bool = false
     @Published var cameraEnabled: Bool = false
@@ -45,15 +42,12 @@ final class AppState: ObservableObject {
 
         self.recordingCoordinator = RecordingCoordinator(modelContainer: modelContainer)
 
-        self.rustGreeting = helloFromRust(name: "Cloom")
-        self.rustVersion = cloomCoreVersion()
-
         recordingCoordinator.$state.assign(to: &$recordingState)
         recordingCoordinator.$micEnabled.assign(to: &$micEnabled)
         recordingCoordinator.$cameraEnabled.assign(to: &$cameraEnabled)
         recordingCoordinator.$blurEnabled.assign(to: &$blurEnabled)
 
-        logger.info("AppState initialized — \(self.rustGreeting), core v\(self.rustVersion)")
+        logger.info("AppState initialized — core v\(cloomCoreVersion())")
 
         cleanupOrphanedTempFiles()
         setupGlobalHotkeys()
@@ -95,7 +89,7 @@ final class AppState: ObservableObject {
         let orphaned = contents.filter { url in
             let name = url.lastPathComponent
             return name.hasPrefix("cloom_segment_") || name.hasPrefix("cloom_audio_")
-                || name.hasPrefix("cloom-gif-") || name.hasPrefix("cloom_audio_chunk_")
+                || name.hasPrefix("cloom_audio_chunk_")
         }
 
         guard !orphaned.isEmpty else { return }

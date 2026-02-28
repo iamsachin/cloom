@@ -11,6 +11,24 @@ RUST_DIR="$PROJECT_ROOT/cloom-core"
 SWIFT_BRIDGE_DIR="$PROJECT_ROOT/CloomApp/Sources/Bridge/Generated"
 TARGET="aarch64-apple-darwin"
 
+# Derive GOOGLE_REVERSED_CLIENT_ID from GOOGLE_CLIENT_ID in Secrets.xcconfig
+XCCONFIG="$PROJECT_ROOT/CloomApp/Resources/Secrets.xcconfig"
+if [ -f "$XCCONFIG" ]; then
+    CLIENT_ID=$(grep -E '^\s*GOOGLE_CLIENT_ID\s*=' "$XCCONFIG" | sed 's/.*=\s*//' | tr -d '[:space:]')
+    if [ -n "$CLIENT_ID" ]; then
+        REVERSED=$(echo "$CLIENT_ID" | tr '.' '\n' | tail -r | paste -sd '.' -)
+        # Remove any existing GOOGLE_REVERSED_CLIENT_ID line and append the derived one
+        grep -v '^\s*GOOGLE_REVERSED_CLIENT_ID' "$XCCONFIG" > "$XCCONFIG.tmp"
+        echo "GOOGLE_REVERSED_CLIENT_ID = $REVERSED" >> "$XCCONFIG.tmp"
+        mv "$XCCONFIG.tmp" "$XCCONFIG"
+    fi
+else
+    echo "⚠️  Warning: Secrets.xcconfig not found."
+    echo "   Copy Secrets.xcconfig.example → Secrets.xcconfig and fill in your Google Client ID."
+    echo "   Google Drive upload will not work without it."
+    echo ""
+fi
+
 echo "==> Building cloom-core (Rust) for $TARGET..."
 cargo build --release \
     --manifest-path "$RUST_DIR/Cargo.toml" \

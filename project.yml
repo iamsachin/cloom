@@ -21,6 +21,9 @@ targets:
   Cloom:
     type: application
     platform: macOS
+    configFiles:
+      Debug: CloomApp/Resources/Secrets.xcconfig
+      Release: CloomApp/Resources/Secrets.xcconfig
     sources:
       - path: CloomApp/Sources
         excludes:
@@ -30,8 +33,13 @@ targets:
         excludes:
           - "Info.plist"
           - "Cloom.entitlements"
+          - "Secrets.xcconfig"
+          - "Secrets.xcconfig.example"
     settings:
       base:
+        GOOGLE_CLIENT_ID: ""
+        GOOGLE_REVERSED_CLIENT_ID: ""
+        # Both are set via Secrets.xcconfig; build.sh auto-derives REVERSED from CLIENT_ID
         PRODUCT_BUNDLE_IDENTIFIER: com.cloom.app
         PRODUCT_NAME: Cloom
         INFOPLIST_FILE: CloomApp/Resources/Info.plist

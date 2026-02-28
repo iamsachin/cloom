@@ -14,10 +14,6 @@ path = "uniffi-bindgen.rs"
 [dependencies]
 uniffi = { version = "0.31", features = ["cli"] }
 thiserror = "2"
-gifski = "1"
-imgref = "1"
-rgb = "0.8"
-png = "0.17"
 reqwest = { version = "0.12", features = ["json", "multipart", "rustls-tls"], default-features = false }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 serde = { version = "1", features = ["derive"] }

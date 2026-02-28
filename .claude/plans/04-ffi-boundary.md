@@ -10,7 +10,7 @@
 
 ## What Crosses the Bridge
 
-The FFI surface is intentionally small. Only audio processing, AI API calls, and GIF export go through Rust. Everything else (data persistence, video encoding, compositing, config, MP4 export, waveform generation) is handled entirely in Swift.
+The FFI surface is intentionally small. Only audio processing and AI API calls go through Rust. Everything else (data persistence, video encoding, compositing, config, MP4 export, waveform generation) is handled entirely in Swift.
 
 ### Swift → Rust: Audio Processing
 
@@ -31,15 +31,9 @@ The FFI surface is intentionally small. Only audio processing, AI API calls, and
 | `generate_chapters` | `(transcript_text: String, api_key: String, provider: LlmProvider) → Vec<Chapter>` | Divide transcript into chapters via gpt-4o-mini |
 | `format_paragraphs` | `(transcript_text: String, api_key: String, provider: LlmProvider) → String` | Add paragraph breaks to raw transcript via gpt-4o-mini |
 
-`LlmProvider` stays in the interface for forward compatibility. In v1, only `OpenAi` is enabled; `Claude` returns `CloomError::InvalidInput`.
+`LlmProvider` stays in the interface for forward compatibility. In v1, only `OpenAi` is enabled.
 
 `TranscriptionProvider` stays in the interface for forward compatibility. In v1, only `OpenAi` is enabled with `whisper-1` model.
-
-### Swift → Rust: GIF Export (async)
-
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `export_gif` | `(manifest_path: String, output_path: String, config: GifConfig, progress: Box<dyn GifProgressCallback>) → String` | Read PNG manifest, encode GIF via gifski |
 
 ### Utility Functions
 
@@ -60,24 +54,14 @@ FillerWord { word: String, start_ms: u64, end_ms: u64, count: u32 }
 TranscriptWord { word: String, start_ms: u64, end_ms: u64, confidence: f32 }
 Transcript { full_text: String, words: Vec<TranscriptWord>, language: String }
 Chapter { id: String, title: String, start_ms: u64 }
-GifConfig { width: u32, height: u32, fps: u8, quality: u8, repeat_count: i16 }
 ```
 
 ### Enums
 
 ```rust
-LlmProvider { OpenAi, Claude }
+LlmProvider { OpenAi }
 TranscriptionProvider { OpenAi }
 CloomError { IoError, ApiError, AudioError, InvalidInput, ExportError }
-```
-
-### Callback Interfaces
-
-```rust
-#[uniffi::export(callback_interface)]
-trait GifProgressCallback: Send + Sync {
-    fn on_progress(&self, fraction: f32);  // 0.0 → 1.0
-}
 ```
 
 ## Data Marshalling Strategy
@@ -90,7 +74,6 @@ trait GifProgressCallback: Send + Sync {
 | File paths | `String` on both sides (Rust reads files directly from disk) |
 | Errors | Rust `Result<T, CloomError>` → Swift `throws` |
 | Audio data | NOT passed over FFI — Rust reads audio files directly via path |
-| Video frames | NOT passed over FFI — Swift extracts PNG frames to disk, Rust reads PNG manifest |
 
 ## Build Integration
 

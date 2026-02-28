@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+import os.log
+
+private let logger = Logger(subsystem: "com.cloom.app", category: "BulkTag")
 
 struct BulkTagSheet: View {
     let tags: [TagRecord]
@@ -41,6 +44,6 @@ struct BulkTagSheet: View {
                 video.tags.append(tag)
             }
         }
-        try? modelContext.save()
+        do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
     }
 }
