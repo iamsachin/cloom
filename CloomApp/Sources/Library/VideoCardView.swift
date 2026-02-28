@@ -23,8 +23,7 @@ struct VideoCardView: View {
                     if let nsImage = thumbnailImage {
                         Image(nsImage: nsImage)
                             .resizable()
-                            .aspectRatio(16 / 9, contentMode: .fill)
-                            .clipped()
+                            .aspectRatio(contentMode: .fit)
                     } else {
                         RoundedRectangle(cornerRadius: 0)
                             .fill(.quaternary)
@@ -67,6 +66,8 @@ struct VideoCardView: View {
                             .font(.system(size: 9))
                             .foregroundStyle(.blue.opacity(0.8))
                     }
+
+                    cloudStatusIcon
 
                     Spacer()
 
@@ -118,6 +119,27 @@ struct VideoCardView: View {
                 thumbnailCache.setObject(loaded, forKey: key)
                 thumbnailImage = loaded
             }
+        }
+    }
+
+    // MARK: - Cloud Status
+
+    @ViewBuilder
+    private var cloudStatusIcon: some View {
+        let status = UploadStatus(video.uploadStatus)
+        if DriveUploadManager.shared.isUploading(video.id) {
+            ProgressView()
+                .controlSize(.mini)
+        } else if status == .uploaded {
+            Image(systemName: "link.circle.fill")
+                .font(.system(size: 9))
+                .foregroundStyle(.green)
+                .help("Shared on Google Drive")
+        } else if status == .failed {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 9))
+                .foregroundStyle(.red)
+                .help("Upload failed")
         }
     }
 

@@ -149,10 +149,10 @@ struct EditorToolbarView: View {
         }
         .help("Copy path or reveal in Finder")
 
-        Button("Export") { showExportSheet = true }
+        Button("Share") { showExportSheet = true }
             .buttonStyle(.borderedProminent)
-            .help("Export video")
-            .accessibilityLabel("Export video")
+            .help("Share or export video")
+            .accessibilityLabel("Share or export video")
     }
 
     @ViewBuilder
@@ -178,16 +178,6 @@ struct EditorToolbarView: View {
 
     @ViewBuilder
     private var windowControls: some View {
-        if state.pipController != nil {
-            Button {
-                state.togglePiP()
-            } label: {
-                Image(systemName: "pip")
-            }
-            .help("Picture in Picture")
-            .accessibilityLabel("Picture in Picture")
-        }
-
         Button {
             NSApp.mainWindow?.toggleFullScreen(nil)
         } label: {
@@ -203,6 +193,18 @@ struct EditorToolbarView: View {
         }
         .help("Video info")
         .accessibilityLabel(showInfoPanel ? "Hide video info" : "Show video info")
+
+        if let shareUrl = video?.shareUrl, !shareUrl.isEmpty {
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(shareUrl, forType: .string)
+            } label: {
+                Image(systemName: "link")
+                    .foregroundStyle(.green)
+            }
+            .help("Copy Drive share link")
+            .accessibilityLabel("Copy share link")
+        }
     }
 
     private func formatTime(ms: Int64) -> String {

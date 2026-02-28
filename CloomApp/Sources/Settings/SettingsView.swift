@@ -17,6 +17,9 @@ struct SettingsView: View {
 
             AISettingsTab()
                 .tabItem { Label("AI", systemImage: "sparkle") }
+
+            CloudSettingsTab()
+                .tabItem { Label("Cloud", systemImage: "icloud") }
         }
         .frame(width: 600, height: 480)
     }

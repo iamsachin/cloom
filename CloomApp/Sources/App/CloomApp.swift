@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+import GoogleSignIn
 
 @main
 struct CloomApp: App {
@@ -28,6 +29,9 @@ struct CloomApp: App {
             MainWindowView()
                 .environmentObject(appState)
                 .modelContainer(appState.modelContainer)
+                .onOpenURL { url in
+                    GIDSignIn.sharedInstance.handle(url)
+                }
         }
         .defaultSize(width: 1100, height: 700)
 
@@ -183,6 +187,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         default:
             break
         }
+
+        // Google session restored lazily — see GoogleAuthService.restoreSessionIfNeeded()
 
         let center = UNUserNotificationCenter.current()
         center.delegate = self

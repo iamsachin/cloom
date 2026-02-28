@@ -30,6 +30,12 @@ final class VideoRecord {
     var hasTranscript: Bool
     var summary: String?
 
+    // Cloud upload
+    var driveFileId: String?
+    var shareUrl: String?
+    var uploadStatus: String?  // nil | "uploading" | "uploaded" | "failed"
+    var uploadedAt: Date?
+
     init(
         id: String = UUID().uuidString,
         title: String,

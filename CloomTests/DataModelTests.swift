@@ -68,6 +68,42 @@ struct VideoRecordTests {
         #expect(video.tags.isEmpty)
         #expect(video.chapters.isEmpty)
     }
+
+    @Test func cloudFieldsDefaultToNil() {
+        let video = VideoRecord(title: "V", filePath: "/v.mp4")
+        #expect(video.driveFileId == nil)
+        #expect(video.shareUrl == nil)
+        #expect(video.uploadStatus == nil)
+        #expect(video.uploadedAt == nil)
+    }
+
+    @Test func cloudFieldsPersistence() throws {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(
+            for: VideoRecord.self, FolderRecord.self, TagRecord.self,
+            TranscriptRecord.self, TranscriptWordRecord.self,
+            ChapterRecord.self, BookmarkRecord.self, EditDecisionList.self,
+            VideoComment.self, ViewEvent.self,
+            configurations: config
+        )
+        let context = ModelContext(container)
+
+        let video = VideoRecord(title: "Cloud Video", filePath: "/tmp/cloud.mp4")
+        video.driveFileId = "abc123"
+        video.shareUrl = "https://drive.google.com/file/d/abc123/view"
+        video.uploadStatus = "uploaded"
+        video.uploadedAt = Date(timeIntervalSince1970: 1700000000)
+        context.insert(video)
+        try context.save()
+
+        let descriptor = FetchDescriptor<VideoRecord>()
+        let results = try context.fetch(descriptor)
+        #expect(results.count == 1)
+        #expect(results.first?.driveFileId == "abc123")
+        #expect(results.first?.shareUrl == "https://drive.google.com/file/d/abc123/view")
+        #expect(results.first?.uploadStatus == "uploaded")
+        #expect(results.first?.uploadedAt != nil)
+    }
 }
 
 // MARK: - FolderRecord Tests

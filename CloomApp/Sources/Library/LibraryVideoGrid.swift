@@ -129,9 +129,51 @@ extension LibraryContentView {
 
         Divider()
 
+        driveContextMenuItems(video)
+
+        Divider()
+
         Button("Delete", role: .destructive) {
             selectedIDs = [video.id]
             showDeleteConfirmation = true
+        }
+    }
+
+    @ViewBuilder
+    func driveContextMenuItems(_ video: VideoRecord) -> some View {
+        let uploadManager = DriveUploadManager.shared
+        let authService = GoogleAuthService.shared
+
+        if uploadManager.isUploading(video.id) {
+            Label("Uploading...", systemImage: "arrow.up.circle")
+                .disabled(true)
+        } else if let shareUrl = video.shareUrl, UploadStatus(video.uploadStatus) == .uploaded {
+            Button("Copy Share Link") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(shareUrl, forType: .string)
+            }
+            Button("Open Share Link") {
+                if let url = URL(string: shareUrl) {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            Button("Re-upload to Google Drive") {
+                Task {
+                    await uploadManager.reuploadVideo(
+                        videoRecord: video,
+                        modelContext: modelContext
+                    )
+                }
+            }
+        } else if authService.isSignedIn {
+            Button("Upload to Google Drive") {
+                Task {
+                    await uploadManager.uploadVideo(
+                        videoRecord: video,
+                        modelContext: modelContext
+                    )
+                }
+            }
         }
     }
 

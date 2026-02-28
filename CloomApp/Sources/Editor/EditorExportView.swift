@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import AVFoundation
 import CoreImage
 import UniformTypeIdentifiers
@@ -15,6 +16,7 @@ enum ExportFormat: String, CaseIterable, Identifiable {
 struct EditorExportView: View {
     let editorState: EditorState
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     @State private var selectedFormat: ExportFormat = .mp4
     @State private var selectedQuality: VideoQuality = .medium
@@ -26,11 +28,39 @@ struct EditorExportView: View {
     @State private var exportBrightness: Float = 0
     @State private var exportContrast: Float = 1
     @State private var subtitleMode: SubtitleMode = .none
+    @State private var isUploading = false
+    @State private var uploadShareUrl: String?
+    @State private var editableTitle: String = ""
+    @State private var isDeletingFromDrive = false
+
+    private var authService: GoogleAuthService { GoogleAuthService.shared }
+    private var uploadManager: DriveUploadManager { DriveUploadManager.shared }
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("Export Recording")
-                .font(.headline)
+            HStack {
+                Spacer()
+                Text("Share")
+                    .font(.headline)
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+                .disabled(isExporting || isUploading)
+            }
+
+            // Editable title
+            TextField("Title", text: $editableTitle)
+                .textFieldStyle(.roundedBorder)
+                .disabled(isExporting || isUploading)
+
+            // Existing Drive upload
+            existingUploadSection
 
             // Format picker
             Picker("Format", selection: $selectedFormat) {
@@ -122,9 +152,41 @@ struct EditorExportView: View {
             if isExporting {
                 VStack(spacing: 8) {
                     ProgressView(value: exportProgress)
-                    Text("\(Int(exportProgress * 100))%")
+                    Text("Exporting \(Int(exportProgress * 100))%")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+            }
+
+            if isUploading {
+                let progress = uploadManager.uploadProgress(editorState.videoRecord.id)
+                VStack(spacing: 8) {
+                    ProgressView(value: progress)
+                    Text("Uploading \(Int(progress * 100))%")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let uploadShareUrl {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Uploaded!")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                    Spacer()
+                    Button("Copy Link") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(uploadShareUrl, forType: .string)
+                    }
+                    .controlSize(.small)
+                    Button("Open") {
+                        if let url = URL(string: uploadShareUrl) {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                    .controlSize(.small)
                 }
             }
 
@@ -135,27 +197,113 @@ struct EditorExportView: View {
             }
 
             HStack {
-                Button("Cancel") { dismiss() }
-                    .disabled(isExporting)
                 Spacer()
+                Button {
+                    startUploadToDrive()
+                } label: {
+                    Label("Upload to Drive", systemImage: "square.and.arrow.up")
+                }
+                .disabled(
+                    !authService.isSignedIn
+                    || selectedFormat == .gif
+                    || isExporting
+                    || isUploading
+                )
+                .help(
+                    !authService.isSignedIn
+                        ? "Sign in to Google in Settings > Cloud"
+                        : selectedFormat == .gif
+                            ? "Upload not available for GIF"
+                            : "Export with settings and upload to Drive"
+                )
                 Button("Export") { startExport() }
-                    .disabled(isExporting)
+                    .disabled(isExporting || isUploading)
                     .buttonStyle(.borderedProminent)
             }
         }
         .padding(24)
         .frame(width: 400)
+        .onAppear {
+            editableTitle = editorState.videoRecord.title
+            authService.restoreSessionIfNeeded()
+        }
+        .onChange(of: editableTitle) { _, newValue in
+            let trimmed = newValue.trimmingCharacters(in: .whitespaces)
+            if !trimmed.isEmpty {
+                editorState.videoRecord.title = trimmed
+            }
+        }
     }
+
+    // MARK: - Existing Upload Section
+
+    @ViewBuilder
+    private var existingUploadSection: some View {
+        let status = UploadStatus(editorState.videoRecord.uploadStatus)
+        if let shareUrl = editorState.videoRecord.shareUrl, status == .uploaded {
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("On Google Drive")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Copy Link") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(shareUrl, forType: .string)
+                    }
+                    .controlSize(.small)
+                    Button("Open") {
+                        if let url = URL(string: shareUrl) {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                    .controlSize(.small)
+                    Button(role: .destructive) {
+                        deleteFromDrive()
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    .controlSize(.small)
+                    .disabled(isDeletingFromDrive)
+                }
+            }
+
+            Divider()
+        }
+    }
+
+    // MARK: - Delete from Drive
+
+    private func deleteFromDrive() {
+        isDeletingFromDrive = true
+        Task {
+            if let fileId = editorState.videoRecord.driveFileId,
+               let token = await GoogleAuthService.shared.refreshTokenIfNeeded() {
+                try? await DriveUploadService().deleteFile(fileId: fileId, accessToken: token)
+            }
+            editorState.videoRecord.driveFileId = nil
+            editorState.videoRecord.shareUrl = nil
+            editorState.videoRecord.uploadStatus = nil
+            editorState.videoRecord.uploadedAt = nil
+            try? modelContext.save()
+            isDeletingFromDrive = false
+            uploadShareUrl = nil
+        }
+    }
+
+    // MARK: - Export
 
     private func startExport() {
         let panel = NSSavePanel()
 
         if selectedFormat == .mp4 {
             panel.allowedContentTypes = [.mpeg4Movie]
-            panel.nameFieldStringValue = editorState.videoRecord.title + " (Export).mp4"
+            panel.nameFieldStringValue = editableTitle + " (Export).mp4"
         } else {
             panel.allowedContentTypes = [.gif]
-            panel.nameFieldStringValue = editorState.videoRecord.title + " (Export).gif"
+            panel.nameFieldStringValue = editableTitle + " (Export).gif"
         }
 
         guard panel.runModal() == .OK, let destURL = panel.url else { return }
@@ -176,6 +324,45 @@ struct EditorExportView: View {
             } catch {
                 exportError = error.localizedDescription
                 isExporting = false
+            }
+        }
+    }
+
+    private func startUploadToDrive() {
+        isUploading = true
+        exportError = nil
+        uploadShareUrl = nil
+
+        Task {
+            do {
+                // Export to temp file with all settings applied
+                let tempDir = FileManager.default.temporaryDirectory
+                let tempURL = tempDir.appendingPathComponent(
+                    "\(editableTitle) (Export).mp4"
+                )
+
+                // Remove stale temp file if exists
+                try? FileManager.default.removeItem(at: tempURL)
+
+                try await exportMP4(to: tempURL)
+
+                // Upload the exported file (manager handles temp cleanup)
+                await uploadManager.uploadExportedFile(
+                    filePath: tempURL.path,
+                    videoRecord: editorState.videoRecord,
+                    modelContext: modelContext
+                )
+
+                // Check result
+                if let shareUrl = editorState.videoRecord.shareUrl {
+                    uploadShareUrl = shareUrl
+                } else {
+                    exportError = "Upload failed — check Settings > Cloud"
+                }
+                isUploading = false
+            } catch {
+                exportError = error.localizedDescription
+                isUploading = false
             }
         }
     }
