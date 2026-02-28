@@ -50,7 +50,7 @@ cloom/
 │   │   │   ├── GoogleAuthConfig.swift           # OAuth config (reads from Secrets.googleClientID)
 │   │   │   ├── GoogleAuthService.swift          # @Observable @MainActor OAuth singleton
 │   │   │   ├── Secrets.swift                    # GITIGNORED — real OAuth Client ID
-│   │   │   └── Secrets.example.swift             # Template for contributors to copy
+│   │   │   └── Secrets.swift.example              # Template for contributors to copy (non-compilable extension)
 │   │   ├── Capture/
 │   │   │   ├── BubbleContentView.swift        # NSView for webcam bubble click/drag (extracted from WebcamBubbleWindow)
 │   │   │   ├── BubbleLayerBuilder.swift       # Panel creation, emoji frame, rebuild (extracted from WebcamBubbleWindow)

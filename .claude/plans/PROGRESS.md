@@ -596,7 +596,7 @@ Manual upload-to-Google-Drive with shareable links. Google Sign-In SDK for OAuth
 **Status:** Complete
 **Date:** 2026-02-28
 
-### Phase 1: Remove GIF Export (AGPL blocker)
+### Task 1: Remove GIF Export (AGPL blocker)
 - [x] Deleted `gif_export.rs`, `gif_export_tests.rs`, `GifExportService.swift`
 - [x] Removed `gifski`, `imgref`, `rgb`, `png` from Cargo.toml dependencies
 - [x] Removed `mod gif_export` and `pub use gif_export::*` from lib.rs
@@ -604,24 +604,24 @@ Manual upload-to-Google-Drive with shareable links. Google Sign-In SDK for OAuth
 - [x] Removed `cloom-gif-` temp file cleanup from AppState.swift
 - [x] Fixed version test: `assert_eq!(version, env!("CARGO_PKG_VERSION"))`
 
-### Phase 2: Open Source Boilerplate (partial)
+### Task 2: Open Source Boilerplate (partial)
 - [x] Created LICENSE (MIT, copyright 2025 Sachin Rajput)
 - [x] Created README.md (description, features, requirements, build instructions, architecture)
 - [ ] CONTRIBUTING.md, CODE_OF_CONDUCT.md, CHANGELOG.md, ARCHITECTURE.md, GitHub templates — skipped (user will write)
 
-### Phase 3: OAuth Client ID Build-Time Injection
+### Task 3: OAuth Client ID Build-Time Injection
 - [x] Created `Secrets.xcconfig.example` template for Google OAuth build-time variables
 - [x] Added `Secrets.xcconfig` to `.gitignore`
 - [x] Replaced hardcoded OAuth Client ID in Info.plist with `$(GOOGLE_REVERSED_CLIENT_ID)`
 - [x] Added `configFiles` to project.yml (Debug/Release) + fallback empty build settings
-- [x] Renamed `Secrets.example` → `Secrets.example.swift` with xcconfig instructions
-- [x] Added warning in build.sh if Secrets.xcconfig missing
+- [x] Renamed `Secrets.example` → `Secrets.swift.example` (non-compilable extension) with xcconfig instructions
+- [x] Added build.sh logic: auto-derives `GOOGLE_REVERSED_CLIENT_ID` from `GOOGLE_CLIENT_ID`; warns if xcconfig missing
 
-### Phase 4: CI Fixes
+### Task 4: CI Fixes
 - [x] Changed swift-tests `runs-on: macos-26` → `macos-15` (latest stable)
 - [x] Removed redundant second xcodebuild run
 
-### Phase 5: Code Quality — File Splits
+### Task 5: Code Quality — File Splits
 - [x] Created `ExportService.swift` (132 lines) — extracted exportMP4, presetForQuality, isExportUnmodified from EditorExportView
 - [x] Rewrote `EditorExportView.swift` (332 lines) — calls ExportService, body split into computed properties
 - [x] Created `ExportWriter+Subtitles.swift` (177 lines) — extracted subtitle methods + shared makeTx3gFormatDescription
@@ -631,9 +631,9 @@ Manual upload-to-Google-Drive with shareable links. Google Sign-In SDK for OAuth
 - [x] Created `ToolbarToggleButton.swift` (22 lines) — reusable toggle button
 - [x] Rewrote `RecordingToolbarPanel.swift` (123 lines) — NSPanel management only
 
-### Phase 6: Bug Fixes & Cleanup
+### Task 6: Bug Fixes & Cleanup
 - [x] Removed debug UI (rustGreeting/rustVersion from AppState, Text lines from CloomApp)
-- [x] Fixed presetForQuality bug (.medium → AVAssetExportPresetHighQuality)
+- [x] Fixed presetForQuality bug (.medium → AVAssetExportPreset1920x1080; AVAssetExportPresetHighQuality doesn't exist on macOS)
 - [x] Removed LlmProvider::Claude stub + test_validate_claude_error test
 - [x] Removed redundant fs::metadata from transcribe.rs
 - [x] Extracted recordingTimestamp() helper (eliminated duplicated DateFormatter)
@@ -641,17 +641,19 @@ Manual upload-to-Google-Drive with shareable links. Google Sign-In SDK for OAuth
 - [x] Removed unnecessary comments from AIOrchestrator, DriveUploadManager, RecordingCoordinator
 - [x] Moved NSAlert out of AIOrchestrator → showNotification pattern
 
-### Phase 7: Test Coverage Improvements
+### Task 7: Test Coverage Improvements
 - [x] Fixed RecordingSettingsTests: `fromDefaultsReturnsValidSettings` calls `RecordingSettings.fromDefaults()`
 - [x] Migrated CacheTests from XCTest to Swift Testing
 - [x] Created FFIBridgeTests.swift (helloFromRust + cloomCoreVersion semver)
 - [x] Created LibraryFilterTests.swift (7 LibrarySortOrder comparators + TranscriptFilter)
 - [x] Fixed silence_tests.rs: eprintln → panic for decoder failures
+- [x] Fixed ExportService to take value types (filePath, EDLSnapshot) instead of @Model types (Swift 6 sending errors)
+- [x] Added missing CoreGraphics, CoreImage, Foundation imports in test files (needed after XCTest → Swift Testing migration)
 
-### Phase 8: Plan Docs & Memory Update
+### Task 8: Plan Docs & Memory Update
 - [x] Updated all 11 plan docs to remove GIF references, add new files, fix test counts
 
-**Milestone verified:** 38 Rust tests pass. GIF export fully removed. MIT license added. OAuth Client ID injected at build time. CI simplified. Files split for SRP compliance. Bug fixes applied. Test coverage improved.
+**Milestone verified:** 38 Rust tests pass. 56 Swift tests pass. Build succeeds. GIF export fully removed. MIT license added. OAuth Client ID injected at build time with auto-derived reversed ID. CI simplified. Files split for SRP compliance. Bug fixes applied. Test coverage improved.
 
 ---
 
