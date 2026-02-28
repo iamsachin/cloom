@@ -32,7 +32,7 @@ cloom/
 │   │   ├── App/
 │   │   │   ├── CloomApp.swift                 # @main, MenuBarExtra, single Window scene
 │   │   │   ├── AppState.swift                 # @MainActor global state, cleanup, disk monitoring
-│   │   │   ├── GlobalHotkeyManager.swift      # CGEvent tap hotkeys (Cmd+Shift+R, etc.)
+│   │   │   ├── HotkeyNames.swift               # KeyboardShortcuts.Name extensions (.toggleRecording, .togglePause)
 │   │   │   ├── MainWindowView.swift           # Single-window root: NavigationSplitView + mode switch
 │   │   │   ├── NavigationState.swift          # @Observable navigation state (library/editor mode, view style)
 │   │   │   ├── PermissionChecker.swift        # TCC permission detection + request

@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import Combine
+import KeyboardShortcuts
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "AppState")
@@ -47,6 +48,7 @@ final class AppState: ObservableObject {
         recordingCoordinator.$cameraEnabled.assign(to: &$cameraEnabled)
         recordingCoordinator.$blurEnabled.assign(to: &$blurEnabled)
 
+        cloomSetupLogging()
         logger.info("AppState initialized — core v\(cloomCoreVersion())")
 
         cleanupOrphanedTempFiles()
@@ -56,8 +58,7 @@ final class AppState: ObservableObject {
     // MARK: - Global Hotkeys
 
     private func setupGlobalHotkeys() {
-        let mgr = GlobalHotkeyManager.shared
-        mgr.onToggleRecording = { [weak self] in
+        KeyboardShortcuts.onKeyDown(for: .toggleRecording) { [weak self] in
             guard let self else { return }
             if self.recordingState.isIdle {
                 self.startRecording()
@@ -67,7 +68,7 @@ final class AppState: ObservableObject {
                 self.stopRecording()
             }
         }
-        mgr.onTogglePause = { [weak self] in
+        KeyboardShortcuts.onKeyDown(for: .togglePause) { [weak self] in
             guard let self else { return }
             if self.recordingState.isRecording {
                 self.pauseRecording()
@@ -75,7 +76,6 @@ final class AppState: ObservableObject {
                 self.resumeRecording()
             }
         }
-        mgr.start()
     }
 
     // MARK: - Crash Recovery

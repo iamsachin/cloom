@@ -19,10 +19,11 @@
 - `AppState: @MainActor ObservableObject` — global state (recording, mic/camera toggles, modelContainer, crash recovery, disk monitoring)
 - `PermissionChecker: @MainActor ObservableObject` — live polling for Screen Recording, Camera, Mic, Accessibility TCC permissions
 - `OnboardingView` — step-by-step permission setup with live status indicators
-- `GlobalHotkeyManager` — singleton, CGEvent tap for Cmd+Shift+R (toggle recording) and Cmd+Shift+P (toggle pause), ShortcutRecorderButton for customization, UserDefaults persistence
+- `HotkeyNames` — `KeyboardShortcuts.Name` extensions for `.toggleRecording` (Cmd+Shift+R) and `.togglePause` (Cmd+Shift+P), using sindresorhus/KeyboardShortcuts library
 - `Theme` — semantic Color extensions with NSColor dynamic provider, 12 adaptive colors, System/Light/Dark picker
 
-**macOS APIs:** `MenuBarExtra`, `Settings` scene, `Window`, `SMAppService`, `CGEvent` tap, `UNUserNotificationCenter`, `NSAppearance`
+**macOS APIs:** `MenuBarExtra`, `Settings` scene, `Window`, `UNUserNotificationCenter`, `NSAppearance`
+**Libraries:** `LaunchAtLogin` (login item), `KeyboardShortcuts` (global hotkeys)
 
 ---
 

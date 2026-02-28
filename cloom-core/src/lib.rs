@@ -27,6 +27,20 @@ pub enum CloomError {
     ExportError { msg: String },
 }
 
+/// Initialize Rust logging, routing log macros to macOS Console.app via os_log.
+/// Safe to call multiple times — only the first call takes effect.
+#[uniffi::export]
+pub fn cloom_setup_logging() {
+    use std::sync::Once;
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| {
+        oslog::OsLogger::new("com.cloom.app")
+            .level_filter(log::LevelFilter::Debug)
+            .init()
+            .ok();
+    });
+}
+
 /// Simple hello-world function to verify FFI round-trip.
 #[uniffi::export]
 pub fn hello_from_rust(name: String) -> String {

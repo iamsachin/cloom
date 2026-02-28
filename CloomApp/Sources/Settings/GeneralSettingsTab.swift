@@ -1,8 +1,7 @@
 import SwiftUI
-import ServiceManagement
+import LaunchAtLogin
 
 struct GeneralSettingsTab: View {
-    @AppStorage("launchAtLogin") private var launchAtLogin: Bool = false
     @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
     @AppStorage("appearanceMode") private var appearanceMode: String = "system"
     @EnvironmentObject var permissionChecker: PermissionChecker
@@ -10,18 +9,7 @@ struct GeneralSettingsTab: View {
 
     var body: some View {
         Form {
-            Toggle("Launch at Login", isOn: $launchAtLogin)
-                .onChange(of: launchAtLogin) { _, newValue in
-                    do {
-                        if newValue {
-                            try SMAppService.mainApp.register()
-                        } else {
-                            try SMAppService.mainApp.unregister()
-                        }
-                    } catch {
-                        launchAtLogin = !newValue
-                    }
-                }
+            LaunchAtLogin.Toggle()
 
             Toggle("Show Notifications", isOn: $notificationsEnabled)
 
