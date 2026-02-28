@@ -80,7 +80,7 @@ fn test_all_silent() {
             assert_eq!(ranges[0].start_ms, 0);
         }
         Err(e) => {
-            eprintln!("Skipping test (decode issue): {e}");
+            panic!("Decoder failure should not be silently skipped: {e}");
         }
     }
 }
@@ -102,7 +102,7 @@ fn test_no_silence_sine_wave() {
             assert!(ranges.is_empty(), "Loud sine should have no silence");
         }
         Err(e) => {
-            eprintln!("Skipping test (decode issue): {e}");
+            panic!("Decoder failure should not be silently skipped: {e}");
         }
     }
 }
@@ -126,7 +126,7 @@ fn test_silence_between_tones() {
             assert!(!ranges.is_empty(), "Should detect silence between tones");
         }
         Err(e) => {
-            eprintln!("Skipping test (decode issue): {e}");
+            panic!("Decoder failure should not be silently skipped: {e}");
         }
     }
 }
@@ -151,7 +151,7 @@ fn test_below_min_duration() {
             assert!(ranges.is_empty(), "Short silence should be filtered out");
         }
         Err(e) => {
-            eprintln!("Skipping test (decode issue): {e}");
+            panic!("Decoder failure should not be silently skipped: {e}");
         }
     }
 }

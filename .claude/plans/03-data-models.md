@@ -359,7 +359,7 @@ struct HotkeyBinding: Codable {
 
 ## Rust Models (cloom-core/src/)
 
-Rust models are minimal — only types that cross the FFI boundary for audio, AI, and GIF export.
+Rust models are minimal — only types that cross the FFI boundary for audio and AI.
 All FFI-exposed types derive `uniffi::Record` or `uniffi::Enum`.
 
 ### Audio Processing Types
@@ -408,7 +408,6 @@ struct Chapter {
 #[derive(uniffi::Enum)]
 enum LlmProvider {
     OpenAi,     // Enabled in v1 (gpt-4o-mini)
-    Claude,     // Reserved for future — returns error if used
 }
 
 #[derive(uniffi::Enum)]

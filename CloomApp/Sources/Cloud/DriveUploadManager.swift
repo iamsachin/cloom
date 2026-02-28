@@ -64,7 +64,7 @@ final class DriveUploadManager {
 
         guard let accessToken = await GoogleAuthService.shared.refreshTokenIfNeeded() else {
             videoRecord.uploadStatus = UploadStatus.failed.rawValue
-            try? modelContext.save()
+            do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
             logger.error("No access token available for upload")
             return
         }
@@ -78,7 +78,7 @@ final class DriveUploadManager {
 
         // Mark as uploading
         videoRecord.uploadStatus = UploadStatus.uploading.rawValue
-        try? modelContext.save()
+        do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
         activeUploads[videoID] = 0
 
         do {
@@ -107,7 +107,7 @@ final class DriveUploadManager {
             videoRecord.shareUrl = shareLink
             videoRecord.uploadStatus = UploadStatus.uploaded.rawValue
             videoRecord.uploadedAt = .now
-            try? modelContext.save()
+            do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
 
             activeUploads.removeValue(forKey: videoID)
 
@@ -118,7 +118,7 @@ final class DriveUploadManager {
             logger.info("Upload complete for \(videoID): \(shareLink)")
         } catch {
             videoRecord.uploadStatus = UploadStatus.failed.rawValue
-            try? modelContext.save()
+            do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
             activeUploads.removeValue(forKey: videoID)
             logger.error("Upload failed for \(videoID): \(error.localizedDescription)")
         }
@@ -127,7 +127,6 @@ final class DriveUploadManager {
     // MARK: - Re-upload
 
     func reuploadVideo(videoRecord: VideoRecord, modelContext: ModelContext) async {
-        // Delete old file if exists
         if let oldFileId = videoRecord.driveFileId,
            let token = await GoogleAuthService.shared.refreshTokenIfNeeded() {
             try? await uploadService.deleteFile(fileId: oldFileId, accessToken: token)
@@ -138,7 +137,7 @@ final class DriveUploadManager {
         videoRecord.shareUrl = nil
         videoRecord.uploadStatus = nil
         videoRecord.uploadedAt = nil
-        try? modelContext.save()
+        do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
 
         await uploadVideo(videoRecord: videoRecord, modelContext: modelContext)
     }

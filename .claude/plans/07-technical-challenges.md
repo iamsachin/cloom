@@ -119,29 +119,14 @@
 
 ---
 
-## 9. UniFFI Async and Callbacks
+## 9. UniFFI Async
 
-**Problem:** AI API calls are async/long-running. GIF export needs progress callbacks.
+**Problem:** AI API calls are async/long-running.
 
 **Solution:**
 - UniFFI async support: Rust `async fn` → Swift `async` function
-- Rust side uses `tokio` runtime (rt-multi-thread)
-- Progress callbacks: UniFFI callback interfaces (`GifProgressCallback` Rust trait → Swift protocol)
+- Rust side uses `tokio` runtime (rt-multi-thread) via shared `LazyLock<Runtime>` singleton
 - AI calls dispatched via `Task.detached` in `AIOrchestrator` (actor) after recording
-
----
-
-## 10. GIF Export (gifski)
-
-**Problem:** GIF files can be enormous without optimization.
-
-**Solution (Rust gifski):**
-- Swift extracts PNG frames from MP4 via `AVAssetImageGenerator` at reduced rate
-- Swift writes frames + manifest JSON to temp directory
-- Rust `GifExporter` reads PNG manifest, loads frames
-- gifski handles color quantization and frame differencing internally
-- Configurable width, FPS, and quality
-- Progress reporting via callback interface
 
 ---
 

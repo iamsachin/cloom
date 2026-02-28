@@ -22,10 +22,6 @@
 | `tokio` | 1.x (rt-multi-thread) | Async runtime (AI API calls) |
 | `reqwest` | 0.12 (json, multipart, rustls-tls) | HTTP client for OpenAI APIs |
 | `symphonia` | 0.5 (aac, isomp4) | Audio decoding (AAC/M4A from MP4 containers) |
-| `gifski` | 1.x | GIF encoding with color quantization |
-| `png` | 0.17 | PNG frame decoding for GIF export |
-| `imgref` | 1.x | Image frame types for gifski |
-| `rgb` | 0.8 | RGB pixel types for gifski |
 | `thiserror` | 2.x | Error type derive macros |
 | `uuid` | 1.x | Chapter ID generation |
 
@@ -41,8 +37,8 @@
 
 | Original | Actual | Reason |
 |----------|--------|--------|
-| `gif` crate | `gifski` | Better color quantization and frame differencing |
-| `image` crate | `png` + `imgref` + `rgb` | gifski uses these directly, lighter than full `image` |
+| `gifski` | Removed (Phase 24) | AGPL-licensed; GIF export removed |
+| `png` + `imgref` + `rgb` | Removed (Phase 24) | Only needed for gifski |
 | `hound` | `symphonia` | symphonia handles AAC/M4A (not just WAV) |
 | `rstest` | Not used | Standard `#[test]` sufficient |
 | `mockall` | Not used | Concrete classes, no trait mocking needed |

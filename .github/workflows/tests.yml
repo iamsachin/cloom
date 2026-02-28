@@ -38,7 +38,7 @@ jobs:
 
   swift-tests:
     name: Swift Tests
-    runs-on: macos-26
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
@@ -70,13 +70,6 @@ jobs:
 
       - name: Run unit tests
         run: |
-          xcodebuild test \
-            -scheme Cloom \
-            -destination 'platform=macOS,arch=arm64' \
-            -only-testing:CloomTests \
-            -resultBundlePath TestResults.xcresult \
-            | xcpretty --color || true
-          # Check exit code from xcodebuild (xcpretty masks it)
           xcodebuild test \
             -scheme Cloom \
             -destination 'platform=macOS,arch=arm64' \

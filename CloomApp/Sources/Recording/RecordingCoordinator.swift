@@ -151,7 +151,6 @@ final class RecordingCoordinator: ObservableObject {
         regionHighlight.dismiss()
         cleanupAnnotations()
 
-        // Stop recording instrumentation
         recordingMetrics?.stop()
         recordingMetrics = nil
 

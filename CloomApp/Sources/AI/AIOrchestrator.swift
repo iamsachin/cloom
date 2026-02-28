@@ -1,7 +1,6 @@
 import AVFoundation
 import Foundation
 import SwiftData
-import AppKit
 import UserNotifications
 import os.log
 
@@ -80,11 +79,10 @@ actor AIOrchestrator {
         } catch {
             logger.error("Transcription failed: \(error)")
             await AIProcessingTracker.shared.stopProcessing(videoRecordID)
-            await showError("Transcription Failed", detail: "\(error)")
+            showNotification(title: "Transcription Failed", message: "\(error)")
             return
         }
 
-        // Check if transcript has meaningful content
         let trimmedText = transcript.fullText.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasEnoughText = trimmedText.count >= 10
 
@@ -103,7 +101,7 @@ actor AIOrchestrator {
             logger.info("Found \(fillerWords.count) filler words")
         }
 
-        // Step 2.5: Format paragraphs
+        // Format paragraphs
         var paragraphedText: String?
         if hasEnoughText {
             do {
@@ -174,7 +172,6 @@ actor AIOrchestrator {
             logger.info("Found \(silentRanges.count) silent regions")
         } catch {
             logger.error("Silence detection failed: \(error)")
-            await showError("Silence Detection Failed", detail: "\(error)")
         }
 
         // Step 7: Persist results to SwiftData
@@ -192,16 +189,6 @@ actor AIOrchestrator {
         await AIProcessingTracker.shared.stopProcessing(videoRecordID)
         showNotification(title: "AI Processing Complete", message: "Transcript and summary ready.")
         logger.info("AI pipeline complete for video \(videoRecordID)")
-    }
-
-    @MainActor
-    private func showError(_ title: String, detail: String) {
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = detail
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
     }
 
     private func showNotification(title: String, message: String) {
@@ -246,7 +233,6 @@ actor AIOrchestrator {
             return
         }
 
-        // Build filler word set for fast lookup
         let fillerSet = Set(fillerWords.map { "\($0.startMs)-\($0.endMs)" })
 
         // Determine paragraph-start word indices from paragraphed text

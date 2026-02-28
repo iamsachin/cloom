@@ -111,10 +111,6 @@ fn transcribe_openai(
     api_key: &str,
     model: &str,
 ) -> Result<Transcript, CloomError> {
-    let _metadata = fs::metadata(audio_path).map_err(|e| CloomError::IoError {
-        msg: format!("Cannot read audio file: {e}"),
-    })?;
-
     let file_bytes = fs::read(audio_path).map_err(|e| CloomError::IoError {
         msg: format!("Failed to read audio file: {e}"),
     })?;
@@ -212,7 +208,7 @@ mod tests {
         );
         assert!(result.is_err());
         if let Err(CloomError::IoError { msg }) = result {
-            assert!(msg.contains("Cannot read audio file"));
+            assert!(msg.contains("read audio file"));
         }
     }
 

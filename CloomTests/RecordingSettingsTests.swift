@@ -35,25 +35,12 @@ struct VideoQualityTests {
 
 @Suite("RecordingSettings")
 struct RecordingSettingsTests {
-    @Test func fromDefaultsWithNoDefaults() {
-        // Use a separate suite to avoid polluting global UserDefaults
-        let defaults = UserDefaults(suiteName: "com.cloom.test.recordingSettings")!
-        defaults.removePersistentDomain(forName: "com.cloom.test.recordingSettings")
+    @Test func fromDefaultsReturnsValidSettings() {
+        let settings = RecordingSettings.fromDefaults()
 
-        // fromDefaults() uses UserDefaults.standard, so test the logic directly
-        let settings = RecordingSettings(
-            fps: 0 > 0 ? 0 : 30,
-            quality: VideoQuality(rawValue: VideoQuality.medium.rawValue) ?? .medium,
-            micDeviceID: nil,
-            cameraDeviceID: nil,
-            micSensitivity: 100
-        )
-
-        #expect(settings.fps == 30)
-        #expect(settings.quality == .medium)
-        #expect(settings.micDeviceID == nil)
-        #expect(settings.cameraDeviceID == nil)
-        #expect(settings.micSensitivity == 100)
+        #expect(settings.fps > 0)
+        #expect(VideoQuality.allCases.contains(settings.quality))
+        #expect(settings.micSensitivity > 0)
     }
 
     @Test func customValues() {

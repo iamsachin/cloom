@@ -120,7 +120,7 @@ Status indicators: **Done** = implemented, **Deferred** = planned for later phas
 |------|---------|-------------|--------|
 | H1 | Auto-copy file path | Copy exported file path to clipboard + Show in Finder (context menus) | Done |
 | H2 | MP4 export with EDL | Apply EditDecisionList via EditorCompositionBuilder + AVAssetExportSession | Done |
-| H3 | GIF export | gifski via Rust FFI (Swift extracts PNG frames → manifest → gifski encoder → GIF) | Done |
+| H3 | GIF export | ~~Removed (Phase 24) — gifski was AGPL-licensed~~ | Removed |
 
 ---
 

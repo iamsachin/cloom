@@ -98,9 +98,9 @@
 | 35 | Stitch multiple clips (StitchPanelView with drag-to-reorder, EditorCompositionBuilder) | Editor/ | E3 |
 | 36 | Speed adjustment (SpeedControlView popover, 0.25x–4x presets) | Editor/ | E5 |
 | 37 | Thumbnail selection (ThumbnailPickerView with slider + "Use Current Frame" + PNG save) | Editor/ | E6 |
-| 38 | GIF export via Rust gifski (gif_export.rs with PNG manifest + gifski encoder, GifExportService actor) | Rust export/, Editor/ | H3 |
+| ~~38~~ | ~~GIF export via Rust gifski~~ — **Removed in Phase 24 (AGPL license)** | ~~Rust export/, Editor/~~ | ~~H3~~ |
 
-**Milestone:** Non-destructive editor with EDL model. Trim, cut, stitch, speed, thumbnail. Export as MP4 or GIF. Editor window (1000x700) replaces simple player.
+**Milestone:** Non-destructive editor with EDL model. Trim, cut, stitch, speed, thumbnail. Export as MP4. Editor window (1000x700) replaces simple player.
 
 ---
 

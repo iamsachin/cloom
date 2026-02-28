@@ -23,7 +23,7 @@
         <dict>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>com.googleusercontent.apps.884695409595-ceh7ds4pu0dfvb8frag5lloh7bcjet2d</string>
+                <string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
             </array>
             <key>CFBundleURLName</key>
             <string>Google Sign-In OAuth</string>

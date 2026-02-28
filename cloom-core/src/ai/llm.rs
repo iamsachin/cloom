@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum LlmProvider {
     OpenAi,
-    Claude,
 }
 
 /// A chapter marker with title and start time.
@@ -93,9 +92,6 @@ pub fn format_paragraphs(
 pub(crate) fn validate_provider(provider: &LlmProvider) -> Result<(), CloomError> {
     match provider {
         LlmProvider::OpenAi => Ok(()),
-        LlmProvider::Claude => Err(CloomError::InvalidInput {
-            msg: "Claude provider is not yet supported".to_string(),
-        }),
     }
 }
 

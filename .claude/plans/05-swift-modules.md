@@ -160,8 +160,8 @@
 - Bookmark panel (add/edit/delete, seek on click, timeline markers)
 - PiP and fullscreen playback
 - MP4 export with quality selection + brightness/contrast adjustments + subtitle mode
-- GIF export via gifski (Rust FFI)
-- Subtitle export: hard-burn + SRT sidecar, EDL-aware timing
+- MP4 export via ExportService (extracted from EditorExportView)
+- Subtitle export: embedded tx3g track, EDL-aware timing
 
 **Key Types:**
 - `EditorView` — main editor UI (1000x700 window)
@@ -183,8 +183,9 @@
 - `BookmarksPanelView` — add/edit/delete bookmarks, seek on click, highlight near-current-time rows
 - `EditorToolbarView` — playback/cut/chapter/export controls (extracted from EditorView)
 - `EditorInfoPanel` — info sidebar with title, summary, metadata (extracted from EditorView)
-- `SubtitleExportService` (actor) — hard-burn + SRT sidecar export, EDL-aware timing, pre-rendered image cache
-- `GifExportService` (actor) — PNG frame extraction + Rust gifski FFI bridge
+- `SubtitleExportService` (actor) — subtitle phrase building, EDL-aware timing
+- `ExportService` — MP4 export logic, presetForQuality, passthrough detection (extracted from EditorExportView)
+- `ExportWriter+Subtitles` — tx3g subtitle track embedding extension
 
 **macOS APIs:** `AVFoundation` (`AVAsset`, `AVAssetImageGenerator`, `AVAssetReader`, `AVMutableComposition`, `AVAssetExportSession`), `AVPictureInPictureController`
 
@@ -288,7 +289,7 @@
 **Responsibilities:**
 - Contains UniFFI-generated Swift bindings (auto-generated, gitignored)
 - Bridging header includes generated C header (workaround for Xcode 26 explicit modules)
-- Small surface area: audio processing + AI + GIF export only
+- Small surface area: audio processing + AI only
 - Thread safety: Rust calls dispatched off main thread via actors
 
 **Files:**
