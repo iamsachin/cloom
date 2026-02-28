@@ -1,4 +1,6 @@
 import Testing
+import CoreGraphics
+import CoreImage
 @testable import Cloom
 
 @Suite("FrameImageCache")

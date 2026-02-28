@@ -1,5 +1,6 @@
 import Testing
 import SwiftData
+import Foundation
 @testable import Cloom
 
 // MARK: - VideoRecord Tests

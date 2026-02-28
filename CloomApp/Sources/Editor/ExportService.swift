@@ -7,9 +7,9 @@ private let logger = Logger(subsystem: "com.cloom.app", category: "ExportService
 enum ExportService {
 
     static func exportMP4(
-        videoRecord: VideoRecord,
-        edl: EditDecisionList,
-        transcriptWords: [TranscriptWordRecord],
+        filePath: String,
+        edlSnapshot: EDLSnapshot,
+        transcriptWords: [TranscriptWordSnapshot],
         durationMs: Int64,
         quality: VideoQuality,
         brightness: Float,
@@ -18,8 +18,8 @@ enum ExportService {
         destURL: URL,
         progress: @escaping @MainActor (Double) -> Void
     ) async throws {
-        let sourceURL = URL(fileURLWithPath: videoRecord.filePath)
-        let snapshot = EDLSnapshot(from: edl)
+        let sourceURL = URL(fileURLWithPath: filePath)
+        let snapshot = edlSnapshot
 
         var subtitlePhrases: [SubtitlePhrase] = []
         if includeSubtitles {
@@ -112,7 +112,7 @@ enum ExportService {
     static func presetForQuality(_ quality: VideoQuality) -> String {
         switch quality {
         case .low: AVAssetExportPresetMediumQuality
-        case .medium: AVAssetExportPresetHighQuality
+        case .medium: AVAssetExportPreset1920x1080
         case .high: AVAssetExportPresetHighestQuality
         }
     }

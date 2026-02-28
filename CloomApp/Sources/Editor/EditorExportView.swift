@@ -265,13 +265,18 @@ struct EditorExportView: View {
         isExporting = true
         exportError = nil
 
+        let filePath = editorState.videoRecord.filePath
+        let edlSnapshot = EDLSnapshot(from: editorState.edl)
+        let words = editorState.transcriptWords
+        let duration = editorState.durationMs
+
         Task {
             do {
                 try await ExportService.exportMP4(
-                    videoRecord: editorState.videoRecord,
-                    edl: editorState.edl,
-                    transcriptWords: editorState.transcriptWords,
-                    durationMs: editorState.durationMs,
+                    filePath: filePath,
+                    edlSnapshot: edlSnapshot,
+                    transcriptWords: words,
+                    durationMs: duration,
                     quality: selectedQuality,
                     brightness: exportBrightness,
                     contrast: exportContrast,
@@ -293,6 +298,11 @@ struct EditorExportView: View {
         exportError = nil
         uploadShareUrl = nil
 
+        let filePath = editorState.videoRecord.filePath
+        let edlSnapshot = EDLSnapshot(from: editorState.edl)
+        let words = editorState.transcriptWords
+        let duration = editorState.durationMs
+
         Task {
             do {
                 let tempDir = FileManager.default.temporaryDirectory
@@ -300,10 +310,10 @@ struct EditorExportView: View {
                 try? FileManager.default.removeItem(at: tempURL)
 
                 try await ExportService.exportMP4(
-                    videoRecord: editorState.videoRecord,
-                    edl: editorState.edl,
-                    transcriptWords: editorState.transcriptWords,
-                    durationMs: editorState.durationMs,
+                    filePath: filePath,
+                    edlSnapshot: edlSnapshot,
+                    transcriptWords: words,
+                    durationMs: duration,
                     quality: selectedQuality,
                     brightness: exportBrightness,
                     contrast: exportContrast,
