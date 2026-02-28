@@ -43,20 +43,22 @@ enum ExportWriter {
         var readerOutputs: [(AVAssetReaderTrackOutput, AVAssetWriterInput)] = []
 
         if let videoTrack = videoTracks.first {
+            let formatHint = try await videoTrack.load(.formatDescriptions).first
             let readerOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: nil)
             readerOutput.alwaysCopiesSampleData = false
             reader.add(readerOutput)
-            let writerInput = AVAssetWriterInput(mediaType: .video, outputSettings: nil)
+            let writerInput = AVAssetWriterInput(mediaType: .video, outputSettings: nil, sourceFormatHint: formatHint)
             writerInput.expectsMediaDataInRealTime = false
             writer.add(writerInput)
             readerOutputs.append((readerOutput, writerInput))
         }
 
         for audioTrack in audioTracks {
+            let formatHint = try await audioTrack.load(.formatDescriptions).first
             let readerOutput = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: nil)
             readerOutput.alwaysCopiesSampleData = false
             reader.add(readerOutput)
-            let writerInput = AVAssetWriterInput(mediaType: .audio, outputSettings: nil)
+            let writerInput = AVAssetWriterInput(mediaType: .audio, outputSettings: nil, sourceFormatHint: formatHint)
             writerInput.expectsMediaDataInRealTime = false
             writer.add(writerInput)
             readerOutputs.append((readerOutput, writerInput))
