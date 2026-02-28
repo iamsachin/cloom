@@ -313,7 +313,26 @@ UI tests were removed — MenuBarExtra apps aren't hittable by XCUIApplication, 
 
 ---
 
-## Phase 18: Pre-Release — Not Started
+## Phase 22: Export Speed Optimization — Complete
+
+**Goal:** Dramatically speed up export by avoiding unnecessary re-encodes, parallelizing independent operations, and adding embedded subtitle tracks.
+
+| # | Task | Module | Description |
+|---|------|--------|-------------|
+| 151 | Use SharedCIContext in export | Editor/ | Replaced throwaway CIContext with SharedCIContext.instance |
+| 152 | Passthrough for unmodified exports | Editor/ | isExportUnmodified() → file copy or remux (no re-encode) |
+| 153 | Embedded subtitle track (tx3g) | Editor/ | ExportWriter enum with remuxWithSubtitles + exportEdited; tx3g binary samples; "Include Subtitles" toggle |
+| 154 | Parallel GIF frame extraction | Editor/ | Sliding window of 8 concurrent tasks via withThrowingTaskGroup |
+| 155 | Parallel segment metadata loading | Compositing/ | withThrowingTaskGroup for concurrent segment load + sorted insertion |
+| 156 | Clean up SubtitleExportService | Editor/ | Removed SubtitleMode, hard-burn, SRT, CIImage code (~241→80 lines) |
+
+**New file:** `ExportWriter.swift` — enum with static methods for AVAssetReader/Writer + tx3g subtitle embedding
+
+**Milestone verified:** Build succeeds (0 errors). Passthrough for unmodified exports (instant file copy). Remux with subtitles (no re-encode). Parallel GIF extraction. Parallel segment loading. Subtitle toggle replaces mode picker.
+
+---
+
+## Phase 23: Pre-Release — Not Started
 
 | # | Task | Module | Features |
 |---|------|--------|----------|

@@ -27,7 +27,7 @@ struct EditorExportView: View {
     @State private var exportError: String?
     @State private var exportBrightness: Float = 0
     @State private var exportContrast: Float = 1
-    @State private var subtitleMode: SubtitleMode = .none
+    @State private var includeSubtitles: Bool = false
     @State private var isUploading = false
     @State private var uploadShareUrl: String?
     @State private var editableTitle: String = ""
@@ -115,12 +115,8 @@ struct EditorExportView: View {
                 .disabled(isExporting)
 
                 if editorState.videoRecord.hasTranscript {
-                    Picker("Subtitles", selection: $subtitleMode) {
-                        ForEach(SubtitleMode.allCases) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-                    .disabled(isExporting)
+                    Toggle("Include Subtitles", isOn: $includeSubtitles)
+                        .disabled(isExporting)
                 }
             } else {
                 HStack {
@@ -368,31 +364,12 @@ struct EditorExportView: View {
     }
 
     private func exportMP4(to destURL: URL) async throws {
-        let builder = EditorCompositionBuilder()
         let sourceURL = URL(fileURLWithPath: editorState.videoRecord.filePath)
         let snapshot = EDLSnapshot(from: editorState.edl)
 
-        let result = try await builder.build(
-            edl: snapshot,
-            sourceURL: sourceURL,
-            stitchURLs: []
-        )
-
-        guard let session = AVAssetExportSession(
-            asset: result.composition,
-            presetName: presetForQuality(selectedQuality)
-        ) else {
-            throw NSError(domain: "EditorExport", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not create export session"])
-        }
-
-        // Apply audio mix for multi-track audio
-        if let audioMix = result.audioMix {
-            session.audioMix = audioMix
-        }
-
         // Build subtitle phrases if needed
         var subtitlePhrases: [SubtitlePhrase] = []
-        if subtitleMode.needsHardBurn || subtitleMode.needsSRT {
+        if includeSubtitles {
             let subtitleService = SubtitleExportService()
             subtitlePhrases = await subtitleService.buildPhrases(
                 from: editorState.transcriptWords,
@@ -401,75 +378,98 @@ struct EditorExportView: View {
             )
         }
 
-        // Apply video composition if brightness/contrast or hard-burn subtitles needed
-        let needsAdjustment = exportBrightness != 0 || exportContrast != 1
-        let needsHardBurn = subtitleMode.needsHardBurn && !subtitlePhrases.isEmpty
+        let unmodified = isExportUnmodified(snapshot: snapshot)
 
-        if needsAdjustment || needsHardBurn {
+        if unmodified && subtitlePhrases.isEmpty {
+            // Passthrough: instant file copy (no re-encode, no subtitles)
+            try FileManager.default.copyItem(at: sourceURL, to: destURL)
+            logger.info("Passthrough copy → \(destURL.lastPathComponent)")
+            return
+        }
+
+        if unmodified && !subtitlePhrases.isEmpty {
+            // Remux: fast passthrough + embedded subtitle track (no re-encode)
+            try await ExportWriter.remuxWithSubtitles(
+                sourceURL: sourceURL,
+                outputURL: destURL,
+                phrases: subtitlePhrases
+            ) { p in
+                Task { @MainActor in
+                    exportProgress = p
+                }
+            }
+            return
+        }
+
+        // Edited: build composition
+        let builder = EditorCompositionBuilder()
+        let result = try await builder.build(
+            edl: snapshot,
+            sourceURL: sourceURL,
+            stitchURLs: []
+        )
+
+        if !subtitlePhrases.isEmpty {
+            // Edited + subtitles: use ExportWriter for re-encode + embedded subtitle track
+            try await ExportWriter.exportEdited(
+                composition: result.composition,
+                audioMix: result.audioMix,
+                brightness: exportBrightness,
+                contrast: exportContrast,
+                subtitlePhrases: subtitlePhrases,
+                outputURL: destURL
+            ) { p in
+                Task { @MainActor in
+                    exportProgress = p
+                }
+            }
+            return
+        }
+
+        // Edited, no subtitles: use proven AVAssetExportSession path
+        guard let session = AVAssetExportSession(
+            asset: result.composition,
+            presetName: presetForQuality(selectedQuality)
+        ) else {
+            throw NSError(domain: "EditorExport", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not create export session"])
+        }
+
+        if let audioMix = result.audioMix {
+            session.audioMix = audioMix
+        }
+
+        // Apply video composition if brightness/contrast needed
+        let needsAdjustment = exportBrightness != 0 || exportContrast != 1
+        if needsAdjustment {
             let brightness = exportBrightness
             let contrast = exportContrast
-            let phrases = subtitlePhrases
-            let ciContext = CIContext(options: [.useSoftwareRenderer: false])
-
-            // Pre-render all subtitle images once (instead of per-frame)
-            let subtitleCache: [CIImage?]
-            if needsHardBurn {
-                let videoTracks = try await result.composition.loadTracks(withMediaType: .video)
-                if let videoTrack = videoTracks.first {
-                    let size = try await videoTrack.load(.naturalSize)
-                    let rendered = SubtitleExportService.prerenderImages(
-                        phrases: phrases,
-                        videoWidth: size.width,
-                        videoHeight: size.height
-                    )
-                    logger.info("Pre-rendered \(rendered.count) subtitle images")
-                    subtitleCache = rendered
-                } else {
-                    subtitleCache = []
-                }
-            } else {
-                subtitleCache = []
-            }
+            let ciContext = SharedCIContext.instance
 
             let videoComp = try await AVVideoComposition(
                 applyingFiltersTo: result.composition
             ) { params in
                 var image = params.sourceImage.clampedToExtent()
-
-                // Apply brightness/contrast
-                if needsAdjustment {
-                    image = image.applyingFilter("CIColorControls", parameters: [
-                        kCIInputBrightnessKey: brightness,
-                        kCIInputContrastKey: contrast,
-                    ])
-                }
-
+                image = image.applyingFilter("CIColorControls", parameters: [
+                    kCIInputBrightnessKey: brightness,
+                    kCIInputContrastKey: contrast,
+                ])
                 image = image.cropped(to: params.sourceImage.extent)
-
-                // Burn pre-rendered subtitle overlay
-                if needsHardBurn {
-                    let frameTimeMs = Int64(params.compositionTime.seconds * 1000)
-                    image = SubtitleExportService.burnSubtitle(
-                        onto: image,
-                        phrases: phrases,
-                        cache: subtitleCache,
-                        frameTimeMs: frameTimeMs
-                    )
-                }
-
                 return AVCIImageFilteringResult(resultImage: image, ciContext: ciContext)
             }
             session.videoComposition = videoComp
         }
 
         try await session.export(to: destURL, as: .mp4)
+    }
 
-        // Generate SRT sidecar if requested
-        if subtitleMode.needsSRT && !subtitlePhrases.isEmpty {
-            let srtURL = destURL.deletingPathExtension().appendingPathExtension("srt")
-            let subtitleService = SubtitleExportService()
-            try await subtitleService.generateSRT(phrases: subtitlePhrases, outputURL: srtURL)
-        }
+    private func isExportUnmodified(snapshot: EDLSnapshot) -> Bool {
+        snapshot.trimStartMs == 0
+        && (snapshot.trimEndMs == 0 || snapshot.trimEndMs >= editorState.durationMs)
+        && snapshot.cuts.isEmpty
+        && snapshot.speedMultiplier == 1.0
+        && snapshot.stitchVideoIDs.isEmpty
+        && exportBrightness == 0
+        && exportContrast == 1
     }
 
     private func exportGIF(to destURL: URL) async throws {

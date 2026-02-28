@@ -54,29 +54,14 @@ actor GifExportService {
         generator.requestedTimeToleranceBefore = tolerance
         generator.requestedTimeToleranceAfter = tolerance
 
-        var manifestLines: [String] = []
-
-        for i in 0..<frameCount {
-            let timeSeconds = Double(i) / Double(fps)
-            let cmTime = CMTime(seconds: timeSeconds, preferredTimescale: 600)
-
-            do {
-                let (image, _) = try await generator.image(at: cmTime)
-                let framePath = tempDir.appendingPathComponent(String(format: "frame_%05d.png", i))
-
-                // Write CGImage directly to PNG via ImageIO — avoids NSImage→TIFF→NSBitmapImageRep round-trip
-                if let dest = CGImageDestinationCreateWithURL(framePath as CFURL, UTType.png.identifier as CFString, 1, nil) {
-                    CGImageDestinationAddImage(dest, image, nil)
-                    if CGImageDestinationFinalize(dest) {
-                        manifestLines.append("\(Int(timeSeconds * 1000))\t\(framePath.path)")
-                    }
-                }
-            } catch {
-                logger.warning("Failed to extract frame \(i): \(error)")
-            }
-
-            progress(0.5 * Double(i + 1) / Double(frameCount))
-        }
+        // Extract frames in parallel with a sliding window of 8 concurrent tasks
+        let manifestLines = try await extractFramesParallel(
+            generator: generator,
+            frameCount: frameCount,
+            fps: fps,
+            tempDir: tempDir,
+            progress: progress
+        )
 
         guard !manifestLines.isEmpty else { throw GifError.noFrames }
 
@@ -105,6 +90,103 @@ actor GifExportService {
         )
 
         logger.info("GIF exported to \(resultPath)")
+    }
+
+    // MARK: - Parallel Frame Extraction
+
+    private struct FrameResult: Sendable {
+        let index: Int
+        let timeMs: Int
+        let path: String
+    }
+
+    /// Sendable wrapper for AVAssetImageGenerator (thread-safe for image(at:) calls).
+    private final class SendableGenerator: @unchecked Sendable {
+        let generator: AVAssetImageGenerator
+        init(_ generator: AVAssetImageGenerator) { self.generator = generator }
+    }
+
+    /// Extract frames using a sliding window of concurrent tasks for throughput.
+    private func extractFramesParallel(
+        generator: AVAssetImageGenerator,
+        frameCount: Int,
+        fps: Int,
+        tempDir: URL,
+        progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> [String] {
+        let windowSize = 8
+        let gen = SendableGenerator(generator)
+
+        let results = try await withThrowingTaskGroup(of: FrameResult?.self) { group in
+            var nextIndex = 0
+            var completed = 0
+            var collected: [FrameResult] = []
+
+            // Seed initial window
+            while nextIndex < min(windowSize, frameCount) {
+                let i = nextIndex
+                let dir = tempDir
+                group.addTask {
+                    try await Self.extractSingleFrame(
+                        generator: gen, index: i, fps: fps, tempDir: dir
+                    )
+                }
+                nextIndex += 1
+            }
+
+            // Sliding window: as each completes, add the next
+            for try await result in group {
+                completed += 1
+                if let r = result { collected.append(r) }
+                progress(0.5 * Double(completed) / Double(frameCount))
+
+                if nextIndex < frameCount {
+                    let i = nextIndex
+                    let dir = tempDir
+                    group.addTask {
+                        try await Self.extractSingleFrame(
+                            generator: gen, index: i, fps: fps, tempDir: dir
+                        )
+                    }
+                    nextIndex += 1
+                }
+            }
+
+            return collected.sorted { $0.index < $1.index }
+        }
+
+        return results.map { "\($0.timeMs)\t\($0.path)" }
+    }
+
+    private static func extractSingleFrame(
+        generator: SendableGenerator,
+        index: Int,
+        fps: Int,
+        tempDir: URL
+    ) async throws -> FrameResult? {
+        let timeSeconds = Double(index) / Double(fps)
+        let cmTime = CMTime(seconds: timeSeconds, preferredTimescale: 600)
+
+        do {
+            let (image, _) = try await generator.generator.image(at: cmTime)
+            let framePath = tempDir.appendingPathComponent(String(format: "frame_%05d.png", index))
+
+            if let dest = CGImageDestinationCreateWithURL(
+                framePath as CFURL, UTType.png.identifier as CFString, 1, nil
+            ) {
+                CGImageDestinationAddImage(dest, image, nil)
+                if CGImageDestinationFinalize(dest) {
+                    return FrameResult(
+                        index: index,
+                        timeMs: Int(timeSeconds * 1000),
+                        path: framePath.path
+                    )
+                }
+            }
+        } catch {
+            logger.warning("Failed to extract frame \(index): \(error)")
+        }
+        return nil
     }
 }
 
