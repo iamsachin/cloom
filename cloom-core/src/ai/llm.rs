@@ -1,5 +1,14 @@
 use crate::CloomError;
-use serde::{Deserialize, Serialize};
+
+use async_openai::{
+    config::OpenAIConfig,
+    types::chat::{
+        ChatCompletionRequestMessage, ChatCompletionRequestUserMessage,
+        CreateChatCompletionRequestArgs,
+    },
+    Client,
+};
+use serde::Deserialize;
 
 /// Which LLM provider to use.
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -104,77 +113,38 @@ pub(crate) fn truncate_transcript(text: &str) -> &str {
     }
 }
 
-// --- OpenAI Chat API ---
-
-#[derive(Serialize)]
-struct ChatRequest {
-    model: String,
-    messages: Vec<ChatMessage>,
-    temperature: f32,
-}
-
-#[derive(Serialize)]
-struct ChatMessage {
-    role: String,
-    content: String,
-}
-
-#[derive(Deserialize)]
-struct ChatResponse {
-    choices: Vec<ChatChoice>,
-}
-
-#[derive(Deserialize)]
-struct ChatChoice {
-    message: ChatResponseMessage,
-}
-
-#[derive(Deserialize)]
-struct ChatResponseMessage {
-    content: String,
-}
-
 fn chat_completion(api_key: &str, prompt: &str) -> Result<String, CloomError> {
     crate::runtime::RUNTIME.block_on(async {
-        let client = reqwest::Client::new();
+        let config = OpenAIConfig::new().with_api_key(api_key);
+        let client = Client::with_config(config);
 
-        let body = ChatRequest {
-            model: "gpt-4o-mini".to_string(),
-            messages: vec![ChatMessage {
-                role: "user".to_string(),
-                content: prompt.to_string(),
-            }],
-            temperature: 0.3,
-        };
+        log::debug!("Sending chat completion request ({} chars)", prompt.len());
 
-        let response = client
-            .post("https://api.openai.com/v1/chat/completions")
-            .bearer_auth(api_key)
-            .json(&body)
-            .send()
-            .await
+        let user_msg: ChatCompletionRequestMessage =
+            ChatCompletionRequestUserMessage::from(prompt).into();
+
+        let request = CreateChatCompletionRequestArgs::default()
+            .model("gpt-4o-mini")
+            .messages(vec![user_msg])
+            .temperature(0.3)
+            .build()
             .map_err(|e| CloomError::ApiError {
+                msg: format!("Failed to build chat request: {e}"),
+            })?;
+
+        let response = client.chat().create(request).await.map_err(|e| {
+            log::error!("Chat request failed: {e}");
+            CloomError::ApiError {
                 msg: format!("Chat request failed: {e}"),
-            })?;
+            }
+        })?;
 
-        let status = response.status();
-        if !status.is_success() {
-            let body = response.text().await.unwrap_or_default();
-            return Err(CloomError::ApiError {
-                msg: format!("OpenAI API error ({status}): {body}"),
-            });
-        }
-
-        let result: ChatResponse =
-            response.json().await.map_err(|e| CloomError::ApiError {
-                msg: format!("Failed to parse chat response: {e}"),
-            })?;
-
-        result
+        response
             .choices
             .into_iter()
             .next()
-            .map(|c| c.message.content.trim().to_string())
+            .and_then(|c| c.message.content)
+            .map(|s| s.trim().to_string())
             .ok_or_else(|| CloomError::ApiError {
                 msg: "Empty response from LLM".to_string(),
             })

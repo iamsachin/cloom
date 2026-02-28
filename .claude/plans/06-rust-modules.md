@@ -34,8 +34,8 @@ Rust's role is focused: AI API clients and audio analysis. Video encoding, compo
 - Provider abstraction retained in types (`LlmProvider`, `TranscriptionProvider`) for future expansion
 
 **Key Files:**
-- `transcribe.rs` — `TranscriptionClient` struct. `transcribe_audio()`: multipart upload to `https://api.openai.com/v1/audio/transcriptions` with model `whisper-1`, `response_format: verbose_json`, `timestamp_granularities: word`. Validates file size (≤25MB), detects MIME type. Parses word-level timestamps from response. Returns `Transcript` struct. **6 tests:** file not found, file too large, response parsing, no words, empty words, MIME detection (wiremock fixtures).
-- `llm.rs` — `LlmClient` struct. Provider-aware: `LlmProvider::OpenAi` enabled. Uses `gpt-4o-mini` model via `https://api.openai.com/v1/chat/completions`.
+- `transcribe.rs` — Uses `async-openai` client for transcription via `audio().transcription().create_verbose_json()`. Word timestamps converted from seconds (f32) to milliseconds (i64). `transcribe_audio_chunked()` merges multiple chunks with offset adjustment. Returns `Transcript` struct. **6 tests:** file not found, chunked offset/text/empty, word ms conversion, transcript construction.
+- `llm.rs` — Uses `async-openai` client for chat completion. Provider-aware: `LlmProvider::OpenAi` enabled. Uses `gpt-4o-mini` model.
   - `generate_title()` — prompt: "Generate a concise title (max 10 words)"
   - `generate_summary()` — prompt: "Summarize key points in 2-3 sentences"
   - `generate_chapters()` — prompt: "Divide into chapters with timestamps", parses JSON array (supports code-fenced, bare-fenced, and raw JSON styles). Returns `Vec<Chapter>` with unique IDs.
@@ -45,7 +45,7 @@ Rust's role is focused: AI API clients and audio analysis. Video encoding, compo
 - `llm_tests.rs` — **10 tests:** parse_chapters (valid/code-fenced/bare-fence/invalid/empty/unique-ids), truncate (short/long/boundary), validate_provider (OpenAI). Extracted via `#[path]` attribute.
 - `mod.rs` — Module re-exports
 
-**Crates:** `reqwest` (HTTP client), `serde` + `serde_json` (serialization), `tokio` (async runtime)
+**Crates:** `async-openai` (typed OpenAI API client), `serde` + `serde_json` (serialization), `tokio` (async runtime), `log` + `oslog` (macOS unified logging)
 
 ### Transcription API Flow
 1. Read audio file from disk (path received from Swift)

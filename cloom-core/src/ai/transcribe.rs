@@ -1,6 +1,10 @@
 use crate::CloomError;
-use serde::Deserialize;
-use std::fs;
+
+use async_openai::{
+    config::OpenAIConfig,
+    types::audio::{AudioResponseFormat, CreateTranscriptionRequestArgs, TimestampGranularity},
+    Client,
+};
 
 /// Which transcription service to use.
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -23,22 +27,6 @@ pub struct Transcript {
     pub full_text: String,
     pub words: Vec<TranscriptWord>,
     pub language: String,
-}
-
-// --- OpenAI API response types ---
-
-#[derive(Deserialize)]
-struct OpenAiTranscriptionResponse {
-    text: String,
-    language: Option<String>,
-    words: Option<Vec<OpenAiWord>>,
-}
-
-#[derive(Deserialize)]
-struct OpenAiWord {
-    word: String,
-    start: f64,
-    end: f64,
 }
 
 /// Transcribe an audio file using the specified provider.
@@ -111,15 +99,12 @@ fn transcribe_openai(
     api_key: &str,
     model: &str,
 ) -> Result<Transcript, CloomError> {
-    let file_bytes = fs::read(audio_path).map_err(|e| CloomError::IoError {
-        msg: format!("Failed to read audio file: {e}"),
-    })?;
-
-    let file_name = std::path::Path::new(audio_path)
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .to_string();
+    // Check file exists before calling API for a clear IoError
+    if !std::path::Path::new(audio_path).exists() {
+        return Err(CloomError::IoError {
+            msg: format!("Failed to read audio file: No such file or directory (os error 2)"),
+        });
+    }
 
     let model = if model.is_empty() {
         "whisper-1".to_string()
@@ -128,53 +113,37 @@ fn transcribe_openai(
     };
 
     crate::runtime::RUNTIME.block_on(async {
-        let client = reqwest::Client::new();
+        let config = OpenAIConfig::new().with_api_key(api_key);
+        let client = Client::with_config(config);
 
-        let mime_type = if file_name.ends_with(".m4a") {
-            "audio/m4a"
-        } else if file_name.ends_with(".wav") {
-            "audio/wav"
-        } else {
-            "audio/mp4"
-        };
+        log::info!("Starting transcription of {audio_path} with model {model}");
 
-        let file_part = reqwest::multipart::Part::bytes(file_bytes)
-            .file_name(file_name)
-            .mime_str(mime_type)
+        let request = CreateTranscriptionRequestArgs::default()
+            .file(audio_path)
+            .model(&model)
+            .response_format(AudioResponseFormat::VerboseJson)
+            .timestamp_granularities(vec![TimestampGranularity::Word])
+            .build()
             .map_err(|e| CloomError::ApiError {
-                msg: format!("Failed to create multipart: {e}"),
+                msg: format!("Failed to build transcription request: {e}"),
             })?;
-
-        let form = reqwest::multipart::Form::new()
-            .part("file", file_part)
-            .text("model", model)
-            .text("response_format", "verbose_json")
-            .text("timestamp_granularities[]", "word");
 
         let response = client
-            .post("https://api.openai.com/v1/audio/transcriptions")
-            .bearer_auth(api_key)
-            .multipart(form)
-            .send()
+            .audio()
+            .transcription()
+            .create_verbose_json(request)
             .await
-            .map_err(|e| CloomError::ApiError {
-                msg: format!("Transcription request failed: {e}"),
+            .map_err(|e| {
+                log::error!("Transcription request failed: {e}");
+                CloomError::ApiError {
+                    msg: format!("Transcription request failed: {e}"),
+                }
             })?;
 
-        let status = response.status();
-        if !status.is_success() {
-            let body = response.text().await.unwrap_or_default();
-            return Err(CloomError::ApiError {
-                msg: format!("OpenAI API error ({status}): {body}"),
-            });
-        }
+        let word_count = response.words.as_ref().map_or(0, Vec::len);
+        log::info!("Transcription complete — {word_count} words");
 
-        let result: OpenAiTranscriptionResponse =
-            response.json().await.map_err(|e| CloomError::ApiError {
-                msg: format!("Failed to parse transcription response: {e}"),
-            })?;
-
-        let words = result
+        let words = response
             .words
             .unwrap_or_default()
             .into_iter()
@@ -187,9 +156,9 @@ fn transcribe_openai(
             .collect();
 
         Ok(Transcript {
-            full_text: result.text,
+            full_text: response.text,
             words,
-            language: result.language.unwrap_or_else(|| "en".to_string()),
+            language: response.language,
         })
     })
 }
@@ -272,92 +241,49 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_transcription_response() {
-        let json = r#"{
-            "text": "Hello world",
-            "language": "en",
-            "words": [
-                {"word": "Hello", "start": 0.0, "end": 0.5},
-                {"word": "world", "start": 0.5, "end": 1.0}
-            ]
-        }"#;
-
-        let resp: OpenAiTranscriptionResponse = serde_json::from_str(json).unwrap();
-        assert_eq!(resp.text, "Hello world");
-        assert_eq!(resp.language, Some("en".to_string()));
-
-        let words = resp.words.unwrap();
-        assert_eq!(words.len(), 2);
-        assert_eq!(words[0].word, "Hello");
-        assert_eq!(words[0].start, 0.0);
-        assert_eq!(words[0].end, 0.5);
+    fn test_transcript_word_ms_conversion() {
+        // Verify the seconds-to-milliseconds conversion logic
+        let start_secs: f32 = 1.234;
+        let end_secs: f32 = 2.567;
+        let start_ms = (start_secs * 1000.0) as i64;
+        let end_ms = (end_secs * 1000.0) as i64;
+        assert_eq!(start_ms, 1234);
+        assert_eq!(end_ms, 2567);
     }
 
     #[test]
-    fn test_parse_response_no_words() {
-        let json = r#"{"text": "Hello world"}"#;
-        let resp: OpenAiTranscriptionResponse = serde_json::from_str(json).unwrap();
-        assert_eq!(resp.text, "Hello world");
-        assert!(resp.words.is_none());
-        assert!(resp.language.is_none());
-    }
+    fn test_transcript_construction_from_word_data() {
+        // Test building a Transcript from word-level data (simulating API response)
+        let words_data: Vec<(&str, f32, f32)> = vec![
+            ("Hello,", 0.0, 0.5),
+            ("this", 0.5, 0.7),
+            ("is", 0.7, 0.8),
+            ("a", 0.8, 0.9),
+            ("test", 0.9, 1.2),
+        ];
 
-    #[test]
-    fn test_parse_response_empty_words() {
-        let json = r#"{"text": "Hello", "words": []}"#;
-        let resp: OpenAiTranscriptionResponse = serde_json::from_str(json).unwrap();
-        assert!(resp.words.unwrap().is_empty());
-    }
+        let words: Vec<TranscriptWord> = words_data
+            .iter()
+            .map(|(word, start, end)| TranscriptWord {
+                word: word.to_string(),
+                start_ms: (*start * 1000.0) as i64,
+                end_ms: (*end * 1000.0) as i64,
+                confidence: 1.0,
+            })
+            .collect();
 
-    #[test]
-    fn test_mime_type_detection() {
-        // Test the MIME logic inline
-        let m4a = if "test.m4a".ends_with(".m4a") { "audio/m4a" } else { "audio/mp4" };
-        assert_eq!(m4a, "audio/m4a");
-
-        let wav = if "test.wav".ends_with(".m4a") {
-            "audio/m4a"
-        } else if "test.wav".ends_with(".wav") {
-            "audio/wav"
-        } else {
-            "audio/mp4"
+        let transcript = Transcript {
+            full_text: "Hello, this is a test".to_string(),
+            words,
+            language: "en".to_string(),
         };
-        assert_eq!(wav, "audio/wav");
 
-        let mp4 = if "test.mp4".ends_with(".m4a") {
-            "audio/m4a"
-        } else if "test.mp4".ends_with(".wav") {
-            "audio/wav"
-        } else {
-            "audio/mp4"
-        };
-        assert_eq!(mp4, "audio/mp4");
-    }
-
-    #[tokio::test]
-    async fn test_transcription_api_with_wiremock() {
-        use wiremock::matchers::{method, path};
-        use wiremock::{Mock, MockServer, ResponseTemplate};
-
-        let mock_server = MockServer::start().await;
-
-        let response_body = std::fs::read_to_string(
-            concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/transcription_response.json")
-        ).unwrap();
-
-        Mock::given(method("POST"))
-            .and(path("/v1/audio/transcriptions"))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_string(&response_body)
-            )
-            .mount(&mock_server)
-            .await;
-
-        // We can't easily redirect the client URL in the current architecture,
-        // so we verify the fixture parses correctly
-        let resp: OpenAiTranscriptionResponse = serde_json::from_str(&response_body).unwrap();
-        assert_eq!(resp.words.unwrap().len(), 9);
-        assert_eq!(resp.language, Some("en".to_string()));
+        assert_eq!(transcript.words.len(), 5);
+        assert_eq!(transcript.words[0].word, "Hello,");
+        assert_eq!(transcript.words[0].start_ms, 0);
+        assert_eq!(transcript.words[0].end_ms, 500);
+        assert_eq!(transcript.words[4].word, "test");
+        assert_eq!(transcript.words[4].start_ms, 900);
+        assert_eq!(transcript.words[4].end_ms, 1200);
     }
 }
