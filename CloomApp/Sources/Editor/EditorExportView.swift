@@ -15,8 +15,6 @@ struct EditorExportView: View {
     @State private var isExporting = false
     @State private var exportProgress: Double = 0
     @State private var exportError: String?
-    @State private var exportBrightness: Float = 0
-    @State private var exportContrast: Float = 1
     @State private var includeSubtitles: Bool = false
     @State private var isUploading = false
     @State private var uploadShareUrl: String?
@@ -34,7 +32,6 @@ struct EditorExportView: View {
                 .disabled(isExporting || isUploading)
             existingUploadSection
             qualitySection
-            adjustmentsSection
             subtitlesToggle
             editsIndicator
             progressSection
@@ -117,31 +114,6 @@ struct EditorExportView: View {
             }
         }
         .pickerStyle(.segmented)
-        .disabled(isExporting)
-    }
-
-    private var adjustmentsSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Video Adjustments").font(.caption).foregroundStyle(.secondary)
-            HStack {
-                Text("Brightness").font(.caption).frame(width: 70, alignment: .leading)
-                Slider(value: Binding(
-                    get: { Double(exportBrightness) },
-                    set: { exportBrightness = Float($0) }
-                ), in: -1...1)
-                Text(String(format: "%.2f", exportBrightness))
-                    .font(.caption.monospacedDigit()).frame(width: 40)
-            }
-            HStack {
-                Text("Contrast").font(.caption).frame(width: 70, alignment: .leading)
-                Slider(value: Binding(
-                    get: { Double(exportContrast) },
-                    set: { exportContrast = Float($0) }
-                ), in: 0...4)
-                Text(String(format: "%.2f", exportContrast))
-                    .font(.caption.monospacedDigit()).frame(width: 40)
-            }
-        }
         .disabled(isExporting)
     }
 
@@ -278,8 +250,6 @@ struct EditorExportView: View {
                     transcriptWords: words,
                     durationMs: duration,
                     quality: selectedQuality,
-                    brightness: exportBrightness,
-                    contrast: exportContrast,
                     includeSubtitles: includeSubtitles,
                     destURL: destURL
                 ) { p in exportProgress = p }
@@ -315,8 +285,6 @@ struct EditorExportView: View {
                     transcriptWords: words,
                     durationMs: duration,
                     quality: selectedQuality,
-                    brightness: exportBrightness,
-                    contrast: exportContrast,
                     includeSubtitles: includeSubtitles,
                     destURL: tempURL
                 ) { p in exportProgress = p }

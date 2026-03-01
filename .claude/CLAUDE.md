@@ -43,6 +43,11 @@
   tccutil reset ScreenCapture com.cloom.app
   ```
 
+## Local Logging
+- When starting work on a task, run `.claude/skills/logs/logs.sh on` to stream app logs to `/tmp/cloom-logs/cloom.log`.
+- Use `.claude/skills/logs/logs.sh read` to tail logs when diagnosing issues.
+- Log streaming is automatically stopped by the `/ship` skill.
+
 ## Tools & Skills
 - Prefer using available skills if they can be helpful for the task.
 - For web search, use the Tavily MCP tool.

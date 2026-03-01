@@ -85,30 +85,18 @@ actor SegmentStitcher {
             progress(trackProgress * Double(index + 1) / Double(segments.count))
         }
 
-        // Export using modern API
-        guard let exportSession = AVAssetExportSession(
-            asset: composition,
-            presetName: AVAssetExportPresetHighestQuality
-        ) else {
-            throw StitchError.exportFailed("Could not create export session")
-        }
+        // Export with video passthrough + optional audio mix (no video re-encode)
+        let audioMix: AVMutableAudioMix? = compAudioTracks.count > 1
+            ? .stereoMix(from: compAudioTracks) : nil
 
-        // Apply audio mix for multi-track mixdown
-        if compAudioTracks.count > 1 {
-            exportSession.audioMix = AVMutableAudioMix.stereoMix(from: compAudioTracks)
-        }
-
-        do {
-            try await exportSession.export(to: outputURL, as: .mp4)
-            progress(1.0)
-            logger.info("Stitched \(segments.count) segments → \(outputURL.lastPathComponent)")
-        } catch {
-            throw StitchError.exportFailed(error.localizedDescription)
-        }
+        try await passthroughExport(asset: composition, audioMix: audioMix, to: outputURL)
+        progress(1.0)
+        logger.info("Stitched \(segments.count) segments → \(outputURL.lastPathComponent)")
     }
 
     /// Mix down multiple audio tracks into a single stereo output for web player compatibility.
     /// If the file has <=1 audio track, just moves the file (no re-encode needed).
+    /// Uses video passthrough (no re-encode) — only the audio is re-encoded.
     func mixdownAudio(inputURL: URL, to outputURL: URL) async throws {
         let asset = AVURLAsset(url: inputURL)
         let audioTracks = try await asset.loadTracks(withMediaType: .audio)
@@ -118,43 +106,134 @@ actor SegmentStitcher {
             return
         }
 
-        let composition = AVMutableComposition()
-        let duration = try await asset.load(.duration)
-        let timeRange = CMTimeRange(start: .zero, duration: duration)
-
-        // Copy video track
-        let videoTracks = try await asset.loadTracks(withMediaType: .video)
-        if let srcVideo = videoTracks.first,
-           let compVideo = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) {
-            try compVideo.insertTimeRange(timeRange, of: srcVideo, at: .zero)
+        // Build audio mix from source tracks
+        let mix = AVMutableAudioMix()
+        mix.inputParameters = audioTracks.map { track in
+            let params = AVMutableAudioMixInputParameters(track: track)
+            params.setVolume(1.0, at: .zero)
+            return params
         }
 
-        // Copy all audio tracks separately
-        var compAudioTracks: [AVMutableCompositionTrack] = []
-        for srcAudio in audioTracks {
-            if let compAudio = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) {
-                try compAudio.insertTimeRange(timeRange, of: srcAudio, at: .zero)
-                compAudioTracks.append(compAudio)
-            }
-        }
-
-        guard let session = AVAssetExportSession(
-            asset: composition,
-            presetName: AVAssetExportPresetHighestQuality
-        ) else {
-            // Fallback: just move the file
-            try FileManager.default.moveItem(at: inputURL, to: outputURL)
-            return
-        }
-
-        // Mix all tracks to stereo
-        session.audioMix = AVMutableAudioMix.stereoMix(from: compAudioTracks)
-
-        try await session.export(to: outputURL, as: .mp4)
+        try await passthroughExport(asset: asset, audioMix: mix, to: outputURL)
 
         // Clean up input file
         try? FileManager.default.removeItem(at: inputURL)
         logger.info("Mixed down \(audioTracks.count) audio tracks → \(outputURL.lastPathComponent)")
+    }
+
+    // MARK: - Passthrough Export (No Video Re-encode)
+
+    /// Export using AVAssetReader/Writer with video passthrough + optional audio mixing.
+    /// Much faster than AVAssetExportPresetHighestQuality which re-encodes everything.
+    private func passthroughExport(
+        asset: AVAsset,
+        audioMix: AVAudioMix?,
+        to outputURL: URL
+    ) async throws {
+        let reader = try AVAssetReader(asset: asset)
+        let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mp4)
+
+        var trackPairs: [TrackPair] = []
+
+        // Video: passthrough (copy compressed bytes, no decode/re-encode)
+        let videoTracks = try await asset.loadTracks(withMediaType: .video)
+        if let videoTrack = videoTracks.first {
+            let formatHint = try await videoTrack.load(.formatDescriptions).first
+            let readerOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: nil)
+            readerOutput.alwaysCopiesSampleData = false
+            reader.add(readerOutput)
+            let writerInput = AVAssetWriterInput(
+                mediaType: .video, outputSettings: nil, sourceFormatHint: formatHint
+            )
+            writerInput.expectsMediaDataInRealTime = false
+            writer.add(writerInput)
+            trackPairs.append(TrackPair(output: readerOutput, input: writerInput))
+        }
+
+        // Audio: mix if needed, otherwise passthrough first track
+        let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+        if !audioTracks.isEmpty {
+            let audioReaderOutput: AVAssetReaderOutput
+            let audioWriterInput: AVAssetWriterInput
+
+            if let audioMix, audioTracks.count > 1 {
+                let mixOutput = AVAssetReaderAudioMixOutput(
+                    audioTracks: audioTracks, audioSettings: nil
+                )
+                mixOutput.alwaysCopiesSampleData = false
+                mixOutput.audioMix = audioMix
+                audioReaderOutput = mixOutput
+                audioWriterInput = AVAssetWriterInput(mediaType: .audio, outputSettings: [
+                    AVFormatIDKey: kAudioFormatMPEG4AAC,
+                    AVSampleRateKey: 48000,
+                    AVNumberOfChannelsKey: 2,
+                    AVEncoderBitRateKey: 128_000,
+                ])
+            } else {
+                let trackOutput = AVAssetReaderTrackOutput(
+                    track: audioTracks[0], outputSettings: nil
+                )
+                trackOutput.alwaysCopiesSampleData = false
+                audioReaderOutput = trackOutput
+                let formatHint = try await audioTracks[0].load(.formatDescriptions).first
+                audioWriterInput = AVAssetWriterInput(
+                    mediaType: .audio, outputSettings: nil, sourceFormatHint: formatHint
+                )
+            }
+
+            audioWriterInput.expectsMediaDataInRealTime = false
+            reader.add(audioReaderOutput)
+            writer.add(audioWriterInput)
+            trackPairs.append(TrackPair(output: audioReaderOutput, input: audioWriterInput))
+        }
+
+        guard reader.startReading() else {
+            throw StitchError.exportFailed(reader.error?.localizedDescription ?? "Reader failed")
+        }
+        guard writer.startWriting() else {
+            throw StitchError.exportFailed(writer.error?.localizedDescription ?? "Writer failed")
+        }
+        writer.startSession(atSourceTime: .zero)
+
+        // Feed all tracks concurrently to avoid AVAssetWriter deadlocks
+        await Self.copyTracksConcurrently(trackPairs)
+
+        await writer.finishWriting()
+        if let error = writer.error {
+            throw StitchError.exportFailed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Concurrent Track Copying
+
+    private struct TrackPair: @unchecked Sendable {
+        let output: AVAssetReaderOutput
+        let input: AVAssetWriterInput
+    }
+
+    private static func copyTracksConcurrently(
+        _ trackPairs: [TrackPair]
+    ) async {
+        await withTaskGroup(of: Void.self) { group in
+            for pair in trackPairs {
+                group.addTask {
+                    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                        let queue = DispatchQueue(label: "com.cloom.stitch.\(UUID().uuidString)")
+                        pair.input.requestMediaDataWhenReady(on: queue) {
+                            while pair.input.isReadyForMoreMediaData {
+                                if let sample = pair.output.copyNextSampleBuffer() {
+                                    pair.input.append(sample)
+                                } else {
+                                    pair.input.markAsFinished()
+                                    continuation.resume()
+                                    return
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Parallel Metadata Loading

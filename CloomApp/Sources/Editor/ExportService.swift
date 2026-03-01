@@ -1,5 +1,4 @@
 import AVFoundation
-import CoreImage
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "ExportService")
@@ -12,8 +11,6 @@ enum ExportService {
         transcriptWords: [TranscriptWordSnapshot],
         durationMs: Int64,
         quality: VideoQuality,
-        brightness: Float,
-        contrast: Float,
         includeSubtitles: Bool,
         destURL: URL,
         progress: @escaping @MainActor (Double) -> Void
@@ -32,8 +29,7 @@ enum ExportService {
         }
 
         let unmodified = isExportUnmodified(
-            snapshot: snapshot, durationMs: durationMs,
-            brightness: brightness, contrast: contrast
+            snapshot: snapshot, durationMs: durationMs
         )
 
         if unmodified && subtitlePhrases.isEmpty {
@@ -64,8 +60,6 @@ enum ExportService {
             try await ExportWriter.exportEdited(
                 composition: result.composition,
                 audioMix: result.audioMix,
-                brightness: brightness,
-                contrast: contrast,
                 subtitlePhrases: subtitlePhrases,
                 outputURL: destURL
             ) { p in
@@ -88,24 +82,6 @@ enum ExportService {
             session.audioMix = audioMix
         }
 
-        let needsAdjustment = brightness != 0 || contrast != 1
-        if needsAdjustment {
-            let ciContext = SharedCIContext.instance
-
-            let videoComp = try await AVVideoComposition(
-                applyingFiltersTo: result.composition
-            ) { params in
-                var image = params.sourceImage.clampedToExtent()
-                image = image.applyingFilter("CIColorControls", parameters: [
-                    kCIInputBrightnessKey: brightness,
-                    kCIInputContrastKey: contrast,
-                ])
-                image = image.cropped(to: params.sourceImage.extent)
-                return AVCIImageFilteringResult(resultImage: image, ciContext: ciContext)
-            }
-            session.videoComposition = videoComp
-        }
-
         try await session.export(to: destURL, as: .mp4)
     }
 
@@ -118,15 +94,12 @@ enum ExportService {
     }
 
     static func isExportUnmodified(
-        snapshot: EDLSnapshot, durationMs: Int64,
-        brightness: Float, contrast: Float
+        snapshot: EDLSnapshot, durationMs: Int64
     ) -> Bool {
         snapshot.trimStartMs == 0
         && (snapshot.trimEndMs == 0 || snapshot.trimEndMs >= durationMs)
         && snapshot.cuts.isEmpty
         && snapshot.speedMultiplier == 1.0
         && snapshot.stitchVideoIDs.isEmpty
-        && brightness == 0
-        && contrast == 1
     }
 }
