@@ -26,88 +26,63 @@ struct ExportUnmodifiedTests {
     @Test func fullyUnmodified() {
         let snapshot = defaultSnapshot()
         #expect(ExportService.isExportUnmodified(
-            snapshot: snapshot, durationMs: 10000,
-            brightness: 0, contrast: 1
+            snapshot: snapshot, durationMs: 10000
         ) == true)
     }
 
     @Test func trimEndEqualsDuration() {
         let snapshot = defaultSnapshot(trimEndMs: 10000)
         #expect(ExportService.isExportUnmodified(
-            snapshot: snapshot, durationMs: 10000,
-            brightness: 0, contrast: 1
+            snapshot: snapshot, durationMs: 10000
         ) == true)
     }
 
     @Test func trimEndExceedsDuration() {
         let snapshot = defaultSnapshot(trimEndMs: 15000)
         #expect(ExportService.isExportUnmodified(
-            snapshot: snapshot, durationMs: 10000,
-            brightness: 0, contrast: 1
+            snapshot: snapshot, durationMs: 10000
         ) == true)
     }
 
     @Test func trimStartModified() {
         let snapshot = defaultSnapshot(trimStartMs: 1000)
         #expect(ExportService.isExportUnmodified(
-            snapshot: snapshot, durationMs: 10000,
-            brightness: 0, contrast: 1
+            snapshot: snapshot, durationMs: 10000
         ) == false)
     }
 
     @Test func trimEndModified() {
         let snapshot = defaultSnapshot(trimEndMs: 5000)
         #expect(ExportService.isExportUnmodified(
-            snapshot: snapshot, durationMs: 10000,
-            brightness: 0, contrast: 1
+            snapshot: snapshot, durationMs: 10000
         ) == false)
     }
 
     @Test func cutsPresent() {
         let snapshot = defaultSnapshot(cuts: [CutRange(startMs: 1000, endMs: 2000)])
         #expect(ExportService.isExportUnmodified(
-            snapshot: snapshot, durationMs: 10000,
-            brightness: 0, contrast: 1
+            snapshot: snapshot, durationMs: 10000
         ) == false)
     }
 
     @Test func speedModified() {
         let snapshot = defaultSnapshot(speedMultiplier: 2.0)
         #expect(ExportService.isExportUnmodified(
-            snapshot: snapshot, durationMs: 10000,
-            brightness: 0, contrast: 1
+            snapshot: snapshot, durationMs: 10000
         ) == false)
     }
 
     @Test func stitchPresent() {
         let snapshot = defaultSnapshot(stitchVideoIDs: ["video-2"])
         #expect(ExportService.isExportUnmodified(
-            snapshot: snapshot, durationMs: 10000,
-            brightness: 0, contrast: 1
-        ) == false)
-    }
-
-    @Test func brightnessModified() {
-        let snapshot = defaultSnapshot()
-        #expect(ExportService.isExportUnmodified(
-            snapshot: snapshot, durationMs: 10000,
-            brightness: 0.5, contrast: 1
-        ) == false)
-    }
-
-    @Test func contrastModified() {
-        let snapshot = defaultSnapshot()
-        #expect(ExportService.isExportUnmodified(
-            snapshot: snapshot, durationMs: 10000,
-            brightness: 0, contrast: 1.5
+            snapshot: snapshot, durationMs: 10000
         ) == false)
     }
 
     @Test func multipleModifications() {
         let snapshot = defaultSnapshot(trimStartMs: 500, speedMultiplier: 0.5)
         #expect(ExportService.isExportUnmodified(
-            snapshot: snapshot, durationMs: 10000,
-            brightness: 0.1, contrast: 0.9
+            snapshot: snapshot, durationMs: 10000
         ) == false)
     }
 }
