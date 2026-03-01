@@ -332,7 +332,39 @@ UI tests were removed — MenuBarExtra apps aren't hittable by XCUIApplication, 
 
 ---
 
-## Phase 23: Pre-Release — Not Started
+## Phase 24: Test Coverage — Complete
+
+**Goal:** Close critical test coverage gaps. Focus on pure algorithmic logic testable without hardware, AV frameworks, or network mocking.
+
+### Priority 1 — CRITICAL
+| # | Task | Module | Tests |
+|---|------|--------|-------|
+| 157 | Export pipeline tests | Editor/ | 14 tests: `isExportUnmodified` (11 conditions), `presetForQuality` (3 mappings) |
+| 158 | Subtitle timing tests | Editor/ | 11 tests: `mapToCompositionTime` (offset, cuts, trim, speed, clamping) |
+| 159 | Caption/transcript grouping tests | Editor/ | 19 tests: `buildPhrases` (9), `groupIntoSentences` (10) |
+| 160 | AI orchestrator tests | AI/ | 15 tests: `buildTimestampedTranscript` (8), `findParagraphStartIndices` (7) |
+| 161 | Recording state tests | Recording/ | 27 tests: all 7 computed properties across all enum cases |
+| 162 | Editor composition tests | Editor/ | 11 tests: `buildTimeRanges` (no cuts, trim, cuts, edge cases) |
+
+### Priority 2 — HIGH
+| # | Task | Module | Tests |
+|---|------|--------|-------|
+| 163 | Capture math tests | Capture/ | 17 tests: `MicGainProcessor` (7), `WebcamShape` (10) |
+| 164 | Missing sort order tests | Library/ | 1 test: `oldestFirst` added to `LibraryFilterTests` |
+| 165 | AI processing tracker tests | AI/ | 7 tests: start/stop/isProcessing, idempotency |
+
+### Priority 3 — MEDIUM
+| # | Task | Module | Tests |
+|---|------|--------|-------|
+| 166 | Waveform generator tests | Editor/ | 8 tests: `applyNoiseFloor` (sensitivity, thresholding, edge cases) |
+| 167 | Audio chunking tests | AI/ | 12 tests: `calculateChunkCount` (7), `calculateChunkDuration` (5) |
+| 168 | Rust LLM generation tests | Rust ai/ | 7 tests: parse_chapters edge cases, truncate_transcript edge cases |
+
+**Milestone:** 149 new tests (141 Swift + 7 Rust + 1 updated). Total: 198 Swift tests, 50 Rust tests. All pass. Bug fix: cuts at start of timeline now handled correctly.
+
+---
+
+## Phase 25: Pre-Release — Not Started
 
 | # | Task | Module | Features |
 |---|------|--------|----------|

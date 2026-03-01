@@ -24,6 +24,20 @@ struct EDLSnapshot: Sendable {
         self.stitchVideoIDs = edl.stitchVideoIDs
         self.speedMultiplier = edl.speedMultiplier
     }
+
+    init(
+        trimStartMs: Int64 = 0,
+        trimEndMs: Int64 = 0,
+        cuts: [CutRange] = [],
+        stitchVideoIDs: [String] = [],
+        speedMultiplier: Double = 1.0
+    ) {
+        self.trimStartMs = trimStartMs
+        self.trimEndMs = trimEndMs
+        self.cuts = cuts
+        self.stitchVideoIDs = stitchVideoIDs
+        self.speedMultiplier = speedMultiplier
+    }
 }
 
 actor EditorCompositionBuilder {
@@ -144,9 +158,12 @@ actor EditorCompositionBuilder {
     }
 
     private func buildTimeRanges(edl: EDLSnapshot, totalDuration: CMTime) -> [CMTimeRange] {
-        let totalMs = Int64(totalDuration.seconds * 1000)
+        Self.buildTimeRanges(edl: edl, totalDurationMs: Int64(totalDuration.seconds * 1000))
+    }
+
+    static func buildTimeRanges(edl: EDLSnapshot, totalDurationMs: Int64) -> [CMTimeRange] {
         let trimStart = edl.trimStartMs
-        let trimEnd = edl.trimEndMs > 0 ? edl.trimEndMs : totalMs
+        let trimEnd = edl.trimEndMs > 0 ? edl.trimEndMs : totalDurationMs
         let cuts = edl.cuts.sorted { $0.startMs < $1.startMs }
 
         var ranges: [CMTimeRange] = []
@@ -155,15 +172,17 @@ actor EditorCompositionBuilder {
         for cut in cuts {
             let cutStart = max(cut.startMs, trimStart)
             let cutEnd = min(cut.endMs, trimEnd)
-            guard cutStart < cutEnd, cutStart > currentMs else { continue }
+            guard cutStart < cutEnd else { continue }
 
-            let rangeStart = CMTime(value: CMTimeValue(currentMs), timescale: 1000)
-            let rangeEnd = CMTime(value: CMTimeValue(cutStart), timescale: 1000)
-            let range = CMTimeRange(start: rangeStart, duration: CMTimeSubtract(rangeEnd, rangeStart))
-            if range.duration > .zero {
-                ranges.append(range)
+            if cutStart > currentMs {
+                let rangeStart = CMTime(value: CMTimeValue(currentMs), timescale: 1000)
+                let rangeEnd = CMTime(value: CMTimeValue(cutStart), timescale: 1000)
+                let range = CMTimeRange(start: rangeStart, duration: CMTimeSubtract(rangeEnd, rangeStart))
+                if range.duration > .zero {
+                    ranges.append(range)
+                }
             }
-            currentMs = cutEnd
+            currentMs = max(currentMs, cutEnd)
         }
 
         if currentMs < trimEnd {

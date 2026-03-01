@@ -2,6 +2,7 @@
 
 ## Before Starting a Task
 - Always ask clarifying questions to fully understand the requirements and avoid incorrect assumptions.
+- Always use the interactive `AskUserQuestion` tool for questions — never inline questions as plain text in responses.
 - Ask for the pass/success condition so you know when the task is considered complete.
 
 ## Tech Stack

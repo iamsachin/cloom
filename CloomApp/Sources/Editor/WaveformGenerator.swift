@@ -124,8 +124,13 @@ actor WaveformGenerator {
             return [Float](repeating: 0, count: peakCount)
         }
 
-        // Adaptive noise floor: use the median peak as the background noise level,
-        // then zero out anything below a threshold to suppress fan/hum while keeping speech.
+        return Self.applyNoiseFloor(peaks: peaks, micSensitivity: micSensitivity)
+    }
+
+    /// Adaptive noise floor: use the median peak as the background noise level,
+    /// then zero out anything below a threshold to suppress fan/hum while keeping speech.
+    static func applyNoiseFloor(peaks: [Float], micSensitivity: Int) -> [Float] {
+        guard !peaks.isEmpty else { return peaks }
         let sensitivityFraction = max(0, min(1, Float(min(micSensitivity, 100)) / 100.0))
         let noiseMultiplier: Float = 5.0 - sensitivityFraction * 3.0 // 5x at 0%, 2x at 100%+
         let sorted = peaks.sorted()
