@@ -42,8 +42,8 @@ actor SubtitleExportService {
             if isFullyCut { continue }
 
             // Map source time to composition time (subtract trim offset + cut durations before this point)
-            let compositionStart = mapToCompositionTime(sourceMs: clampedStart, trimStart: trimStart, cuts: cuts, speed: speed)
-            let compositionEnd = mapToCompositionTime(sourceMs: clampedEnd, trimStart: trimStart, cuts: cuts, speed: speed)
+            let compositionStart = Self.mapToCompositionTime(sourceMs: clampedStart, trimStart: trimStart, cuts: cuts, speed: speed)
+            let compositionEnd = Self.mapToCompositionTime(sourceMs: clampedEnd, trimStart: trimStart, cuts: cuts, speed: speed)
 
             guard compositionEnd > compositionStart else { continue }
 
@@ -56,7 +56,7 @@ actor SubtitleExportService {
 
     // MARK: - Private Helpers
 
-    private func mapToCompositionTime(
+    static func mapToCompositionTime(
         sourceMs: Int64,
         trimStart: Int64,
         cuts: [CutRange],

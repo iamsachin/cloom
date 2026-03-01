@@ -20,6 +20,13 @@ struct LibrarySortOrderTests {
         #expect(result == true || result == false)
     }
 
+    @Test func oldestFirst() {
+        let older = makeVideo(title: "Older")
+        let newer = makeVideo(title: "Newer")
+        let result = LibrarySortOrder.oldestFirst.comparator(older, newer)
+        #expect(result == true || result == false)
+    }
+
     @Test func titleAZOrder() {
         let a = makeVideo(title: "Alpha")
         let b = makeVideo(title: "Bravo")

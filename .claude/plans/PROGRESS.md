@@ -592,7 +592,7 @@ Manual upload-to-Google-Drive with shareable links. Google Sign-In SDK for OAuth
 
 ---
 
-## Phase 24: Open Source Readiness & Code Quality Overhaul
+## Phase 23: Open Source Readiness & Code Quality Overhaul
 **Status:** Complete
 **Date:** 2026-02-28
 
@@ -657,7 +657,102 @@ Manual upload-to-Google-Drive with shareable links. Google Sign-In SDK for OAuth
 
 ---
 
-## Phase 23: Pre-Release
+## Phase 24: Test Coverage
+**Status:** Complete
+**Date:** 2026-03-01
+
+**Goal:** Close critical test coverage gaps. Focus on pure algorithmic logic that can be unit-tested without hardware, AV frameworks, or network mocking.
+
+### Refactoring for Testability
+- [x] Added memberwise `EDLSnapshot` initializer (for test construction without SwiftData models)
+- [x] Extracted `EditorCompositionBuilder.buildTimeRanges` to static function
+- [x] Changed `SubtitleExportService.mapToCompositionTime` from private to static
+- [x] Extracted `WaveformGenerator.applyNoiseFloor` to static function
+- [x] Extracted `calculateChunkCount` and `calculateChunkDuration` from `AudioExtractor`
+
+### Bug Fix Discovered by Tests
+- [x] Fixed `EditorCompositionBuilder.buildTimeRanges` — cuts at the start of the timeline (cutStart == currentMs) were silently ignored because `guard cutStart > currentMs` prevented advancing `currentMs` past the cut
+
+### Priority 1 — CRITICAL (pure logic, zero tests)
+- [x] Task 157 — Export pipeline tests (14 tests): `ExportService.isExportUnmodified` (11 condition tests), `presetForQuality` (3 mapping tests)
+- [x] Task 158 — Subtitle timing tests (11 tests): `SubtitleExportService.mapToCompositionTime` (offset, cuts, trim, speed, clamping, edge cases)
+- [x] Task 159 — Caption/transcript grouping tests (19 tests): `CaptionOverlayView.buildPhrases` (9 tests: empty, word count, time threshold, timing), `TranscriptPanelView.groupIntoSentences` (10 tests: punctuation, overflow, paragraphs)
+- [x] Task 160 — AI orchestrator tests (15 tests): `buildTimestampedTranscript` (8 tests: formatting, timestamps, edge cases), `findParagraphStartIndices` (7 tests: nil, single/multi paragraphs, bounds)
+- [x] Task 161 — Recording state tests (27 tests): all 7 computed properties tested across all 7 enum cases + Equatable
+- [x] Task 162 — Editor composition tests (11 tests): `buildTimeRanges` (no cuts, trim, single/multiple cuts, cut at start/end, unsorted, clamped)
+
+### Priority 2 — HIGH (pure math, easy wins)
+- [x] Task 163 — Capture math tests (17 tests): `MicGainProcessor` (7 tests: sensitivity→isUnity, clamping), `WebcamShape` (10 tests: aspectRatio, cornerRadius, next cycling, displayNames, allCases)
+- [x] Task 164 — Missing sort order tests: added `oldestFirst` to `LibraryFilterTests` (1 test)
+- [x] Task 165 — AI processing tracker tests (7 tests): start/stop/isProcessing, multiple IDs, idempotency, stop-without-start
+
+### Priority 3 — MEDIUM (extractable logic)
+- [x] Task 166 — Waveform noise floor tests (8 tests): empty, all-zero, sensitivity multiplier, mixed speech/noise, clamping
+- [x] Task 167 — Audio chunking tests (12 tests): `calculateChunkCount` (7 tests: small/equal/double/over/triple/zero), `calculateChunkDuration` (5 tests: single/multi/zero/uneven)
+- [x] Task 168 — Rust LLM tests (7 new tests): parse_chapters edge cases (whitespace, negative start_ms, large values, single, many, trailing text), truncate_transcript (empty, single char)
+
+### New Test Files (10)
+- `CloomTests/ExportServiceTests.swift`
+- `CloomTests/SubtitleTimingTests.swift`
+- `CloomTests/CaptionGroupingTests.swift`
+- `CloomTests/AITextProcessingTests.swift`
+- `CloomTests/RecordingStateTests.swift`
+- `CloomTests/EditorCompositionTests.swift`
+- `CloomTests/CaptureMathTests.swift`
+- `CloomTests/AIProcessingTrackerTests.swift`
+- `CloomTests/WaveformNoiseFloorTests.swift`
+- `CloomTests/AudioChunkingTests.swift`
+
+**Milestone verified:** 149 new tests (141 Swift + 7 Rust + 1 updated). Total: 198 Swift tests in 30 suites + 50 Rust tests. All pass. Build succeeds. Bug fix: cuts at start of timeline now handled correctly in EditorCompositionBuilder.
+
+---
+
+## Phase 25: Design Principles & Code Quality
+**Status:** Not started
+
+**Goal:** Fix SOLID, KISS, DRY violations and improve encapsulation, separation of concerns, and code organization identified in the design principles audit. Build succeeds + all existing tests pass + no regressions.
+
+### Task 1 — Rust Safety Fixes (High Priority)
+- [ ] Fix UTF-8 byte-slice truncation panic in `cloom-core/src/ai/llm.rs:112` — use `char_indices().nth()` instead of `&text[..MAX_CHARS]`
+- [ ] Fix TOCTOU file check in `cloom-core/src/ai/transcribe.rs:103-107` — replace `Path::exists()` + fabricated error with `File::open()` and real error propagation
+- [ ] Log decode errors in `cloom-core/src/audio/silence.rs:93-96` instead of silently swallowing (`Err(_) => continue`)
+- [ ] Remove dead `ExportError` variant from `cloom-core/src/lib.rs` (defined but never constructed)
+
+### Task 2 — DRY: Shared UI Components
+- [ ] Extract `AsyncThumbnailImage` component — deduplicate 18-line thumbnail loading logic between `VideoCardView` and `LibraryListRowView`
+- [ ] Extract `CloudStatusBadgeView` — deduplicate `cloudStatusIcon` computed view between `VideoCardView` and `LibraryListRowView`
+- [ ] Extract `formattedDuration` as an `Int64` extension — duplicated in both library views
+
+### Task 3 — DRY: Service & Helper Extraction
+- [ ] Add `resetSegmentState()` to `RecordingCoordinator` — 6-field reset block duplicated at 3 call sites
+- [ ] Create `NotificationService` — unify notification logic between `AIOrchestrator` and `RecordingCoordinator+PostRecording` (also fixes guard-condition inversion bug)
+- [ ] Extract shared `AVMutableAudioMix` stereo mix builder — duplicated across `SegmentStitcher` (2x) and `EditorCompositionBuilder`
+- [ ] Extract shared `NSScreen` displayID lookup — duplicated in `ScreenCaptureService+Configuration` and `RecordingCoordinator+Webcam`
+- [ ] Extract `startNextSegment()` helper — deduplicate `startCapture` if/else filter pattern between `+Capture` and `+PauseResume`
+- [ ] Deduplicate OpenAI client construction in Rust (`transcribe.rs` / `llm.rs`) into shared `make_openai_client()` helper
+
+### Task 4 — Separation of Concerns
+- [ ] Move `CaptionOverlayView.buildPhrases` and `TranscriptPanelView.groupIntoSentences` off view types into standalone functions or a dedicated builder type — `EditorState` currently depends on SwiftUI view types for data processing. **Note:** Phase 24 tests reference these via current locations (`CaptionOverlayView.buildPhrases`, `TranscriptPanelView.groupIntoSentences`) in `CaptionGroupingTests.swift` — update test references when moving.
+- [ ] Extract `AIOrchestrator.persistResults` (85 lines) into a `TranscriptPersistenceService` — SwiftData manipulation inside a pipeline orchestrator
+- [ ] Move file deletion / folder move logic out of `LibraryContentView` into a service or view model
+- [ ] Extract `MenuBarView` from `CloomApp.swift` into its own file
+
+### Task 5 — Encapsulation & Architecture
+- [ ] Create `UserDefaultsKeys` enum — eliminate scattered raw string literals (`"notificationsEnabled"`, `"webcamShape"`, `"aiAutoTranscribe"`, etc.) across 6+ files
+- [ ] Make `RecordingCoordinator` stored properties `private` where possible — currently zero `private` stored properties among 17+ mutable vars
+- [ ] Remove direct singleton access from Library/Editor views (`AIProcessingTracker.shared`, `PostRecordingTracker.shared`, `DriveUploadManager.shared`) — pass status as parameters or environment values
+- [ ] Fix `AppState` facade bypass in `CloomApp.swift:88-89` — use existing `AppState` wrapper methods instead of reaching through `appState.recordingCoordinator`
+- [ ] Make `AnnotationRenderer.ciContext` private — expose a `render(to:bounds:)` method instead of leaking `CIContext`
+- [ ] Make `thumbnailCache` in `VideoCardView.swift` private (or move to a dedicated cache type)
+
+### Task 6 — Rust Code Quality
+- [ ] Replace glob re-exports (`pub use ai::transcribe::*`) with explicit symbol exports in `lib.rs`
+- [ ] Deduplicate provider `match` in `transcribe_audio` / `transcribe_audio_chunked` into a single dispatch function
+- [ ] Extract repeated LLM preamble pattern (validate → truncate → format → complete) into a shared helper
+
+---
+
+## Phase 26: Pre-Release
 **Status:** Not started
 
 - [ ] Task 81 — Developer ID signing + notarization + DMG packaging

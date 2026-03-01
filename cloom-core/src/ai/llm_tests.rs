@@ -82,4 +82,69 @@ fn test_validate_openai_ok() {
     assert!(validate_provider(&LlmProvider::OpenAi).is_ok());
 }
 
+// --- Additional parse_chapters edge cases ---
 
+#[test]
+fn test_parse_chapters_whitespace_around_json() {
+    let raw = "  \n  [{\"title\": \"Intro\", \"start_ms\": 0}]  \n  ";
+    let chapters = parse_chapters(raw).unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0].title, "Intro");
+}
+
+#[test]
+fn test_parse_chapters_negative_start_ms() {
+    let json = r#"[{"title": "Before", "start_ms": -100}]"#;
+    let chapters = parse_chapters(json).unwrap();
+    assert_eq!(chapters[0].start_ms, -100);
+}
+
+#[test]
+fn test_parse_chapters_large_start_ms() {
+    let json = r#"[{"title": "Late", "start_ms": 3600000}]"#;
+    let chapters = parse_chapters(json).unwrap();
+    assert_eq!(chapters[0].start_ms, 3600000); // 1 hour in ms
+}
+
+#[test]
+fn test_parse_chapters_single_chapter() {
+    let json = r#"[{"title": "Only One", "start_ms": 0}]"#;
+    let chapters = parse_chapters(json).unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0].title, "Only One");
+}
+
+#[test]
+fn test_parse_chapters_many_chapters() {
+    let json = (0..20)
+        .map(|i| format!(r#"{{"title": "Ch{}", "start_ms": {}}}"#, i, i * 1000))
+        .collect::<Vec<_>>()
+        .join(",");
+    let raw = format!("[{}]", json);
+    let chapters = parse_chapters(&raw).unwrap();
+    assert_eq!(chapters.len(), 20);
+}
+
+#[test]
+fn test_parse_chapters_code_fence_with_trailing_text() {
+    let raw = "Here are the chapters:\n```json\n[{\"title\": \"A\", \"start_ms\": 0}]\n```\nDone!";
+    // After stripping: still won't parse cleanly because of "Here are the chapters:\n"
+    // The function trims, strips ```json and ```, so the leading text stays → fallback
+    let chapters = parse_chapters(raw).unwrap();
+    // Should fall back because there's text before the code fence
+    assert_eq!(chapters[0].title, "Full Recording");
+}
+
+// --- truncate_transcript edge cases ---
+
+#[test]
+fn test_truncate_empty_string() {
+    let result = truncate_transcript("");
+    assert_eq!(result, "");
+}
+
+#[test]
+fn test_truncate_one_char() {
+    let result = truncate_transcript("x");
+    assert_eq!(result, "x");
+}

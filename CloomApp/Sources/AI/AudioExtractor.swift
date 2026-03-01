@@ -65,6 +65,18 @@ func extractAudioFromVideo(videoPath: String) async throws -> String {
     return outputURL.path
 }
 
+/// Calculate the number of chunks needed to split a file under a size limit.
+func calculateChunkCount(fileSize: Int, maxChunkBytes: Int) -> Int {
+    guard fileSize > maxChunkBytes, maxChunkBytes > 0 else { return 1 }
+    return Int(ceil(Double(fileSize) / Double(maxChunkBytes)))
+}
+
+/// Calculate the duration of each chunk given a total duration and chunk count.
+func calculateChunkDuration(totalSeconds: Double, chunkCount: Int) -> Double {
+    guard chunkCount > 0 else { return totalSeconds }
+    return totalSeconds / Double(chunkCount)
+}
+
 /// Split an audio file into chunks under `maxChunkBytes` for the Whisper API.
 /// Returns an array of (filePath, offsetMs) tuples.
 /// If the file is already small enough, returns a single entry with offset 0.
@@ -84,9 +96,8 @@ func splitAudioForTranscription(audioPath: String, maxChunkBytes: Int = 20 * 102
         return [(path: audioPath, offsetMs: 0)]
     }
 
-    // Estimate number of chunks needed, then compute chunk duration
-    let chunkCount = Int(ceil(Double(fileSize) / Double(maxChunkBytes)))
-    let chunkDurationSeconds = totalSeconds / Double(chunkCount)
+    let chunkCount = calculateChunkCount(fileSize: fileSize, maxChunkBytes: maxChunkBytes)
+    let chunkDurationSeconds = calculateChunkDuration(totalSeconds: totalSeconds, chunkCount: chunkCount)
 
     var chunks: [(path: String, offsetMs: Int64)] = []
     let tempDir = FileManager.default.temporaryDirectory
