@@ -95,13 +95,7 @@ actor SegmentStitcher {
 
         // Apply audio mix for multi-track mixdown
         if compAudioTracks.count > 1 {
-            let mix = AVMutableAudioMix()
-            mix.inputParameters = compAudioTracks.map { track in
-                let params = AVMutableAudioMixInputParameters(track: track)
-                params.setVolume(1.0, at: .zero)
-                return params
-            }
-            exportSession.audioMix = mix
+            exportSession.audioMix = AVMutableAudioMix.stereoMix(from: compAudioTracks)
         }
 
         do {
@@ -154,13 +148,7 @@ actor SegmentStitcher {
         }
 
         // Mix all tracks to stereo
-        let mix = AVMutableAudioMix()
-        mix.inputParameters = compAudioTracks.map { track in
-            let params = AVMutableAudioMixInputParameters(track: track)
-            params.setVolume(1.0, at: .zero)
-            return params
-        }
-        session.audioMix = mix
+        session.audioMix = AVMutableAudioMix.stereoMix(from: compAudioTracks)
 
         try await session.export(to: outputURL, as: .mp4)
 

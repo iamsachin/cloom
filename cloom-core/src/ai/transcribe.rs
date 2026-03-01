@@ -1,9 +1,7 @@
 use crate::CloomError;
 
-use async_openai::{
-    config::OpenAIConfig,
-    types::audio::{AudioResponseFormat, CreateTranscriptionRequestArgs, TimestampGranularity},
-    Client,
+use async_openai::types::audio::{
+    AudioResponseFormat, CreateTranscriptionRequestArgs, TimestampGranularity,
 };
 
 /// Which transcription service to use.
@@ -39,9 +37,7 @@ pub fn transcribe_audio(
     provider: TranscriptionProvider,
     model: String,
 ) -> Result<Transcript, CloomError> {
-    match provider {
-        TranscriptionProvider::OpenAi => transcribe_openai(&audio_path, &api_key, &model),
-    }
+    dispatch_transcription(&provider, &audio_path, &api_key, &model)
 }
 
 /// Transcribe multiple audio chunks and merge results with offset-adjusted timestamps.
@@ -70,9 +66,7 @@ pub fn transcribe_audio_chunked(
 
     for (i, path) in chunk_paths.iter().enumerate() {
         let offset = offset_ms.get(i).copied().unwrap_or(0);
-        let chunk_result = match provider {
-            TranscriptionProvider::OpenAi => transcribe_openai(path, &api_key, &model),
-        }?;
+        let chunk_result = dispatch_transcription(&provider, path, &api_key, &model)?;
 
         if i == 0 {
             language = chunk_result.language;
@@ -94,17 +88,28 @@ pub fn transcribe_audio_chunked(
     })
 }
 
+/// Route a single transcription call to the provider-specific implementation.
+fn dispatch_transcription(
+    provider: &TranscriptionProvider,
+    audio_path: &str,
+    api_key: &str,
+    model: &str,
+) -> Result<Transcript, CloomError> {
+    match provider {
+        TranscriptionProvider::OpenAi => transcribe_openai(audio_path, api_key, model),
+    }
+}
+
 fn transcribe_openai(
     audio_path: &str,
     api_key: &str,
     model: &str,
 ) -> Result<Transcript, CloomError> {
-    // Check file exists before calling API for a clear IoError
-    if !std::path::Path::new(audio_path).exists() {
-        return Err(CloomError::IoError {
-            msg: format!("Failed to read audio file: No such file or directory (os error 2)"),
-        });
-    }
+    // Validate file is readable upfront for a clear error message.
+    // Opening the file (instead of Path::exists) avoids a TOCTOU race.
+    std::fs::File::open(audio_path).map_err(|e| CloomError::IoError {
+        msg: format!("Failed to read audio file: {e}"),
+    })?;
 
     let model = if model.is_empty() {
         "whisper-1".to_string()
@@ -113,8 +118,7 @@ fn transcribe_openai(
     };
 
     crate::runtime::RUNTIME.block_on(async {
-        let config = OpenAIConfig::new().with_api_key(api_key);
-        let client = Client::with_config(config);
+        let client = super::make_openai_client(api_key);
 
         log::info!("Starting transcription of {audio_path} with model {model}");
 

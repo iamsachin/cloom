@@ -76,14 +76,7 @@ extension RecordingCoordinator {
                 try? FileManager.default.removeItem(at: outputURL)
             }
 
-            segmentURLs = []
-            segmentIndex = 0
-            pausedDuration = 0
-            recordingStartedAt = nil
-            currentSettings = nil
-            currentFilter = nil
-            currentOutputURL = nil
-
+            resetSegmentState()
             state = .idle
             logger.info("Recording discarded")
         }

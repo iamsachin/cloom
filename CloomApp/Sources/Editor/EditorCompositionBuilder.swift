@@ -137,16 +137,9 @@ actor EditorCompositionBuilder {
         }
 
         // Build audio mix if multiple audio tracks (mixes down to stereo on export)
-        var audioMix: AVMutableAudioMix?
-        if compAudioTracks.count > 1 {
-            let mix = AVMutableAudioMix()
-            mix.inputParameters = compAudioTracks.map { track in
-                let params = AVMutableAudioMixInputParameters(track: track)
-                params.setVolume(1.0, at: .zero)
-                return params
-            }
-            audioMix = mix
-        }
+        let audioMix: AVMutableAudioMix? = compAudioTracks.count > 1
+            ? .stereoMix(from: compAudioTracks)
+            : nil
 
         logger.info("Built composition: \(timeRanges.count) ranges, \(compAudioTracks.count) audio tracks, \(stitchURLs.count) stitched, speed=\(edl.speedMultiplier)x")
 

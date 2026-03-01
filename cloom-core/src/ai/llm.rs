@@ -1,12 +1,8 @@
 use crate::CloomError;
 
-use async_openai::{
-    config::OpenAIConfig,
-    types::chat::{
-        ChatCompletionRequestMessage, ChatCompletionRequestUserMessage,
-        CreateChatCompletionRequestArgs,
-    },
-    Client,
+use async_openai::types::chat::{
+    ChatCompletionRequestMessage, ChatCompletionRequestUserMessage,
+    CreateChatCompletionRequestArgs,
 };
 use serde::Deserialize;
 
@@ -33,13 +29,13 @@ pub fn generate_title(
     api_key: String,
     provider: LlmProvider,
 ) -> Result<String, CloomError> {
-    validate_provider(&provider)?;
-    let truncated = truncate_transcript(&transcript_text);
-    let prompt = format!(
+    llm_from_transcript(
+        &transcript_text,
+        &api_key,
+        &provider,
         "Generate a concise title (max 10 words) for this recording based on its transcript. \
-         Return ONLY the title text, no quotes or extra formatting.\n\nTranscript:\n{truncated}"
-    );
-    chat_completion(&api_key, &prompt)
+         Return ONLY the title text, no quotes or extra formatting.",
+    )
 }
 
 /// Generate a 2-3 sentence summary from transcript text.
@@ -49,13 +45,13 @@ pub fn generate_summary(
     api_key: String,
     provider: LlmProvider,
 ) -> Result<String, CloomError> {
-    validate_provider(&provider)?;
-    let truncated = truncate_transcript(&transcript_text);
-    let prompt = format!(
+    llm_from_transcript(
+        &transcript_text,
+        &api_key,
+        &provider,
         "Summarize the key points of this recording in 2-3 sentences. \
-         Be concise and informative.\n\nTranscript:\n{truncated}"
-    );
-    chat_completion(&api_key, &prompt)
+         Be concise and informative.",
+    )
 }
 
 /// Divide transcript into chapters with timestamps.
@@ -65,17 +61,17 @@ pub fn generate_chapters(
     api_key: String,
     provider: LlmProvider,
 ) -> Result<Vec<Chapter>, CloomError> {
-    validate_provider(&provider)?;
-    let truncated = truncate_transcript(&transcript_text);
-    let prompt = format!(
+    let raw = llm_from_transcript(
+        &transcript_text,
+        &api_key,
+        &provider,
         "Divide this recording transcript into logical chapters. \
          The transcript includes timestamps in [M:SS.t] format (minutes:seconds.tenths). \
          Use the EXACT timestamp closest to where each chapter begins to determine start_ms. \
          Convert [M:SS.t] to milliseconds: e.g., [1:30.5] = 90500, [0:04.2] = 4200. \
          Return a JSON array where each element has \"title\" (string) and \"start_ms\" (integer milliseconds). \
-         Return ONLY the JSON array, no markdown fences or extra text.\n\nTranscript:\n{truncated}"
-    );
-    let raw = chat_completion(&api_key, &prompt)?;
+         Return ONLY the JSON array, no markdown fences or extra text.",
+    )?;
     parse_chapters(&raw)
 }
 
@@ -87,15 +83,29 @@ pub fn format_paragraphs(
     api_key: String,
     provider: LlmProvider,
 ) -> Result<String, CloomError> {
-    validate_provider(&provider)?;
-    let truncated = truncate_transcript(&transcript_text);
-    let prompt = format!(
+    llm_from_transcript(
+        &transcript_text,
+        &api_key,
+        &provider,
         "Add paragraph breaks to this transcript. Insert exactly \"\\n\\n\" between logical paragraphs \
          (topic changes, speaker pauses, or shifts in subject). \
          Do NOT change, add, or remove any words or punctuation — return the original text \
-         with only paragraph breaks inserted.\n\nTranscript:\n{truncated}"
-    );
-    chat_completion(&api_key, &prompt)
+         with only paragraph breaks inserted.",
+    )
+}
+
+/// Shared preamble for all LLM-from-transcript operations:
+/// validate provider → truncate → format prompt with transcript → chat completion.
+fn llm_from_transcript(
+    transcript_text: &str,
+    api_key: &str,
+    provider: &LlmProvider,
+    instruction: &str,
+) -> Result<String, CloomError> {
+    validate_provider(provider)?;
+    let truncated = truncate_transcript(transcript_text);
+    let prompt = format!("{instruction}\n\nTranscript:\n{truncated}");
+    chat_completion(api_key, &prompt)
 }
 
 pub(crate) fn validate_provider(provider: &LlmProvider) -> Result<(), CloomError> {
@@ -109,14 +119,21 @@ pub(crate) fn truncate_transcript(text: &str) -> &str {
     if text.len() <= MAX_TRANSCRIPT_CHARS {
         text
     } else {
-        &text[..MAX_TRANSCRIPT_CHARS]
+        // Find a char boundary at or before MAX_TRANSCRIPT_CHARS to avoid panicking
+        // on multi-byte UTF-8 sequences.
+        let end = text
+            .char_indices()
+            .take_while(|(i, _)| *i <= MAX_TRANSCRIPT_CHARS)
+            .last()
+            .map(|(i, _)| i)
+            .unwrap_or(0);
+        &text[..end]
     }
 }
 
 fn chat_completion(api_key: &str, prompt: &str) -> Result<String, CloomError> {
     crate::runtime::RUNTIME.block_on(async {
-        let config = OpenAIConfig::new().with_api_key(api_key);
-        let client = Client::with_config(config);
+        let client = super::make_openai_client(api_key);
 
         log::debug!("Sending chat completion request ({} chars)", prompt.len());
 

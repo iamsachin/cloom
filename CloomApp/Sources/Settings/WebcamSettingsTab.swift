@@ -2,15 +2,15 @@ import SwiftUI
 import CoreImage
 
 struct WebcamSettingsTab: View {
-    @AppStorage("webcamBrightness") private var webcamBrightness: Double = 0
-    @AppStorage("webcamContrast") private var webcamContrast: Double = 1
-    @AppStorage("webcamSaturation") private var webcamSaturation: Double = 1
-    @AppStorage("webcamHighlights") private var webcamHighlights: Double = 1
-    @AppStorage("webcamShadows") private var webcamShadows: Double = 0
-    @AppStorage("webcamTemperature") private var webcamTemperature: Double = 6500
-    @AppStorage("webcamTint") private var webcamTint: Double = 0
-    @AppStorage("webcamShape") private var webcamShapeRaw: String = "circle"
-    @AppStorage("webcamFrame") private var webcamFrameRaw: String = "none"
+    @AppStorage(UserDefaultsKeys.webcamBrightness) private var webcamBrightness: Double = 0
+    @AppStorage(UserDefaultsKeys.webcamContrast) private var webcamContrast: Double = 1
+    @AppStorage(UserDefaultsKeys.webcamSaturation) private var webcamSaturation: Double = 1
+    @AppStorage(UserDefaultsKeys.webcamHighlights) private var webcamHighlights: Double = 1
+    @AppStorage(UserDefaultsKeys.webcamShadows) private var webcamShadows: Double = 0
+    @AppStorage(UserDefaultsKeys.webcamTemperature) private var webcamTemperature: Double = 6500
+    @AppStorage(UserDefaultsKeys.webcamTint) private var webcamTint: Double = 0
+    @AppStorage(UserDefaultsKeys.webcamShape) private var webcamShapeRaw: String = "circle"
+    @AppStorage(UserDefaultsKeys.webcamFrame) private var webcamFrameRaw: String = "none"
 
     @State private var previewImage: NSImage?
     @State private var cameraService: CameraService?

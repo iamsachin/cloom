@@ -148,3 +148,15 @@ fn test_truncate_one_char() {
     let result = truncate_transcript("x");
     assert_eq!(result, "x");
 }
+
+#[test]
+fn test_truncate_multibyte_utf8_no_panic() {
+    // Build a string of multi-byte chars (each 'ä' is 2 bytes) that exceeds MAX_TRANSCRIPT_CHARS
+    let text = "ä".repeat(100_000); // 200_000 bytes, 100_000 chars
+    let result = truncate_transcript(&text);
+    // Must not panic and must be valid UTF-8
+    assert!(result.len() <= 100_000);
+    assert!(result.len() > 0);
+    // Every char is 2 bytes, so the result should be truncated at a char boundary
+    assert_eq!(result.len() % 2, 0);
+}

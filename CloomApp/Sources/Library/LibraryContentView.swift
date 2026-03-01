@@ -295,30 +295,12 @@ struct LibraryContentView: View {
     }
 
     private func deleteSelected() {
-        let idsToDelete = selectedIDs
-        for video in videos where idsToDelete.contains(video.id) {
-            let filePath = video.filePath
-            if !filePath.isEmpty {
-                try? FileManager.default.removeItem(atPath: filePath)
-            }
-            let thumbPath = video.thumbnailPath
-            if !thumbPath.isEmpty {
-                try? FileManager.default.removeItem(atPath: thumbPath)
-            }
-            if let webcamPath = video.webcamFilePath, !webcamPath.isEmpty {
-                try? FileManager.default.removeItem(atPath: webcamPath)
-            }
-            modelContext.delete(video)
-        }
-        do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
+        VideoLibraryService.deleteVideos(ids: selectedIDs, from: videos, context: modelContext)
         selectedIDs.removeAll()
         isSelecting = false
     }
 
     private func moveVideosToFolder(videoIDs: Set<String>, folder: FolderRecord?) {
-        for video in videos where videoIDs.contains(video.id) {
-            video.folder = folder
-        }
-        do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
+        VideoLibraryService.moveVideos(ids: videoIDs, toFolder: folder, from: videos, context: modelContext)
     }
 }

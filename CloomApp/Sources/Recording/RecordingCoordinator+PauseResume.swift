@@ -56,27 +56,14 @@ extension RecordingCoordinator {
 
         Task {
             do {
-                if let filter = currentFilter {
-                    try await captureService.startCapture(
-                        outputURL: segmentURL,
-                        filter: filter,
-                        micEnabled: micEnabled,
-                        settings: settings,
-                        compositor: activeCompositor,
-                        annotationRenderer: activeRenderer
-                    )
-                } else {
-                    try await captureService.startCapture(
-                        outputURL: segmentURL,
-                        mode: selectedMode,
-                        micEnabled: micEnabled,
-                        settings: settings,
-                        compositor: activeCompositor,
-                        annotationRenderer: activeRenderer
-                    )
-                }
+                try await startCaptureWithCurrentConfig(
+                    outputURL: segmentURL,
+                    filter: currentFilter,
+                    settings: settings,
+                    compositor: activeCompositor,
+                    annotationRenderer: activeRenderer
+                )
                 state = .recording(startedAt: startedAt)
-
                 showRecordingToolbar(startedAt: startedAt)
             } catch {
                 logger.error("Failed to resume capture: \(error)")

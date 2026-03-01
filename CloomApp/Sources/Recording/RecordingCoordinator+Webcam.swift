@@ -65,13 +65,13 @@ extension RecordingCoordinator {
     func loadWebcamAdjustments() -> WebcamAdjustments {
         let defaults = UserDefaults.standard
         return WebcamAdjustments(
-            brightness: Float(defaults.double(forKey: "webcamBrightness")),
-            contrast: Float(defaults.object(forKey: "webcamContrast") as? Double ?? 1),
-            saturation: Float(defaults.object(forKey: "webcamSaturation") as? Double ?? 1),
-            highlights: Float(defaults.object(forKey: "webcamHighlights") as? Double ?? 1),
-            shadows: Float(defaults.double(forKey: "webcamShadows")),
-            temperature: Float(defaults.object(forKey: "webcamTemperature") as? Double ?? 6500),
-            tint: Float(defaults.double(forKey: "webcamTint"))
+            brightness: Float(defaults.double(forKey: UserDefaultsKeys.webcamBrightness)),
+            contrast: Float(defaults.object(forKey: UserDefaultsKeys.webcamContrast) as? Double ?? 1),
+            saturation: Float(defaults.object(forKey: UserDefaultsKeys.webcamSaturation) as? Double ?? 1),
+            highlights: Float(defaults.object(forKey: UserDefaultsKeys.webcamHighlights) as? Double ?? 1),
+            shadows: Float(defaults.double(forKey: UserDefaultsKeys.webcamShadows)),
+            temperature: Float(defaults.object(forKey: UserDefaultsKeys.webcamTemperature) as? Double ?? 6500),
+            tint: Float(defaults.double(forKey: UserDefaultsKeys.webcamTint))
         )
     }
 
@@ -105,13 +105,7 @@ extension RecordingCoordinator {
     func getCaptureAreaScreenRect() -> CGRect {
         switch selectedMode {
         case .fullScreen(let displayID):
-            for screen in NSScreen.screens {
-                let key = NSDeviceDescriptionKey("NSScreenNumber")
-                if let screenID = screen.deviceDescription[key] as? CGDirectDisplayID, screenID == displayID {
-                    return screen.frame
-                }
-            }
-            return NSScreen.main?.frame ?? .zero
+            return NSScreen.screen(for: displayID)?.frame ?? NSScreen.main?.frame ?? .zero
 
         case .window:
             return NSScreen.main?.frame ?? .zero

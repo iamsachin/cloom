@@ -2,8 +2,8 @@ import SwiftUI
 import LaunchAtLogin
 
 struct GeneralSettingsTab: View {
-    @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
-    @AppStorage("appearanceMode") private var appearanceMode: String = "system"
+    @AppStorage(UserDefaultsKeys.notificationsEnabled) private var notificationsEnabled: Bool = true
+    @AppStorage(UserDefaultsKeys.appearanceMode) private var appearanceMode: String = "system"
     @EnvironmentObject var permissionChecker: PermissionChecker
     @Environment(\.openWindow) private var openWindow
 

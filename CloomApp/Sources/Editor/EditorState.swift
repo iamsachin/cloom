@@ -269,7 +269,7 @@ final class EditorState {
         let url = URL(fileURLWithPath: videoRecord.filePath)
         let generator = WaveformGenerator()
         do {
-            let sensitivity = UserDefaults.standard.integer(forKey: "micSensitivity")
+            let sensitivity = UserDefaults.standard.integer(forKey: UserDefaultsKeys.micSensitivity)
             let peaks = try await generator.generatePeaks(from: url, peakCount: 1500, micSensitivity: sensitivity > 0 ? sensitivity : 100)
             waveformPeaks = peaks
         } catch {

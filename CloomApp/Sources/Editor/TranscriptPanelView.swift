@@ -85,46 +85,9 @@ struct TranscriptPanelView: View {
         return String(format: "%d:%02d", minutes, seconds)
     }
 
+    /// Forward to the standalone function for backwards compatibility with tests.
     static func groupIntoSentences(_ words: [TranscriptWordSnapshot]) -> [TranscriptSentence] {
-        guard !words.isEmpty else { return [] }
-        var sentences: [TranscriptSentence] = []
-        var current: [TranscriptWordSnapshot] = []
-        var paragraphStart = false
-
-        for word in words {
-            // Force a new sentence group at paragraph boundaries
-            if word.isParagraphStart && !current.isEmpty {
-                sentences.append(TranscriptSentence(words: current, isParagraphStart: paragraphStart))
-                current = []
-                paragraphStart = true
-            } else if word.isParagraphStart {
-                paragraphStart = true
-            }
-
-            current.append(word)
-            let trimmed = word.word.trimmingCharacters(in: .whitespaces)
-            let endsWithPunctuation = trimmed.hasSuffix(".") || trimmed.hasSuffix("?") || trimmed.hasSuffix("!")
-            if endsWithPunctuation || current.count >= 18 {
-                sentences.append(TranscriptSentence(words: current, isParagraphStart: paragraphStart))
-                current = []
-                paragraphStart = false
-            }
-        }
-        if !current.isEmpty {
-            sentences.append(TranscriptSentence(words: current, isParagraphStart: paragraphStart))
-        }
-        return sentences
-    }
-}
-
-struct TranscriptSentence: Identifiable {
-    let id = UUID()
-    let words: [TranscriptWordSnapshot]
-    let isParagraphStart: Bool
-
-    init(words: [TranscriptWordSnapshot], isParagraphStart: Bool = false) {
-        self.words = words
-        self.isParagraphStart = isParagraphStart
+        groupTranscriptIntoSentences(words)
     }
 }
 

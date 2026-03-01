@@ -49,43 +49,8 @@ struct CaptionOverlayView: View {
         return result
     }
 
+    /// Forward to the standalone function for backwards compatibility with tests.
     nonisolated static func buildPhrases(from words: [TranscriptWordSnapshot]) -> [CaptionPhrase] {
-        guard !words.isEmpty else { return [] }
-        var phrases: [CaptionPhrase] = []
-        var current: [TranscriptWordSnapshot] = []
-        var phraseStartMs: Int64 = words[0].startMs
-
-        for word in words {
-            current.append(word)
-            let elapsed = word.endMs - phraseStartMs
-            if current.count >= 7 || elapsed >= 3000 {
-                let phrase = CaptionPhrase(
-                    words: current,
-                    startMs: phraseStartMs,
-                    endMs: word.endMs
-                )
-                phrases.append(phrase)
-                current = []
-                phraseStartMs = word.endMs
-            }
-        }
-
-        // Remaining words
-        if !current.isEmpty, let lastWord = current.last {
-            phrases.append(CaptionPhrase(
-                words: current,
-                startMs: phraseStartMs,
-                endMs: lastWord.endMs
-            ))
-        }
-
-        return phrases
+        buildCaptionPhrases(from: words)
     }
-}
-
-struct CaptionPhrase: Identifiable, Sendable {
-    let id = UUID()
-    let words: [TranscriptWordSnapshot]
-    let startMs: Int64
-    let endMs: Int64
 }

@@ -8,7 +8,7 @@ private let sRGBColorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpa
 /// Renders annotation overlays as CIImage for video burn-in.
 /// Called from SCStreamOutput queue — must be thread-safe.
 final class AnnotationRenderer: @unchecked Sendable {
-    let ciContext: CIContext = SharedCIContext.instance
+    private let ciContext: CIContext = SharedCIContext.instance
     private let store: AnnotationStore
 
     // Stroke cache — avoids CGContext creation every frame when strokes haven't changed.
@@ -78,6 +78,11 @@ final class AnnotationRenderer: @unchecked Sendable {
         }
 
         return overlay
+    }
+
+    /// Renders the composited CIImage into the given pixel buffer using the internal CIContext.
+    func renderToBuffer(_ image: CIImage, to buffer: CVPixelBuffer, bounds: CGRect) {
+        ciContext.render(image, to: buffer, bounds: bounds, colorSpace: sRGBColorSpace)
     }
 
     // MARK: - Stroke Rendering

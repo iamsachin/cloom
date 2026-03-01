@@ -86,8 +86,8 @@ struct MenuBarView: View {
 
                 Button("Select Region...") {
                     showPostOnboardingHint = false
-                    appState.recordingCoordinator.cancelContentSelection()
-                    appState.recordingCoordinator.startRegionSelection()
+                    appState.cancelContentSelection()
+                    appState.startRegionSelection()
                 }
 
                 Divider()
@@ -170,7 +170,7 @@ struct MenuBarView: View {
 final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Apply saved appearance mode
-        let mode = UserDefaults.standard.string(forKey: "appearanceMode") ?? "system"
+        let mode = UserDefaults.standard.string(forKey: UserDefaultsKeys.appearanceMode) ?? "system"
         switch mode {
         case "light":
             NSApp.appearance = NSAppearance(named: .aqua)

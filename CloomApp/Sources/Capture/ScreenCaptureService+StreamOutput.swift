@@ -4,7 +4,6 @@ import CoreImage
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "ScreenCaptureService")
-private let sRGBColorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
 
 private struct SendableCVBuffer: @unchecked Sendable {
     let buffer: CVPixelBuffer
@@ -71,7 +70,7 @@ extension ScreenCaptureService: SCStreamOutput {
                 let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &poolBuffer)
                 if status == kCVReturnSuccess, let output = poolBuffer {
                     let extent = CGRect(x: 0, y: 0, width: screenWidth, height: screenHeight)
-                    renderer.ciContext.render(final, to: output, bounds: extent, colorSpace: sRGBColorSpace)
+                    renderer.renderToBuffer(final, to: output, bounds: extent)
                     outputBuffer = output
                 } else {
                     outputBuffer = afterWebcam
