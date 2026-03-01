@@ -33,11 +33,11 @@ struct RecordingSettings {
 
     static func fromDefaults() -> RecordingSettings {
         let defaults = UserDefaults.standard
-        let fps = defaults.integer(forKey: "recordingFPS")
-        let qualityRaw = defaults.string(forKey: "recordingQuality") ?? VideoQuality.medium.rawValue
-        let micID = defaults.string(forKey: "recordingMicDeviceID")
-        let cameraID = defaults.string(forKey: "recordingCameraDeviceID")
-        let sensitivity = defaults.integer(forKey: "micSensitivity")
+        let fps = defaults.integer(forKey: UserDefaultsKeys.recordingFPS)
+        let qualityRaw = defaults.string(forKey: UserDefaultsKeys.recordingQuality) ?? VideoQuality.medium.rawValue
+        let micID = defaults.string(forKey: UserDefaultsKeys.recordingMicDeviceID)
+        let cameraID = defaults.string(forKey: UserDefaultsKeys.recordingCameraDeviceID)
+        let sensitivity = defaults.integer(forKey: UserDefaultsKeys.micSensitivity)
 
         return RecordingSettings(
             fps: fps > 0 ? fps : 30,

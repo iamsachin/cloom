@@ -2,11 +2,11 @@ import SwiftUI
 import AVFoundation
 
 struct RecordingSettingsTab: View {
-    @AppStorage("recordingFPS") private var fps: Int = 30
-    @AppStorage("recordingQuality") private var qualityRaw: String = VideoQuality.medium.rawValue
-    @AppStorage("recordingMicDeviceID") private var micDeviceID: String = ""
-    @AppStorage("recordingCameraDeviceID") private var cameraDeviceID: String = ""
-    @AppStorage("micSensitivity") private var micSensitivity: Int = 100
+    @AppStorage(UserDefaultsKeys.recordingFPS) private var fps: Int = 30
+    @AppStorage(UserDefaultsKeys.recordingQuality) private var qualityRaw: String = VideoQuality.medium.rawValue
+    @AppStorage(UserDefaultsKeys.recordingMicDeviceID) private var micDeviceID: String = ""
+    @AppStorage(UserDefaultsKeys.recordingCameraDeviceID) private var cameraDeviceID: String = ""
+    @AppStorage(UserDefaultsKeys.micSensitivity) private var micSensitivity: Int = 100
 
     @State private var microphones: [AVCaptureDevice] = []
     @State private var cameras: [AVCaptureDevice] = []

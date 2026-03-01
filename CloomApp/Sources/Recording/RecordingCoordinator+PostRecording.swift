@@ -1,7 +1,6 @@
 import SwiftUI
 import SwiftData
 import AVFoundation
-import UserNotifications
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "RecordingCoordinator")
@@ -92,30 +91,11 @@ extension RecordingCoordinator {
             )
         }
 
-        showRecordingCompleteNotification(title: record.title)
-        state = .idle
-    }
-
-    func showRecordingCompleteNotification(title: String) {
-        // Default to true if never set
-        let defaults = UserDefaults.standard
-        if defaults.object(forKey: "notificationsEnabled") != nil {
-            guard defaults.bool(forKey: "notificationsEnabled") else { return }
-        }
-
-        let content = UNMutableNotificationContent()
-        content.title = "Recording Complete"
-        content.body = title
-        content.sound = .default
-        content.categoryIdentifier = "RECORDING_COMPLETE"
-
-        let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
-            content: content,
-            trigger: nil
+        NotificationService.post(
+            title: "Recording Complete",
+            body: record.title,
+            categoryIdentifier: "RECORDING_COMPLETE"
         )
-        Task {
-            try? await UNUserNotificationCenter.current().add(request)
-        }
+        state = .idle
     }
 }

@@ -92,7 +92,10 @@ pub fn detect_silence(
 
         let decoded = match decoder.decode(&packet) {
             Ok(d) => d,
-            Err(_) => continue,
+            Err(e) => {
+                log::warn!("Skipping packet: decode error: {e}");
+                continue;
+            }
         };
 
         let spec = *decoded.spec();

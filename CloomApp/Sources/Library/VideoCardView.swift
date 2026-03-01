@@ -2,42 +2,20 @@ import SwiftUI
 import SwiftData
 import AppKit
 
-nonisolated(unsafe) let thumbnailCache: NSCache<NSString, NSImage> = {
-    let cache = NSCache<NSString, NSImage>()
-    cache.countLimit = 100
-    cache.totalCostLimit = 100_000_000 // ~100MB
-    return cache
-}()
-
 struct VideoCardView: View {
     let video: VideoRecord
 
     @State private var isHovered = false
-    @State private var thumbnailImage: NSImage?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Thumbnail with duration badge
             ZStack(alignment: .bottomTrailing) {
-                Group {
-                    if let nsImage = thumbnailImage {
-                        Image(nsImage: nsImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                    } else {
-                        RoundedRectangle(cornerRadius: 0)
-                            .fill(.quaternary)
-                            .aspectRatio(16 / 9, contentMode: .fit)
-                            .overlay {
-                                Image(systemName: "film")
-                                    .font(.title2)
-                                    .foregroundStyle(.tertiary)
-                            }
-                    }
-                }
+                AsyncThumbnailImage(thumbnailPath: video.thumbnailPath)
+                    .aspectRatio(16 / 9, contentMode: .fit)
 
                 // Duration badge
-                Text(formattedDuration)
+                Text(video.durationMs.formattedDuration)
                     .font(.system(size: 11, weight: .medium).monospacedDigit())
                     .foregroundStyle(.white)
                     .padding(.horizontal, 6)
@@ -67,7 +45,7 @@ struct VideoCardView: View {
                             .foregroundStyle(.blue.opacity(0.8))
                     }
 
-                    cloudStatusIcon
+                    CloudStatusBadgeView(videoId: video.id, uploadStatus: video.uploadStatus ?? "")
 
                     Spacer()
 
@@ -100,47 +78,7 @@ struct VideoCardView: View {
         .onHover { hovering in
             isHovered = hovering
         }
-        .accessibilityLabel("\(video.title), \(formattedDuration)")
-        .task(id: video.thumbnailPath) {
-            guard !video.thumbnailPath.isEmpty else {
-                thumbnailImage = nil
-                return
-            }
-            let key = video.thumbnailPath as NSString
-            if let cached = thumbnailCache.object(forKey: key) {
-                thumbnailImage = cached
-                return
-            }
-            let path = video.thumbnailPath
-            let loadTask = Task.detached(priority: .medium) {
-                NSImage(contentsOfFile: path)
-            }
-            if let loaded = await loadTask.value {
-                thumbnailCache.setObject(loaded, forKey: key)
-                thumbnailImage = loaded
-            }
-        }
-    }
-
-    // MARK: - Cloud Status
-
-    @ViewBuilder
-    private var cloudStatusIcon: some View {
-        let status = UploadStatus(video.uploadStatus)
-        if DriveUploadManager.shared.isUploading(video.id) {
-            ProgressView()
-                .controlSize(.mini)
-        } else if status == .uploaded {
-            Image(systemName: "link.circle.fill")
-                .font(.system(size: 9))
-                .foregroundStyle(.green)
-                .help("Shared on Google Drive")
-        } else if status == .failed {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 9))
-                .foregroundStyle(.red)
-                .help("Upload failed")
-        }
+        .accessibilityLabel("\(video.title), \(video.durationMs.formattedDuration)")
     }
 
     // MARK: - Tag Pills
@@ -174,13 +112,6 @@ struct VideoCardView: View {
                     .background(.quaternary, in: Capsule())
             }
         }
-    }
-
-    private var formattedDuration: String {
-        let totalSeconds = video.durationMs / 1000
-        let minutes = totalSeconds / 60
-        let seconds = totalSeconds % 60
-        return String(format: "%d:%02d", minutes, seconds)
     }
 
     private func relativeTime(from date: Date) -> String {

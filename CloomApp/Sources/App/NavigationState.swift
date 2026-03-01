@@ -19,12 +19,12 @@ final class NavigationState {
 
     var viewStyle: ViewStyle {
         didSet {
-            UserDefaults.standard.set(viewStyle.rawValue, forKey: "libraryViewStyle")
+            UserDefaults.standard.set(viewStyle.rawValue, forKey: UserDefaultsKeys.libraryViewStyle)
         }
     }
 
     init() {
-        let saved = UserDefaults.standard.string(forKey: "libraryViewStyle") ?? "grid"
+        let saved = UserDefaults.standard.string(forKey: UserDefaultsKeys.libraryViewStyle) ?? "grid"
         self.viewStyle = ViewStyle(rawValue: saved) ?? .grid
     }
 

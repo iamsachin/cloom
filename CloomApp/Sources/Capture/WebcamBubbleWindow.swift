@@ -34,19 +34,19 @@ final class WebcamBubbleWindow {
 
     var currentSize: BubbleSize = .medium
     var currentShape: WebcamShape = {
-        let raw = UserDefaults.standard.string(forKey: "webcamShape") ?? "circle"
+        let raw = UserDefaults.standard.string(forKey: UserDefaultsKeys.webcamShape) ?? "circle"
         return WebcamShape(rawValue: raw) ?? .circle
     }()
     var currentDecoration: WebcamFrame = {
-        let raw = UserDefaults.standard.string(forKey: "webcamFrame") ?? "none"
+        let raw = UserDefaults.standard.string(forKey: UserDefaultsKeys.webcamFrame) ?? "none"
         return WebcamFrame(rawValue: raw) ?? .none
     }()
 
     func show() {
         // Re-sync from UserDefaults in case settings changed while bubble wasn't showing
-        let decorationRaw = UserDefaults.standard.string(forKey: "webcamFrame") ?? "none"
+        let decorationRaw = UserDefaults.standard.string(forKey: UserDefaultsKeys.webcamFrame) ?? "none"
         currentDecoration = WebcamFrame(rawValue: decorationRaw) ?? .none
-        let shapeRaw = UserDefaults.standard.string(forKey: "webcamShape") ?? "circle"
+        let shapeRaw = UserDefaults.standard.string(forKey: UserDefaultsKeys.webcamShape) ?? "circle"
         currentShape = WebcamShape(rawValue: shapeRaw) ?? .circle
 
         if panel == nil {
@@ -96,7 +96,7 @@ final class WebcamBubbleWindow {
 
     func cycleShape() {
         currentShape = currentShape.next
-        UserDefaults.standard.set(currentShape.rawValue, forKey: "webcamShape")
+        UserDefaults.standard.set(currentShape.rawValue, forKey: UserDefaultsKeys.webcamShape)
         rebuildPanel()
     }
 
@@ -153,12 +153,12 @@ final class WebcamBubbleWindow {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                let newDecorationRaw = UserDefaults.standard.string(forKey: "webcamFrame") ?? "none"
+                let newDecorationRaw = UserDefaults.standard.string(forKey: UserDefaultsKeys.webcamFrame) ?? "none"
                 let newDecoration = WebcamFrame(rawValue: newDecorationRaw) ?? .none
                 if newDecoration != self.currentDecoration {
                     self.updateDecoration(newDecoration)
                 }
-                let newShapeRaw = UserDefaults.standard.string(forKey: "webcamShape") ?? "circle"
+                let newShapeRaw = UserDefaults.standard.string(forKey: UserDefaultsKeys.webcamShape) ?? "circle"
                 let newShape = WebcamShape(rawValue: newShapeRaw) ?? .circle
                 if newShape != self.currentShape {
                     self.updateShape(newShape)

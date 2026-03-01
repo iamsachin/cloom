@@ -85,12 +85,8 @@ extension ScreenCaptureService {
     }
 
     func screenScaleFactor(for displayID: CGDirectDisplayID) -> Int {
-        for screen in NSScreen.screens {
-            let key = NSDeviceDescriptionKey("NSScreenNumber")
-            if let screenDisplayID = screen.deviceDescription[key] as? CGDirectDisplayID,
-               screenDisplayID == displayID {
-                return Int(screen.backingScaleFactor)
-            }
+        if let screen = NSScreen.screen(for: displayID) {
+            return Int(screen.backingScaleFactor)
         }
         return 2
     }

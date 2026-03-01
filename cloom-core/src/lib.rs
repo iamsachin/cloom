@@ -3,12 +3,12 @@ uniffi::setup_scaffolding!();
 mod runtime;
 
 mod ai;
-pub use ai::transcribe::*;
-pub use ai::llm::*;
+pub use ai::llm::{generate_chapters, generate_summary, generate_title, format_paragraphs, Chapter, LlmProvider};
+pub use ai::transcribe::{transcribe_audio, transcribe_audio_chunked, Transcript, TranscriptWord, TranscriptionProvider};
 
 mod audio;
-pub use audio::filler::*;
-pub use audio::silence::*;
+pub use audio::filler::{identify_filler_words, FillerWord};
+pub use audio::silence::{detect_silence, TimeRange};
 
 use thiserror::Error;
 
@@ -23,8 +23,6 @@ pub enum CloomError {
     AudioError { msg: String },
     #[error("Invalid input: {msg}")]
     InvalidInput { msg: String },
-    #[error("Export error: {msg}")]
-    ExportError { msg: String },
 }
 
 /// Initialize Rust logging, routing log macros to macOS Console.app via os_log.

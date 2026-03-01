@@ -1,7 +1,6 @@
 import AVFoundation
 import Foundation
 import SwiftData
-import UserNotifications
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "AIOrchestrator")
@@ -26,17 +25,17 @@ actor AIOrchestrator {
 
         // Check auto-transcribe setting (default to true if never set)
         let defaults = UserDefaults.standard
-        if defaults.object(forKey: "aiAutoTranscribe") == nil {
-            defaults.set(true, forKey: "aiAutoTranscribe")
+        if defaults.object(forKey: UserDefaultsKeys.aiAutoTranscribe) == nil {
+            defaults.set(true, forKey: UserDefaultsKeys.aiAutoTranscribe)
         }
-        guard defaults.bool(forKey: "aiAutoTranscribe") else {
+        guard defaults.bool(forKey: UserDefaultsKeys.aiAutoTranscribe) else {
             logger.info("Auto-transcribe disabled — skipping AI pipeline")
             return
         }
 
         logger.info("Starting AI pipeline for video \(videoRecordID)")
         await AIProcessingTracker.shared.startProcessing(videoRecordID)
-        showNotification(title: "AI Processing", message: "Transcribing recording...")
+        NotificationService.post(title: "AI Processing", body: "Transcribing recording...")
 
         // Step 0: Extract audio from MP4 (mic track preferred, falls back to mix)
         let extractedAudioPath: String
@@ -79,7 +78,7 @@ actor AIOrchestrator {
         } catch {
             logger.error("Transcription failed: \(error)")
             await AIProcessingTracker.shared.stopProcessing(videoRecordID)
-            showNotification(title: "Transcription Failed", message: "\(error)")
+            NotificationService.post(title: "Transcription Failed", body: "\(error)")
             return
         }
 
@@ -175,7 +174,7 @@ actor AIOrchestrator {
         }
 
         // Step 7: Persist results to SwiftData
-        await persistResults(
+        await TranscriptPersistenceService.persist(
             videoRecordID: videoRecordID,
             transcript: transcript,
             paragraphedText: paragraphedText,
@@ -187,114 +186,8 @@ actor AIOrchestrator {
         )
 
         await AIProcessingTracker.shared.stopProcessing(videoRecordID)
-        showNotification(title: "AI Processing Complete", message: "Transcript and summary ready.")
+        NotificationService.post(title: "AI Processing Complete", body: "Transcript and summary ready.")
         logger.info("AI pipeline complete for video \(videoRecordID)")
-    }
-
-    private func showNotification(title: String, message: String) {
-        let defaults = UserDefaults.standard
-        if defaults.object(forKey: "notificationsEnabled") != nil {
-            guard defaults.bool(forKey: "notificationsEnabled") else { return }
-        }
-
-        let content = UNMutableNotificationContent()
-        content.title = title
-        content.body = message
-        let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
-            content: content,
-            trigger: nil
-        )
-        Task {
-            try? await UNUserNotificationCenter.current().add(request)
-        }
-    }
-
-    @MainActor
-    private func persistResults(
-        videoRecordID: String,
-        transcript: Transcript,
-        paragraphedText: String?,
-        fillerWords: [FillerWord],
-        generatedTitle: String?,
-        generatedSummary: String?,
-        generatedChapters: [Chapter],
-        modelContainer: ModelContainer
-    ) {
-        let context = ModelContext(modelContainer)
-
-        // Fetch the video record
-        let predicate = #Predicate<VideoRecord> { $0.id == videoRecordID }
-        var descriptor = FetchDescriptor<VideoRecord>(predicate: predicate)
-        descriptor.fetchLimit = 1
-
-        guard let video = try? context.fetch(descriptor).first else {
-            logger.error("Video record not found: \(videoRecordID)")
-            return
-        }
-
-        let fillerSet = Set(fillerWords.map { "\($0.startMs)-\($0.endMs)" })
-
-        // Determine paragraph-start word indices from paragraphed text
-        let paragraphStartIndices = Self.findParagraphStartIndices(
-            originalWords: transcript.words.map(\.word),
-            paragraphedText: paragraphedText
-        )
-
-        // Create transcript record (use paragraphed text if available)
-        let transcriptRecord = TranscriptRecord(
-            videoID: videoRecordID,
-            fullText: paragraphedText ?? transcript.fullText,
-            language: transcript.language
-        )
-        context.insert(transcriptRecord)
-
-        // Create word records
-        for (index, w) in transcript.words.enumerated() {
-            let isFiller = fillerSet.contains("\(w.startMs)-\(w.endMs)")
-            let wordRecord = TranscriptWordRecord(
-                word: w.word,
-                startMs: w.startMs,
-                endMs: w.endMs,
-                confidence: w.confidence,
-                isFillerWord: isFiller,
-                isParagraphStart: paragraphStartIndices.contains(index)
-            )
-            wordRecord.transcript = transcriptRecord
-            context.insert(wordRecord)
-        }
-
-        // Link transcript to video
-        video.transcript = transcriptRecord
-        video.hasTranscript = true
-
-        // Update title and summary
-        if let title = generatedTitle {
-            video.title = title
-        }
-        if let summary = generatedSummary {
-            video.summary = summary
-        }
-
-        // Create chapter records
-        for ch in generatedChapters {
-            let chapterRecord = ChapterRecord(
-                id: ch.id,
-                title: ch.title,
-                startMs: ch.startMs
-            )
-            chapterRecord.video = video
-            context.insert(chapterRecord)
-        }
-
-        video.updatedAt = .now
-
-        do {
-            try context.save()
-            logger.info("Persisted AI results for video \(videoRecordID)")
-        } catch {
-            logger.error("Failed to save AI results: \(error)")
-        }
     }
 
     /// Build a transcript string with periodic timestamps so the LLM can generate accurate chapter markers.

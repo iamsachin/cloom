@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AISettingsTab: View {
-    @AppStorage("aiAutoTranscribe") private var aiAutoTranscribe: Bool = true
+    @AppStorage(UserDefaultsKeys.aiAutoTranscribe) private var aiAutoTranscribe: Bool = true
 
     var body: some View {
         Form {

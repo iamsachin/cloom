@@ -99,15 +99,12 @@ extension RecordingCoordinator {
             return
         }
         let outputURL = desktopURL.appendingPathComponent(filename)
-        self.currentOutputURL = outputURL
-
         let settings = RecordingSettings.fromDefaults()
-        self.currentSettings = settings
 
-        // Reset segment tracking
-        segmentURLs = []
-        segmentIndex = 0
-        pausedDuration = 0
+        // Reset segment tracking and set up for new recording
+        resetSegmentState()
+        self.currentOutputURL = outputURL
+        self.currentSettings = settings
 
         // First segment writes directly to the final URL (if no pauses, it stays)
         let segmentURL = makeSegmentURL()
@@ -145,30 +142,20 @@ extension RecordingCoordinator {
             startWebcam()
         }
 
+        // Resolve and store the active filter
+        self.currentFilter = pendingFilter
+        let activeFilter = pendingFilter
+        pendingFilter = nil
+
         Task {
             do {
-                if let filter = pendingFilter {
-                    self.currentFilter = filter
-                    try await captureService.startCapture(
-                        outputURL: segmentURL,
-                        filter: filter,
-                        micEnabled: micEnabled,
-                        settings: settings,
-                        compositor: activeCompositor,
-                        annotationRenderer: renderer
-                    )
-                    pendingFilter = nil
-                } else {
-                    self.currentFilter = nil
-                    try await captureService.startCapture(
-                        outputURL: segmentURL,
-                        mode: selectedMode,
-                        micEnabled: micEnabled,
-                        settings: settings,
-                        compositor: activeCompositor,
-                        annotationRenderer: renderer
-                    )
-                }
+                try await startCaptureWithCurrentConfig(
+                    outputURL: segmentURL,
+                    filter: activeFilter,
+                    settings: settings,
+                    compositor: activeCompositor,
+                    annotationRenderer: renderer
+                )
             } catch {
                 logger.error("Failed to start capture: \(error)")
                 state = .idle
@@ -185,14 +172,11 @@ extension RecordingCoordinator {
             return
         }
         let outputURL = desktopURL.appendingPathComponent(filename)
-        self.currentOutputURL = outputURL
-
         let settings = RecordingSettings.fromDefaults()
-        self.currentSettings = settings
 
-        segmentURLs = []
-        segmentIndex = 0
-        pausedDuration = 0
+        resetSegmentState()
+        self.currentOutputURL = outputURL
+        self.currentSettings = settings
 
         let service = WebcamRecordingService()
         service.imageAdjuster = imageAdjuster
@@ -233,6 +217,35 @@ extension RecordingCoordinator {
                 state = .idle
                 showCaptureFailedAlert(error: error)
             }
+        }
+    }
+
+    /// Start capture using either a pre-built SCContentFilter or the selected CaptureMode.
+    func startCaptureWithCurrentConfig(
+        outputURL: URL,
+        filter: SCContentFilter?,
+        settings: RecordingSettings,
+        compositor: WebcamCompositor?,
+        annotationRenderer: AnnotationRenderer?
+    ) async throws {
+        if let filter {
+            try await captureService.startCapture(
+                outputURL: outputURL,
+                filter: filter,
+                micEnabled: micEnabled,
+                settings: settings,
+                compositor: compositor,
+                annotationRenderer: annotationRenderer
+            )
+        } else {
+            try await captureService.startCapture(
+                outputURL: outputURL,
+                mode: selectedMode,
+                micEnabled: micEnabled,
+                settings: settings,
+                compositor: compositor,
+                annotationRenderer: annotationRenderer
+            )
         }
     }
 

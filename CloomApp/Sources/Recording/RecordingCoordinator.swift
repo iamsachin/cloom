@@ -65,6 +65,16 @@ final class RecordingCoordinator: ObservableObject {
         captureService.delegate = self
     }
 
+    func resetSegmentState() {
+        segmentURLs = []
+        segmentIndex = 0
+        pausedDuration = 0
+        recordingStartedAt = nil
+        currentSettings = nil
+        currentFilter = nil
+        currentOutputURL = nil
+    }
+
     // MARK: - Public API
 
     func startRecording() {
@@ -227,12 +237,7 @@ final class RecordingCoordinator: ObservableObject {
                 }
             }
 
-            segmentURLs = []
-            segmentIndex = 0
-            pausedDuration = 0
-            recordingStartedAt = nil
-            currentSettings = nil
-            currentFilter = nil
+            resetSegmentState()
         }
     }
 
