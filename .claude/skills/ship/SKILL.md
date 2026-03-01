@@ -18,7 +18,8 @@ Commit current changes, push to a feature branch, and create a pull request on G
    - Short title (under 70 chars)
    - Body with `## Summary` (1-3 bullets) and `## Test plan` (checklist)
    - Footer: `🤖 Generated with [Claude Code](https://claude.com/claude-code)`
-7. Return the PR URL.
+7. Stop local log streaming: `.claude/skills/logs/logs.sh off`
+8. Return the PR URL.
 
 ## Rules
 
