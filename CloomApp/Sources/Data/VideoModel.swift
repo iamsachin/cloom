@@ -13,7 +13,7 @@ final class VideoRecord {
     var width: Int32
     var height: Int32
     var fileSizeBytes: Int64
-    var recordingType: String  // "screenAndWebcam" | "screenOnly" | "webcamOnly"
+    var recordingType: String  // "screenAndWebcam" | "screenOnly"
     var webcamFilePath: String?
 
     // Relationships

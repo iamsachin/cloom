@@ -160,7 +160,4 @@ final class AppState: ObservableObject {
         recordingCoordinator.cancelReadyState()
     }
 
-    func startWebcamOnlyRecording() {
-        recordingCoordinator.startWebcamOnlyRecording()
-    }
 }

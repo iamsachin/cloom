@@ -15,7 +15,7 @@ extension RecordingCoordinator {
     }
 
     func beginPreRecordingFlow() {
-        if pendingFilter == nil && selectedMode != .webcamOnly {
+        if pendingFilter == nil {
             Task {
                 do {
                     _ = try await SCShareableContent.current
@@ -86,12 +86,6 @@ extension RecordingCoordinator {
             return
         }
 
-        // Handle webcam-only mode separately
-        if selectedMode == .webcamOnly {
-            beginWebcamOnlyCapture()
-            return
-        }
-
         let filename = "Cloom Recording \(Self.recordingTimestamp()).mp4"
 
         guard let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first else {
@@ -158,62 +152,6 @@ extension RecordingCoordinator {
                 )
             } catch {
                 logger.error("Failed to start capture: \(error)")
-                state = .idle
-                showCaptureFailedAlert(error: error)
-            }
-        }
-    }
-
-    func beginWebcamOnlyCapture() {
-        let filename = "Cloom Webcam \(Self.recordingTimestamp()).mp4"
-
-        guard let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first else {
-            logger.error("Failed to locate desktop directory")
-            return
-        }
-        let outputURL = desktopURL.appendingPathComponent(filename)
-        let settings = RecordingSettings.fromDefaults()
-
-        resetSegmentState()
-        self.currentOutputURL = outputURL
-        self.currentSettings = settings
-
-        let service = WebcamRecordingService()
-        service.imageAdjuster = imageAdjuster
-        let gainProc = MicGainProcessor(sensitivity: settings.micSensitivity)
-        if !gainProc.isUnity { service.micGainProcessor = gainProc }
-        if blurEnabled {
-            let segmenter = PersonSegmenter()
-            segmenter.isEnabled = true
-            service.personSegmenter = segmenter
-        }
-        self.webcamRecordingService = service
-
-        // Show bubble for preview
-        if webcamBubble == nil {
-            webcamBubble = WebcamBubbleWindow()
-        }
-        service.onPreviewFrame = { [weak self] image, pixelBuffer in
-            Task { @MainActor in
-                self?.webcamBubble?.updateFrame(image)
-            }
-        }
-
-        Task {
-            do {
-                try await service.startRecording(
-                    outputURL: outputURL,
-                    cameraDeviceID: settings.cameraDeviceID,
-                    micEnabled: micEnabled,
-                    micDeviceID: settings.micDeviceID
-                )
-                let now = Date()
-                state = .recording(startedAt: now)
-                recordingStartedAt = now
-                webcamBubble?.show()
-                showRecordingToolbar(startedAt: now)
-            } catch {
-                logger.error("Failed to start webcam-only capture: \(error)")
                 state = .idle
                 showCaptureFailedAlert(error: error)
             }

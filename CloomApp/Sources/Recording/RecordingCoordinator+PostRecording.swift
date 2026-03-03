@@ -46,9 +46,7 @@ extension RecordingCoordinator {
         let thumbnailPath = await ThumbnailGenerator.generateThumbnail(for: outputURL) ?? ""
 
         let recordingType: String
-        if selectedMode == .webcamOnly {
-            recordingType = "webcamOnly"
-        } else if cameraEnabled {
+        if cameraEnabled {
             recordingType = "screenAndWebcam"
         } else {
             recordingType = "screenOnly"

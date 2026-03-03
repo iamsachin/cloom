@@ -43,14 +43,13 @@
 - Noise cancellation on microphone samples
 
 **Key Types:**
-- `CaptureMode` (enum) — fullScreen(displayID), window(windowID), region(displayID, rect), webcamOnly
+- `CaptureMode` (enum) — fullScreen(displayID), window(windowID), region(displayID, rect)
 - `ScreenCaptureService: @MainActor` + 2 extensions (Configuration, StreamOutput) — SCStreamOutput pipeline with OSAllocatedUnfairLock<CaptureState>, integrates WebcamCompositor + AnnotationRenderer + MicGainProcessor
 - `CameraService: @unchecked Sendable` — AVCaptureSession wrapper, device selection, frame delivery via onFrame callback
 - `PersonSegmenter` — VNGeneratePersonSegmentationRequest + CIFilter blur
 - `ContentPicker` — SCContentSharingPicker wrapper for window/display selection
 - `RegionSelectionWindow` — transparent NSPanel with rubber-band selection
 - `WebcamBubbleWindow` — circular/rounded/pill NSPanel, draggable, click-to-cycle size
-- `WebcamRecordingService` — webcam-only AVAssetWriter (HEVC 720p, camera+mic)
 - `WebcamShape` (enum) — circle, roundedRect, pill with aspectRatio and cornerRadius
 - `WebcamFrame` (enum) — emoji frame decorations: none, geometric, tropical, celebration
 - `EmojiFrameRenderer` — shared sticker positioning (polar→Cartesian) + CGImage rendering via CoreText

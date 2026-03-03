@@ -55,7 +55,7 @@ cloom/
 │   │   │   ├── BubbleContentView.swift        # NSView for webcam bubble click/drag (extracted from WebcamBubbleWindow)
 │   │   │   ├── BubbleLayerBuilder.swift       # Panel creation, emoji frame, rebuild (extracted from WebcamBubbleWindow)
 │   │   │   ├── CameraService.swift            # AVCaptureSession wrapper, frame callback
-│   │   │   ├── CaptureMode.swift              # enum: fullScreen, window, region, webcamOnly
+│   │   │   ├── CaptureMode.swift              # enum: fullScreen, window, region
 │   │   │   ├── ContentPicker.swift            # SCContentSharingPicker wrapper
 │   │   │   ├── EmojiFrameRenderer.swift       # Shared sticker positioning + CGImage rendering
 │   │   │   ├── MicGainProcessor.swift         # Mic sensitivity/gain applied to mic samples
@@ -68,7 +68,6 @@ cloom/
 │   │   │   ├── WebcamBubbleWindow.swift       # Circular/shaped draggable NSPanel
 │   │   │   ├── WebcamFrame.swift              # Emoji frame decorations (geometric/tropical/celebration)
 │   │   │   ├── WebcamImageAdjustments.swift   # CIColorControls + CIHighlightShadowAdjust + CITemperatureAndTint
-│   │   │   ├── WebcamRecordingService.swift   # Webcam-only AVAssetWriter recording
 │   │   │   └── WebcamShape.swift              # enum: circle, roundedRect, pill
 │   │   ├── Compositing/
 │   │   │   ├── ExportProgressWindow.swift     # Export/stitch progress modal

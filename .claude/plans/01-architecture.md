@@ -50,9 +50,6 @@ The actual implementation uses a **single recording path** with real-time compos
 
 This produces a **single composited MP4** — no separate webcam file, no post-process compositing step.
 
-### Webcam-Only Mode
-A separate `WebcamRecordingService` handles camera-only recording with its own AVAssetWriter, applying the same image adjustments + background blur pipeline.
-
 ### Pause/Resume
 Pause stops the VideoWriter and creates a segment file. Resume starts a new segment. `SegmentStitcher` uses AVMutableComposition to concatenate all segments into a single video after recording stops.
 
