@@ -90,12 +90,6 @@ struct MenuBarView: View {
                     appState.startRegionSelection()
                 }
 
-                Divider()
-
-                Button("Webcam Only") {
-                    showPostOnboardingHint = false
-                    appState.startWebcamOnlyRecording()
-                }
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
 

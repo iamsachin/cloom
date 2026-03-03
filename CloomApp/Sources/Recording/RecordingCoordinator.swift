@@ -35,7 +35,6 @@ final class RecordingCoordinator: ObservableObject {
 
     // Webcam enhancements
     var imageAdjuster: WebcamImageAdjuster?
-    var webcamRecordingService: WebcamRecordingService?
     var webcamSettingsObserver: NSObjectProtocol?
 
     // Annotations
@@ -107,13 +106,6 @@ final class RecordingCoordinator: ObservableObject {
         beginPreRecordingFlow()
     }
 
-    func startWebcamOnlyRecording() {
-        guard state.isIdle else { return }
-        selectedMode = .webcamOnly
-        cameraEnabled = true
-        beginPreRecordingFlow()
-    }
-
     func startRegionSelection() {
         regionSelector.show(
             onSelection: { [weak self] displayID, rect in
@@ -155,7 +147,6 @@ final class RecordingCoordinator: ObservableObject {
         guard state.isActiveOrPaused else { return }
 
         let wasPaused = state.isPaused
-        let isWebcamOnly = selectedMode == .webcamOnly
         state = .stopping
         recordingToolbar.dismiss()
         regionHighlight.dismiss()
@@ -169,72 +160,56 @@ final class RecordingCoordinator: ObservableObject {
         tracker.start(title: recordingTitle)
 
         Task {
-            if isWebcamOnly {
-                await webcamRecordingService?.stopRecording()
-                webcamRecordingService = nil
-                webcamBubble?.dismiss()
-                webcamBubble = nil
-                imageAdjuster = nil
+            stopWebcam()
 
-                guard let finalURL = currentOutputURL else {
-                    tracker.finish()
-                    state = .idle
-                    return
+            if !wasPaused {
+                do {
+                    try await captureService.stopCapture()
+                } catch {
+                    logger.error("Failed to stop capture: \(error)")
+                }
+            }
+
+            guard let finalURL = currentOutputURL else {
+                tracker.finish()
+                state = .idle
+                return
+            }
+
+            if segmentURLs.count <= 1 {
+                if let segmentURL = segmentURLs.first {
+                    tracker.updateStep(.mixingAudio)
+                    do {
+                        try await stitcher.mixdownAudio(inputURL: segmentURL, to: finalURL)
+                    } catch {
+                        logger.error("Failed to mixdown audio: \(error), falling back to move")
+                        try? FileManager.default.moveItem(at: segmentURL, to: finalURL)
+                    }
                 }
                 tracker.updateStep(.extractingMetadata)
                 await handleRecordingFinished(outputURL: finalURL)
             } else {
-                stopWebcam()
+                tracker.updateStep(.stitchingSegments)
+                let progressWindow = ExportProgressWindow()
+                self.exportProgressWindow = progressWindow
+                progressWindow.show(message: "Stitching segments...")
 
-                if !wasPaused {
-                    do {
-                        try await captureService.stopCapture()
-                    } catch {
-                        logger.error("Failed to stop capture: \(error)")
-                    }
-                }
-
-                guard let finalURL = currentOutputURL else {
-                    tracker.finish()
-                    state = .idle
-                    return
-                }
-
-                if segmentURLs.count <= 1 {
-                    if let segmentURL = segmentURLs.first {
-                        tracker.updateStep(.mixingAudio)
-                        do {
-                            try await stitcher.mixdownAudio(inputURL: segmentURL, to: finalURL)
-                        } catch {
-                            logger.error("Failed to mixdown audio: \(error), falling back to move")
-                            try? FileManager.default.moveItem(at: segmentURL, to: finalURL)
+                do {
+                    try await stitcher.stitch(segments: segmentURLs, to: finalURL) { progress in
+                        Task { @MainActor in
+                            progressWindow.updateProgress(progress)
                         }
                     }
+                    progressWindow.dismiss()
                     tracker.updateStep(.extractingMetadata)
                     await handleRecordingFinished(outputURL: finalURL)
-                } else {
-                    tracker.updateStep(.stitchingSegments)
-                    let progressWindow = ExportProgressWindow()
-                    self.exportProgressWindow = progressWindow
-                    progressWindow.show(message: "Stitching segments...")
-
-                    do {
-                        try await stitcher.stitch(segments: segmentURLs, to: finalURL) { progress in
-                            Task { @MainActor in
-                                progressWindow.updateProgress(progress)
-                            }
-                        }
-                        progressWindow.dismiss()
-                        tracker.updateStep(.extractingMetadata)
-                        await handleRecordingFinished(outputURL: finalURL)
-                    } catch {
-                        progressWindow.dismiss()
-                        tracker.finish()
-                        logger.error("Failed to stitch segments: \(error)")
-                        state = .idle
-                    }
-                    self.exportProgressWindow = nil
+                } catch {
+                    progressWindow.dismiss()
+                    tracker.finish()
+                    logger.error("Failed to stitch segments: \(error)")
+                    state = .idle
                 }
+                self.exportProgressWindow = nil
             }
 
             resetSegmentState()

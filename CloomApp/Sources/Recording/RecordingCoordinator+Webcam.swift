@@ -113,8 +113,6 @@ extension RecordingCoordinator {
         case .region(_, let rect):
             return rect
 
-        case .webcamOnly:
-            return NSScreen.main?.frame ?? .zero
         }
     }
 }

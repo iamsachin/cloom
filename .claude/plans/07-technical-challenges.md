@@ -188,7 +188,7 @@
 
 ## 16. CaptureMode Exhaustiveness
 
-**Problem:** Adding new enum cases (e.g., `.webcamOnly`) requires updating ALL switch statements.
+**Problem:** Adding new enum cases requires updating ALL switch statements.
 
 **Solution:** Audit all switch statements on `CaptureMode` when adding cases — particularly `ScreenCaptureService.swift`'s `buildFilter` and `configureStream` methods.
 

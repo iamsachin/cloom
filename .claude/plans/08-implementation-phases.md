@@ -187,9 +187,9 @@
 | 89 | Color temperature / white balance (CITemperatureAndTint, 2000–10000K) | Capture/ | B9 |
 | 90 | Screen recording adjustments (brightness/contrast in EditorExportView, CIColorControls) | Editor/ | E7 |
 | 91 | Discard recording (DiscardConfirmation alert, performDiscard cleanup) | Recording/ | C7 |
-| 92 | Webcam-only recording mode (WebcamRecordingService, HEVC 720p, camera+mic) | Capture/ | A3 variant |
+| ~~92~~ | ~~Webcam-only recording mode~~ (removed — Cloom focuses on screen recording) | — | — |
 
-**Milestone:** Webcam shapes, themes, image adjustments, temperature/tint. Floating control pill. Discard recording. Webcam-only mode. Export adjustments.
+**Milestone:** Webcam shapes, themes, image adjustments, temperature/tint. Floating control pill. Discard recording. Export adjustments.
 
 ---
 

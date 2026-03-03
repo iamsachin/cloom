@@ -33,8 +33,6 @@ extension ScreenCaptureService {
             }
             return SCContentFilter(display: display, excludingApplications: selfApp, exceptingWindows: [])
 
-        case .webcamOnly:
-            throw CaptureError.noDisplay
         }
     }
 
@@ -67,8 +65,6 @@ extension ScreenCaptureService {
                 )
             )
 
-        case .webcamOnly:
-            break
         }
     }
 

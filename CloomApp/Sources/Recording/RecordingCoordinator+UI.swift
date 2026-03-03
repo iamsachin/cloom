@@ -44,28 +44,19 @@ extension RecordingCoordinator {
 
     func performDiscard() {
         let wasPaused = state.isPaused
-        let isWebcamOnly = selectedMode == .webcamOnly
         state = .stopping
         recordingToolbar.dismiss()
         regionHighlight.dismiss()
         cleanupAnnotations()
 
         Task {
-            if isWebcamOnly {
-                await webcamRecordingService?.stopRecording()
-                webcamRecordingService = nil
-                webcamBubble?.dismiss()
-                webcamBubble = nil
-                imageAdjuster = nil
-            } else {
-                stopWebcam()
+            stopWebcam()
 
-                if !wasPaused {
-                    do {
-                        try await captureService.stopCapture()
-                    } catch {
-                        logger.error("Failed to stop capture during discard: \(error)")
-                    }
+            if !wasPaused {
+                do {
+                    try await captureService.stopCapture()
+                } catch {
+                    logger.error("Failed to stop capture during discard: \(error)")
                 }
             }
 
