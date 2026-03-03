@@ -33,6 +33,10 @@ final class EditorState {
     private(set) var captionPhrases: [CaptionPhrase] = []
     private(set) var transcriptSentences: [TranscriptSentence] = []
 
+    // Transcript polling
+    private(set) var isTranscribing: Bool = false
+    @ObservationIgnored private var transcriptPollingTask: Task<Void, Never>?
+
     // PiP
     @ObservationIgnored var pipController: AVPictureInPictureController?
 
@@ -82,9 +86,16 @@ final class EditorState {
 
         setupTimeObserver()
         setupEndObserver()
+
+        // If transcript isn't loaded yet and AI is processing, poll until it appears
+        if transcriptWords.isEmpty && AIProcessingTracker.shared.isProcessing(videoRecord.id) {
+            isTranscribing = true
+            startTranscriptPolling()
+        }
     }
 
     deinit {
+        transcriptPollingTask?.cancel()
         if let token = timeObserverToken, let p = playerRef {
             p.removeTimeObserver(token)
         }
@@ -144,6 +155,68 @@ final class EditorState {
 
     func toggleTranscript() {
         showTranscript.toggle()
+    }
+
+    /// Poll for transcript data using a fresh ModelContext until it appears.
+    private func startTranscriptPolling() {
+        transcriptPollingTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self, self.transcriptWords.isEmpty else { return }
+                if self.tryLoadTranscript() {
+                    self.isTranscribing = false
+                    logger.info("Transcript loaded via polling")
+                    return
+                }
+            }
+        }
+    }
+
+    /// Try to load transcript from a fresh ModelContext. Returns true if transcript was found.
+    @discardableResult
+    private func tryLoadTranscript() -> Bool {
+        let videoID = videoRecord.id
+        let freshContext = ModelContext(modelContext.container)
+        let predicate = #Predicate<VideoRecord> { $0.id == videoID }
+        var descriptor = FetchDescriptor<VideoRecord>(predicate: predicate)
+        descriptor.fetchLimit = 1
+
+        guard let freshVideo = try? freshContext.fetch(descriptor).first,
+              let transcript = freshVideo.transcript else { return false }
+
+        let words = transcript.words
+            .sorted { $0.startMs < $1.startMs }
+            .map { TranscriptWordSnapshot(word: $0.word, startMs: $0.startMs, endMs: $0.endMs, confidence: $0.confidence, isFillerWord: $0.isFillerWord, isParagraphStart: $0.isParagraphStart) }
+        guard !words.isEmpty else { return false }
+
+        self.transcriptWords = words
+        self.captionPhrases = CaptionOverlayView.buildPhrases(from: words)
+        self.transcriptSentences = TranscriptPanelView.groupIntoSentences(words)
+
+        self.chapters = freshVideo.chapters
+            .sorted { $0.startMs < $1.startMs }
+            .map { ChapterSnapshot(id: $0.id, title: $0.title, startMs: $0.startMs) }
+
+        return true
+    }
+
+    /// Manually trigger transcript generation for this video.
+    func generateTranscript() {
+        guard !isTranscribing, transcriptWords.isEmpty else { return }
+        isTranscribing = true
+        let videoID = videoRecord.id
+        let filePath = videoRecord.filePath
+        let container = modelContext.container
+
+        Task.detached {
+            let orchestrator = AIOrchestrator()
+            await orchestrator.runPipeline(
+                videoRecordID: videoID,
+                audioPath: filePath,
+                modelContainer: container
+            )
+        }
+        startTranscriptPolling()
     }
 
     // MARK: - PiP

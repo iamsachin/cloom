@@ -9,19 +9,49 @@ struct VideoCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Thumbnail with duration badge
-            ZStack(alignment: .bottomTrailing) {
+            // Thumbnail with badges
+            ZStack {
                 AsyncThumbnailImage(thumbnailPath: video.thumbnailPath)
                     .aspectRatio(16 / 9, contentMode: .fit)
 
-                // Duration badge
-                Text(video.durationMs.formattedDuration)
-                    .font(.system(size: 11, weight: .medium).monospacedDigit())
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.durationBadge, in: RoundedRectangle(cornerRadius: 4))
-                    .padding(8)
+                // Top-right: transcript status badge
+                VStack {
+                    HStack {
+                        Spacer()
+                        if AIProcessingTracker.shared.isProcessing(video.id) {
+                            HStack(spacing: 4) {
+                                ProgressView()
+                                    .controlSize(.mini)
+                                Text("Transcribing")
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(.orange.opacity(0.85), in: RoundedRectangle(cornerRadius: 4))
+                            .padding(6)
+                        } else if video.hasTranscript {
+                            Image(systemName: "captions.bubble.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.white)
+                                .frame(width: 22, height: 22)
+                                .background(.blue.opacity(0.8), in: Circle())
+                                .padding(6)
+                        }
+                    }
+                    Spacer()
+                    // Bottom-right: duration badge
+                    HStack {
+                        Spacer()
+                        Text(video.durationMs.formattedDuration)
+                            .font(.system(size: 11, weight: .medium).monospacedDigit())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.durationBadge, in: RoundedRectangle(cornerRadius: 4))
+                            .padding(8)
+                    }
+                }
             }
             .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10, topTrailingRadius: 10))
 
@@ -33,18 +63,6 @@ struct VideoCardView: View {
                     .foregroundStyle(.primary)
 
                 HStack(spacing: 4) {
-                    if AIProcessingTracker.shared.isProcessing(video.id) {
-                        ProgressView()
-                            .controlSize(.mini)
-                        Text("Transcribing...")
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
-                    } else if video.hasTranscript {
-                        Image(systemName: "text.bubble.fill")
-                            .font(.system(size: 9))
-                            .foregroundStyle(.blue.opacity(0.8))
-                    }
-
                     CloudStatusBadgeView(videoId: video.id, uploadStatus: video.uploadStatus ?? "")
 
                     Spacer()

@@ -100,7 +100,7 @@ struct EditorContentView: View {
                 .padding(.vertical, 8)
             }
 
-            if state.showTranscript && state.videoRecord.hasTranscript {
+            if state.showTranscript && !state.transcriptWords.isEmpty {
                 Divider()
                 TranscriptPanelView(editorState: state)
             }

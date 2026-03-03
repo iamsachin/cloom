@@ -157,7 +157,7 @@ struct EditorToolbarView: View {
 
     @ViewBuilder
     private var transcriptControls: some View {
-        if state.videoRecord.hasTranscript {
+        if !state.transcriptWords.isEmpty {
             Button {
                 state.toggleCaptions()
             } label: {
@@ -173,6 +173,20 @@ struct EditorToolbarView: View {
             }
             .help("Toggle transcript")
             .accessibilityLabel(state.showTranscript ? "Hide transcript" : "Show transcript")
+        } else if state.isTranscribing {
+            HStack(spacing: 4) {
+                ProgressView().controlSize(.mini)
+                Text("Transcribing...")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+        } else {
+            Button {
+                state.generateTranscript()
+            } label: {
+                Label("Transcribe", systemImage: "waveform")
+            }
+            .help("Generate transcript for this video")
         }
     }
 

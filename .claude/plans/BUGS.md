@@ -4,6 +4,18 @@ Chronological record of bugs fixed, with root cause analysis and PR links.
 
 ---
 
+## #39 — Transcript not appearing in player when opened before transcription completes
+**Date:** 2026-03-03
+**PR:** [#39](https://github.com/iamsachin/cloom/pull/39)
+
+**Symptom:** Opening the editor/player view while transcription was in progress meant the transcript never appeared — user had to go back to library and re-open the video.
+
+**Root cause:** `EditorState.init` loaded transcript words once from `videoRecord.transcript`. If transcription hadn't completed yet, `transcriptWords` was empty and never updated. Attempts to use `@Observable` `onChange` and `NotificationCenter` `onReceive` failed due to SwiftData cross-context merge timing — `TranscriptPersistenceService` saves in a private `ModelContext`, and the editor's context didn't merge fast enough for reactive approaches.
+
+**Fix:** Added polling in `EditorState` — when init detects AI processing is active for the video, a background task polls every 2 seconds using a fresh `ModelContext` (reads directly from the persistent store). Polling stops once transcript words are found.
+
+---
+
 ## #37 — Subtitle export fails with "The operation could not be completed"
 **Date:** 2026-03-03
 **PR:** [#37](https://github.com/iamsachin/cloom/pull/37)
