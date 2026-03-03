@@ -35,6 +35,10 @@
 ## Progress Tracking
 - After completing each phase, mark it as done in the progress tracker (`.claude/plans/PROGRESS.md`) before moving on.
 
+## Bug Tracking
+- After fixing any bug, add an entry to `.claude/plans/BUGS.md` with: PR link, date, symptom, root cause, and fix summary.
+- Keep entries in reverse chronological order (newest first).
+
 ## Xcode Build & Run
 - After rebuilding (Cmd+R), macOS resets TCC permissions for the debug build. Run these before testing:
   ```
@@ -44,8 +48,8 @@
   ```
 
 ## Local Logging
-- When starting work on a task, run `.claude/skills/logs/logs.sh on` to stream app logs to `/tmp/cloom-logs/cloom.log`.
-- Use `.claude/skills/logs/logs.sh read` to tail logs when diagnosing issues.
+- When starting work on a task, run `/logs on` skill to stream app logs to `/tmp/cloom-logs/cloom.log`.
+- Use `/logs read` skill to tail logs when diagnosing issues.
 - Log streaming is automatically stopped by the `/ship` skill.
 
 ## Tools & Skills

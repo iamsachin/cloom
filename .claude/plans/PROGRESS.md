@@ -338,9 +338,7 @@ Split large files into focused, single-responsibility modules following best pra
 **Date:** 2026-02-25
 
 ### Bug Fixes
-- [x] Task 107 — Fix export dropping audio: EditorCompositionBuilder now inserts ALL source audio tracks (not just Track 0), builds AVMutableAudioMix for multi-track mixdown
-- [x] Task 108 — Fix raw recordings for web players: SegmentStitcher handles multiple audio tracks per segment, new `mixdownAudio()` re-exports multi-track files into single mixed stereo output
-- [x] Task 109 — RecordingCoordinator uses mixdownAudio for single-segment path (with fallback to plain moveItem)
+- [x] Task 107–109 — Fix audio export (silent output, missing tracks, web player compat) — see [BUGS.md #19](BUGS.md#19--audio-export-bugs-silent-output-missing-tracks)
 
 ### Subtitle Embedding Feature
 - [x] Task 110 — SubtitleExportService actor: SubtitleMode enum (none/hardBurn/srtSidecar/both), EDL-aware phrase timing (trim/cuts/speed), SRT generation, pre-rendered image cache for hard-burn
@@ -482,28 +480,21 @@ Split large files into focused, single-responsibility modules following best pra
 **Status:** Complete
 **Date:** 2026-02-27
 
-Code audit and fixes to ensure Cloom survives 30-minute recordings without crashes, memory growth, audio drift, or export failures. 9 issues fixed across 4 waves, plus runtime instrumentation added.
+9 fixes across 4 waves to ensure Cloom survives 30-minute recordings. See [BUGS.md #28](BUGS.md#28--long-recording-stress-test-failures) for details.
 
 ### Wave 1: Recording Pipeline Fixes (6 issues)
-- [x] Fix 3 — Reuse compositor/renderer on pause/resume (no more new instances per cycle)
-- [x] Fix 4 — Segment cleanup on stitch failure (defer block) + crash recovery for `cloom-gif-` and `cloom_audio_chunk_` prefixes
-- [x] Fix 5 — FrameImageCache bounded eviction (max 8 entries, insertion-order tracking)
-- [x] Fix 6 — Audio buffering before first video frame (up to 50 early samples, flushed on first video PTS)
-- [x] Fix 7 — Frame drop logging milestones (1, 5, 10, 25, 50, 100, then every 100 with drop rate %)
-- [x] Fix 9 — ShapeMaskCache LRU eviction (keep 4 entries, evict oldest instead of nuke-all)
-- [x] CacheTests.swift — 5 tests for FrameImageCache and ShapeMaskCache eviction behavior
+- [x] Reuse compositor/renderer on pause/resume, bounded cache eviction, audio buffering, frame drop logging, segment cleanup
+- [x] CacheTests.swift — 5 tests for FrameImageCache and ShapeMaskCache eviction
 
-### Wave 2: Waveform Generator Rewrite (1 issue)
-- [x] Fix 2 — Single-pass streaming waveform: estimate total samples from track duration, process each buffer immediately with zero-copy CMBlockBufferGetDataPointer (fallback to CMBlockBufferCopyDataBytes). O(peakCount) memory instead of O(total_samples).
+### Wave 2: Waveform Generator Rewrite
+- [x] Single-pass streaming waveform with O(peakCount) memory
 
-### Wave 3: Whisper Audio Chunking (1 issue)
-- [x] Fix 1 — Transcribe recordings >25MB: Swift `splitAudioForTranscription()` splits audio into <20MB chunks via AVAssetExportSession; Rust `transcribe_audio_chunked()` transcribes each chunk and merges with offset-adjusted timestamps; AIOrchestrator uses chunked path when >1 chunk
-- [x] Removed hard 25MB size check from `transcribe_openai`
-- [x] 3 new Rust tests (chunked offset adjustment, text merging, empty paths)
+### Wave 3: Whisper Audio Chunking
+- [x] Split audio into <20MB chunks for transcription of long recordings
+- [x] 3 new Rust tests
 
 ### Wave 4: Recording Instrumentation
-- [x] RecordingMetrics class — tracks frame/drop counts, segments, elapsed time, peak memory via `task_info`; periodic 60s summary + final summary; thread-safe via OSAllocatedUnfairLock
-- [x] Integration: RecordingCoordinator creates/starts/stops metrics; VideoWriter reports frames/drops; ScreenCaptureService wires metrics to writer
+- [x] RecordingMetrics class — frame/drop counts, segments, peak memory, periodic summaries
 
 ### Files Changed
 | Wave | Modified | Created |
@@ -632,14 +623,8 @@ Manual upload-to-Google-Drive with shareable links. Google Sign-In SDK for OAuth
 - [x] Rewrote `RecordingToolbarPanel.swift` (123 lines) — NSPanel management only
 
 ### Task 6: Bug Fixes & Cleanup
-- [x] Removed debug UI (rustGreeting/rustVersion from AppState, Text lines from CloomApp)
-- [x] Fixed presetForQuality bug (.medium → AVAssetExportPreset1920x1080; AVAssetExportPresetHighQuality doesn't exist on macOS)
-- [x] Removed LlmProvider::Claude stub + test_validate_claude_error test
-- [x] Removed redundant fs::metadata from transcribe.rs
-- [x] Extracted recordingTimestamp() helper (eliminated duplicated DateFormatter)
-- [x] Fixed 17 silent `try? modelContext.save()` → do/catch + logger.error across 6 files
-- [x] Removed unnecessary comments from AIOrchestrator, DriveUploadManager, RecordingCoordinator
-- [x] Moved NSAlert out of AIOrchestrator → showNotification pattern
+- [x] Fixed presetForQuality bug, removed debug UI, dead code, and 17 silent `try?` sites
+- [x] Extracted recordingTimestamp() helper, moved NSAlert out of AIOrchestrator
 
 ### Task 7: Test Coverage Improvements
 - [x] Fixed RecordingSettingsTests: `fromDefaultsReturnsValidSettings` calls `RecordingSettings.fromDefaults()`
@@ -671,7 +656,7 @@ Manual upload-to-Google-Drive with shareable links. Google Sign-In SDK for OAuth
 - [x] Extracted `calculateChunkCount` and `calculateChunkDuration` from `AudioExtractor`
 
 ### Bug Fix Discovered by Tests
-- [x] Fixed `EditorCompositionBuilder.buildTimeRanges` — cuts at the start of the timeline (cutStart == currentMs) were silently ignored because `guard cutStart > currentMs` prevented advancing `currentMs` past the cut
+- [x] Fixed `EditorCompositionBuilder.buildTimeRanges` — see [BUGS.md #34](BUGS.md#34--cuts-at-timeline-start-silently-skipped-in-buildtimeranges) for details
 
 ### Priority 1 — CRITICAL (pure logic, zero tests)
 - [x] Task 157 — Export pipeline tests (14 tests): `ExportService.isExportUnmodified` (11 condition tests), `presetForQuality` (3 mapping tests)
@@ -704,6 +689,19 @@ Manual upload-to-Google-Drive with shareable links. Google Sign-In SDK for OAuth
 - `CloomTests/AudioChunkingTests.swift`
 
 **Milestone verified:** 149 new tests (141 Swift + 7 Rust + 1 updated). Total: 198 Swift tests in 30 suites + 50 Rust tests. All pass. Build succeeds. Bug fix: cuts at start of timeline now handled correctly in EditorCompositionBuilder.
+
+---
+
+## Phase 25B: Fix Subtitle Export
+**Status:** Complete
+**Date:** 2026-03-03
+**PR:** [#37](https://github.com/iamsachin/cloom/pull/37)
+
+- [x] Fixed subtitle export failure — see [BUGS.md #37](BUGS.md#37--subtitle-export-fails-with-the-operation-could-not-be-completed) for details
+- [x] Simplified `ExportWriter.swift` and `ExportService.swift` (4 clear export paths)
+- [x] Removed `[DEBUG]` log lines from export pipeline
+
+**Milestone verified:** Export with subtitles succeeds. Export without subtitles (passthrough) still works. Build succeeds.
 
 ---
 
