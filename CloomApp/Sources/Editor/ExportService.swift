@@ -32,23 +32,25 @@ enum ExportService {
             snapshot: snapshot, durationMs: durationMs
         )
 
+        // Unmodified + no subtitles → passthrough copy
         if unmodified && subtitlePhrases.isEmpty {
             try FileManager.default.copyItem(at: sourceURL, to: destURL)
             logger.info("Passthrough copy → \(destURL.lastPathComponent)")
             return
         }
 
+        // Unmodified + subtitles → inject directly into source
         if unmodified && !subtitlePhrases.isEmpty {
-            try await ExportWriter.remuxWithSubtitles(
+            try await ExportWriter.injectSubtitles(
                 sourceURL: sourceURL,
                 outputURL: destURL,
-                phrases: subtitlePhrases
-            ) { p in
-                Task { @MainActor in progress(p) }
-            }
+                phrases: subtitlePhrases,
+                durationMs: durationMs
+            ) { p in Task { @MainActor in progress(p) } }
             return
         }
 
+        // Edited: build composition
         let builder = EditorCompositionBuilder()
         let result = try await builder.build(
             edl: snapshot,
@@ -56,17 +58,28 @@ enum ExportService {
             stitchURLs: []
         )
 
-        if !subtitlePhrases.isEmpty {
-            try await ExportWriter.exportEdited(
-                composition: result.composition,
-                audioMix: result.audioMix,
-                subtitlePhrases: subtitlePhrases,
-                outputURL: destURL
-            ) { p in
-                Task { @MainActor in progress(p) }
+        // Edited + no subtitles → AVAssetExportSession
+        if subtitlePhrases.isEmpty {
+            guard let session = AVAssetExportSession(
+                asset: result.composition,
+                presetName: presetForQuality(quality)
+            ) else {
+                throw NSError(
+                    domain: "ExportService", code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Could not create export session"]
+                )
             }
+            if let audioMix = result.audioMix {
+                session.audioMix = audioMix
+            }
+            try await session.export(to: destURL, as: .mp4)
             return
         }
+
+        // Edited + subtitles → export to temp, then inject subtitles
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".mp4")
+        defer { try? FileManager.default.removeItem(at: tempURL) }
 
         guard let session = AVAssetExportSession(
             asset: result.composition,
@@ -77,12 +90,18 @@ enum ExportService {
                 userInfo: [NSLocalizedDescriptionKey: "Could not create export session"]
             )
         }
-
         if let audioMix = result.audioMix {
             session.audioMix = audioMix
         }
+        try await session.export(to: tempURL, as: .mp4)
 
-        try await session.export(to: destURL, as: .mp4)
+        let compositionDurationMs = Int64(result.composition.duration.seconds * 1000)
+        try await ExportWriter.injectSubtitles(
+            sourceURL: tempURL,
+            outputURL: destURL,
+            phrases: subtitlePhrases,
+            durationMs: compositionDurationMs
+        ) { p in Task { @MainActor in progress(p) } }
     }
 
     static func presetForQuality(_ quality: VideoQuality) -> String {
