@@ -61,6 +61,9 @@ targets:
           - "-lcloom_core"
         SWIFT_OBJC_BRIDGING_HEADER: CloomApp/Sources/Bridge/Cloom-Bridging-Header.h
         SWIFT_ENABLE_EXPLICIT_MODULES: NO
+        OTHER_SWIFT_FLAGS:
+          - "-Xcc"
+          - "-Wno-incomplete-umbrella"
         # LSUIElement is set in Info.plist (menu bar app, no dock icon)
     dependencies:
       - package: GoogleSignIn
