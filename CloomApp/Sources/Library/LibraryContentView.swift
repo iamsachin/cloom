@@ -101,7 +101,7 @@ struct LibraryContentView: View {
                 ContentUnavailableView(
                     "No Recordings Yet",
                     systemImage: "record.circle",
-                    description: Text("Start a recording from the menu bar to get started.")
+                    description: Text("Click the menu bar icon or press your global hotkey to start recording.")
                 )
             } else if filteredVideos.isEmpty && !PostRecordingTracker.shared.isProcessing {
                 ContentUnavailableView.search(text: debouncedSearchText.isEmpty ? "No videos" : debouncedSearchText)
@@ -109,11 +109,14 @@ struct LibraryContentView: View {
                 switch navigationState.viewStyle {
                 case .grid:
                     gridContent
+                        .transition(.opacity)
                 case .list:
                     listContent
+                        .transition(.opacity)
                 }
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: navigationState.viewStyle)
         .navigationTitle(navigationTitle)
         .searchable(text: $searchText, prompt: "Search videos...")
         .onChange(of: searchText) { _, newValue in

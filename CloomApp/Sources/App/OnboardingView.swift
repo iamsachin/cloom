@@ -52,7 +52,7 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity)
 
                 Divider()
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 16)
 
                 // Right column — Optional (Accessibility + AI) + CTA
                 VStack(spacing: 0) {
@@ -89,6 +89,9 @@ struct OnboardingView: View {
 
             // Footer CTA
             VStack(spacing: 6) {
+                Divider()
+                    .padding(.bottom, 4)
+
                 Button {
                     hasCompletedOnboarding = true
                     showPostOnboardingHint = true
@@ -96,12 +99,15 @@ struct OnboardingView: View {
                     dismissWindow(id: "onboarding")
                 } label: {
                     Text("Let's Record!")
+                        .font(.headline)
                         .frame(maxWidth: 280)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .disabled(!permissionChecker.requiredGranted)
                 .tint(permissionChecker.requiredGranted ? .accentColor : .gray)
+                .scaleEffect(permissionChecker.requiredGranted ? 1.0 : 0.96)
+                .animation(.spring(response: 0.35, dampingFraction: 0.7), value: permissionChecker.requiredGranted)
 
                 if !permissionChecker.requiredGranted {
                     Text("Grant the required permissions to continue")
@@ -144,6 +150,7 @@ struct OnboardingView: View {
             Image(systemName: kind.icon)
                 .font(.title2)
                 .foregroundStyle(granted ? .green : .secondary)
+                .contentTransition(.symbolEffect(.replace))
                 .frame(width: 28)
                 .padding(.top, 2)
 
@@ -163,6 +170,7 @@ struct OnboardingView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.title2)
                     .foregroundStyle(.green)
+                    .transition(.scale.combined(with: .opacity))
                     .padding(.top, 2)
             } else {
                 Button("Grant") {
@@ -173,5 +181,12 @@ struct OnboardingView: View {
                 .padding(.top, 2)
             }
         }
+        .padding(.vertical, 2)
+        .padding(.horizontal, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(granted ? Color.permissionGrantedBackground : .clear)
+        )
+        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: granted)
     }
 }

@@ -99,6 +99,7 @@ cloom/
 │   │   │   ├── EditorState.swift              # @Observable @MainActor editing state
 │   │   │   ├── EditorState+Bookmarks.swift    # Bookmark CRUD extension
 │   │   │   ├── EditorToolbarView.swift        # Playback/cut/chapter/export controls
+│   │   │   ├── HoverButtonStyle.swift         # Subtle hover background for icon-only toolbar buttons
 │   │   │   ├── ExportWriter.swift             # AVAssetReader/Writer + tx3g subtitle embedding (remux + re-encode)
 │   │   │   ├── ExportService.swift              # MP4 export logic (extracted from EditorExportView)
 │   │   │   ├── ExportWriter+Subtitles.swift    # tx3g subtitle track embedding extension
@@ -214,7 +215,7 @@ cloom/
 | Capture/ | 18 | Screen capture, camera, webcam UI, shapes, themes, adjustments, mic gain |
 | Compositing/ | 6 | VideoWriter, webcam compositor (+ shape/emoji extensions), segment stitcher, export progress |
 | Data/ | 9 | SwiftData models (VideoRecord, FolderRecord, TagRecord, BookmarkRecord, etc.) |
-| Editor/ | 22 | EditorContentView, timeline, trim, cut, stitch, speed, export, subtitles, captions, transcript, chapters, bookmarks |
+| Editor/ | 23 | EditorContentView, timeline, trim, cut, stitch, speed, export, subtitles, captions, transcript, chapters, bookmarks |
 | Library/ | 10 | Grid, list, sidebar, cards, processing card, tags, folders, filter models |
 | Recording/ | 15 | Coordinator (split into 8 files), toolbar, pill, discard, countdown, region overlay |
 | Settings/ | 8 | Tabbed settings (5 tabs + shell + backing types + mic level monitor) |

@@ -103,6 +103,33 @@ extension Color {
         })
     }
 
+    /// Permission granted row tint — green@6% / green@10%
+    static var permissionGrantedBackground: Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.isDarkMode
+                ? NSColor.systemGreen.withAlphaComponent(0.10)
+                : NSColor.systemGreen.withAlphaComponent(0.06)
+        })
+    }
+
+    /// Subtle toolbar divider — black@8% / white@8%
+    static var toolbarSeparator: Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.isDarkMode
+                ? NSColor.white.withAlphaComponent(0.08)
+                : NSColor.black.withAlphaComponent(0.08)
+        })
+    }
+
+    /// Toolbar button hover background — black@6% / white@8%
+    static var toolbarButtonHover: Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.isDarkMode
+                ? NSColor.white.withAlphaComponent(0.08)
+                : NSColor.black.withAlphaComponent(0.06)
+        })
+    }
+
     /// Region dim overlay (outside captured area) — light: black@25%, dark: black@35%
     static var regionDim: Color {
         Color(nsColor: NSColor(name: nil) { appearance in

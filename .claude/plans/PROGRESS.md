@@ -765,7 +765,28 @@ Manual upload-to-Google-Drive with shareable links. Google Sign-In SDK for OAuth
 
 ---
 
-## Phase 26: Pre-Release
+## Phase 26: UI Polish — Welcome, Library, Editor + Smooth Waveform
+**Status:** Complete
+**Date:** 2026-03-03
+
+Visual polish pass across all three main screens plus continuous waveform rendering.
+
+### Changes
+- [x] 3 new color tokens in Theme.swift + new HoverButtonStyle.swift
+- [x] OnboardingView: permission row animations, CTA prominence, column separation
+- [x] VideoCardView: entrance fade+slide, hover scale 1.015x
+- [x] LibraryListRowView: smooth hover animation
+- [x] LibraryContentView: better empty state text, grid/list crossfade
+- [x] LibrarySidebarView: storage disk icon, secondary color
+- [x] EditorToolbarView: 4 group dividers, time hierarchy, play button prominence, hover style on 8 buttons
+- [x] EditorContentView: sidebar slide-in/out transitions
+- [x] TimelineView: smooth waveform (quadratic bezier curves instead of bars)
+
+**Milestone verified:** Build succeeds. 196 Swift tests pass.
+
+---
+
+## Phase 27: Pre-Release
 **Status:** Not started
 
 - [ ] Task 81 — Developer ID signing + notarization + DMG packaging

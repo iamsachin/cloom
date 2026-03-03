@@ -6,6 +6,7 @@ struct VideoCardView: View {
     let video: VideoRecord
 
     @State private var isHovered = false
+    @State private var hasAppeared = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -92,9 +93,17 @@ struct VideoCardView: View {
         .background(.background, in: RoundedRectangle(cornerRadius: 10))
         .shadow(color: isHovered ? .cardShadowHover : .cardShadow, radius: isHovered ? 6 : 3, y: isHovered ? 3 : 1)
         .brightness(isHovered ? 0.03 : 0)
+        .scaleEffect(isHovered ? 1.015 : 1.0)
         .animation(.easeOut(duration: 0.15), value: isHovered)
         .onHover { hovering in
             isHovered = hovering
+        }
+        .opacity(hasAppeared ? 1 : 0)
+        .offset(y: hasAppeared ? 0 : 12)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.35)) {
+                hasAppeared = true
+            }
         }
         .accessibilityLabel("\(video.title), \(video.durationMs.formattedDuration)")
     }

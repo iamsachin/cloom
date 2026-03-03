@@ -30,22 +30,25 @@ struct EditorToolbarView: View {
             state.togglePlayPause()
         } label: {
             Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
-                .font(.title3)
+                .font(.title2)
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 32, height: 32)
         }
+        .buttonStyle(.hover)
         .keyboardShortcut(.space, modifiers: [])
         .help(state.isPlaying ? "Pause" : "Play")
         .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
 
         Text(formatTime(ms: state.currentTimeMs))
-            .font(.system(.body, design: .monospaced))
-            .foregroundStyle(.secondary)
+            .font(.system(.body, design: .monospaced).weight(.medium))
+            .foregroundStyle(.primary)
 
         Text("/")
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(.quaternary)
 
         Text(formatTime(ms: state.durationMs))
-            .font(.system(.body, design: .monospaced))
-            .foregroundStyle(.secondary)
+            .font(.system(.caption, design: .monospaced))
+            .foregroundStyle(.tertiary)
     }
 
     // MARK: - Cut Controls
@@ -94,12 +97,14 @@ struct EditorToolbarView: View {
 
     @ViewBuilder
     private var trailingControls: some View {
+        // Navigation / speed group
         if !state.chapters.isEmpty {
             Button {
                 showChapterPopover.toggle()
             } label: {
                 Image(systemName: "list.bullet")
             }
+            .buttonStyle(.hover)
             .help("Chapters")
             .popover(isPresented: $showChapterPopover) {
                 ChapterNavigationView(editorState: state)
@@ -112,11 +117,15 @@ struct EditorToolbarView: View {
             Image(systemName: showBookmarksPanel ? "bookmark.fill" : "bookmark")
                 .foregroundStyle(.green)
         }
+        .buttonStyle(.hover)
         .help("Bookmarks")
         .accessibilityLabel(showBookmarksPanel ? "Hide bookmarks" : "Show bookmarks")
 
         SpeedControlView(editorState: state)
 
+        Divider().frame(height: 20)
+
+        // Editing group
         Button("Stitch") { showStitchPanel = true }
             .help("Stitch multiple clips together")
             .accessibilityLabel("Stitch clips")
@@ -126,10 +135,18 @@ struct EditorToolbarView: View {
         } label: {
             Image(systemName: "photo")
         }
+        .buttonStyle(.hover)
         .help("Set custom thumbnail")
         .accessibilityLabel("Set custom thumbnail")
 
+        Divider().frame(height: 20)
+
+        // Transcript group
         transcriptControls
+
+        Divider().frame(height: 20)
+
+        // Window / info group
         windowControls
 
         Menu {
@@ -149,6 +166,9 @@ struct EditorToolbarView: View {
         }
         .help("Copy path or reveal in Finder")
 
+        Divider().frame(height: 20)
+
+        // Share CTA
         Button("Share") { showExportSheet = true }
             .buttonStyle(.borderedProminent)
             .help("Share or export video")
@@ -163,6 +183,7 @@ struct EditorToolbarView: View {
             } label: {
                 Image(systemName: state.captionsEnabled ? "captions.bubble.fill" : "captions.bubble")
             }
+            .buttonStyle(.hover)
             .help("Toggle captions")
             .accessibilityLabel(state.captionsEnabled ? "Disable captions" : "Enable captions")
 
@@ -171,6 +192,7 @@ struct EditorToolbarView: View {
             } label: {
                 Image(systemName: state.showTranscript ? "doc.text.fill" : "doc.text")
             }
+            .buttonStyle(.hover)
             .help("Toggle transcript")
             .accessibilityLabel(state.showTranscript ? "Hide transcript" : "Show transcript")
         } else if state.isTranscribing {
@@ -197,6 +219,7 @@ struct EditorToolbarView: View {
         } label: {
             Image(systemName: "arrow.up.left.and.arrow.down.right")
         }
+        .buttonStyle(.hover)
         .help("Toggle fullscreen")
         .accessibilityLabel("Toggle fullscreen")
 
@@ -205,6 +228,7 @@ struct EditorToolbarView: View {
         } label: {
             Image(systemName: showInfoPanel ? "info.circle.fill" : "info.circle")
         }
+        .buttonStyle(.hover)
         .help("Video info")
         .accessibilityLabel(showInfoPanel ? "Hide video info" : "Show video info")
 
@@ -216,6 +240,7 @@ struct EditorToolbarView: View {
                 Image(systemName: "link")
                     .foregroundStyle(.green)
             }
+            .buttonStyle(.hover)
             .help("Copy Drive share link")
             .accessibilityLabel("Copy share link")
         }
