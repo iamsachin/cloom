@@ -17,7 +17,34 @@ Record your screen with webcam overlay, annotate in real time, edit with a non-d
 - **Google Drive** — Upload recordings directly to Google Drive with shareable links
 - **Settings** — Global hotkeys, launch at startup, video quality/FPS, mic sensitivity, dark mode, webcam customization
 
-## Requirements
+## Install
+
+### Homebrew (recommended)
+
+```bash
+brew tap iamsachin/cloom
+brew install --cask cloom
+```
+
+### Manual download
+
+Download the latest DMG from [GitHub Releases](https://github.com/iamsachin/cloom/releases), open it, and drag Cloom to your Applications folder.
+
+### First launch
+
+Cloom is ad-hoc signed (not notarized by Apple), so macOS will block it on first launch. This is a **one-time** step — after you allow it once, it won't ask again.
+
+**Option A** — System Settings:
+1. Open **System Settings → Privacy & Security**
+2. Scroll down and click **Open Anyway** next to the Cloom message
+
+**Option B** — Terminal:
+```bash
+xattr -cr /Applications/Cloom.app
+open /Applications/Cloom.app
+```
+
+## Requirements (for building from source)
 
 - macOS 26+ (Tahoe)
 - Apple Silicon (arm64)
@@ -25,7 +52,7 @@ Record your screen with webcam overlay, annotate in real time, edit with a non-d
 - Rust toolchain ([rustup](https://rustup.rs/))
 - [xcodegen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
 
-## Build
+## Build from Source
 
 ```bash
 # 1. Clone the repo
