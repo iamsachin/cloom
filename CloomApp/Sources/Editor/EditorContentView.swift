@@ -103,6 +103,7 @@ struct EditorContentView: View {
             if state.showTranscript && !state.transcriptWords.isEmpty {
                 Divider()
                 TranscriptPanelView(editorState: state)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
             }
 
             if showInfoPanel {
@@ -112,13 +113,18 @@ struct EditorContentView: View {
                     durationMs: state.videoRecord.durationMs
                 )
                 .frame(width: 260)
+                .transition(.move(edge: .trailing).combined(with: .opacity))
             }
 
             if showBookmarksPanel {
                 Divider()
                 BookmarksPanelView(editorState: state)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: state.showTranscript)
+        .animation(.easeInOut(duration: 0.25), value: showInfoPanel)
+        .animation(.easeInOut(duration: 0.25), value: showBookmarksPanel)
         .onKeyPress("b") {
             state.addBookmark(ms: state.currentTimeMs)
             return .handled

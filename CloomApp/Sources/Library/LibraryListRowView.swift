@@ -94,6 +94,7 @@ struct LibraryListRowView: View {
                 RoundedRectangle(cornerRadius: 6)
                     .fill(isHovered ? Color.listRowHover : .clear)
             )
+            .animation(.easeOut(duration: 0.15), value: isHovered)
         }
         .buttonStyle(.plain)
         .onHover { hovering in isHovered = hovering }

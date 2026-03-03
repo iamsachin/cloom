@@ -90,25 +90,63 @@ struct EditorTimelineView: View {
             let normFactor: Float = 1.0 / maxPeak
 
             Canvas { context, size in
-                let totalWidth = size.width
-                let barSpacing: CGFloat = 0.5
-                let barWidth = max(1, (totalWidth / CGFloat(peaks.count)) - barSpacing)
-                let step = totalWidth / CGFloat(peaks.count)
                 let midY = size.height / 2
+                let count = peaks.count
 
-                for (i, peak) in peaks.enumerated() {
-                    let normalized = min(peak * normFactor, 1.0)
-                    let boosted = CGFloat(sqrt(normalized))
-                    let barHeight = boosted * size.height * 0.9
-                    let x = CGFloat(i) * step
-                    let rect = CGRect(
-                        x: x,
-                        y: midY - barHeight / 2,
-                        width: barWidth,
-                        height: max(barHeight, 1)
-                    )
-                    context.fill(Path(rect), with: .color(.accentColor.opacity(0.8)))
+                // Downsample peaks for smoother curves — ~1 point per 2px
+                let targetPoints = max(4, Int(size.width / 2))
+                let stride = max(1, count / targetPoints)
+                let pointCount = (count + stride - 1) / stride
+
+                // Build amplitude array (downsampled, normalized, sqrt-boosted)
+                var amplitudes = [CGFloat](repeating: 0, count: pointCount)
+                for i in 0..<pointCount {
+                    let start = i * stride
+                    let end = min(start + stride, count)
+                    var maxVal: Float = 0
+                    for j in start..<end {
+                        maxVal = max(maxVal, peaks[j])
+                    }
+                    let normalized = min(maxVal * normFactor, 1.0)
+                    amplitudes[i] = CGFloat(sqrt(normalized)) * size.height * 0.45
                 }
+
+                let step = size.width / CGFloat(pointCount - 1)
+
+                // Build top path (above center) using smooth quadratic curves
+                var topPath = Path()
+                topPath.move(to: CGPoint(x: 0, y: midY - amplitudes[0]))
+                for i in 1..<pointCount {
+                    let prev = CGPoint(x: CGFloat(i - 1) * step, y: midY - amplitudes[i - 1])
+                    let curr = CGPoint(x: CGFloat(i) * step, y: midY - amplitudes[i])
+                    let midX = (prev.x + curr.x) / 2
+                    let midYTop = (prev.y + curr.y) / 2
+                    topPath.addQuadCurve(to: midYTop == midY ? curr : CGPoint(x: midX, y: midYTop), control: prev)
+                    topPath.addQuadCurve(to: curr, control: CGPoint(x: midX, y: midYTop))
+                }
+
+                // Continue path along bottom (mirror) back to start
+                for i in (0..<pointCount).reversed() {
+                    let curr = CGPoint(x: CGFloat(i) * step, y: midY + amplitudes[i])
+                    if i == pointCount - 1 {
+                        topPath.addLine(to: curr)
+                    } else {
+                        let next = CGPoint(x: CGFloat(i + 1) * step, y: midY + amplitudes[i + 1])
+                        let midX = (curr.x + next.x) / 2
+                        let midYBot = (curr.y + next.y) / 2
+                        topPath.addQuadCurve(to: CGPoint(x: midX, y: midYBot), control: next)
+                        topPath.addQuadCurve(to: curr, control: CGPoint(x: midX, y: midYBot))
+                    }
+                }
+                topPath.closeSubpath()
+
+                context.fill(topPath, with: .color(.accentColor.opacity(0.7)))
+
+                // Draw a thin center line
+                var centerLine = Path()
+                centerLine.move(to: CGPoint(x: 0, y: midY))
+                centerLine.addLine(to: CGPoint(x: size.width, y: midY))
+                context.stroke(centerLine, with: .color(.accentColor.opacity(0.3)), lineWidth: 0.5)
             }
             .frame(width: width, height: height)
         }

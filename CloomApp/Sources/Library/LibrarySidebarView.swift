@@ -99,11 +99,15 @@ struct LibrarySidebarView: View {
 
             Divider()
 
-            Text(storageSummary)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .padding(.vertical, 8)
-                .frame(maxWidth: .infinity)
+            HStack(spacing: 4) {
+                Image(systemName: "internaldrive")
+                    .font(.caption2)
+                Text(storageSummary)
+                    .font(.caption2)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
         }
         .navigationTitle("Library")
         .alert("New Folder", isPresented: $showNewFolderAlert) {
