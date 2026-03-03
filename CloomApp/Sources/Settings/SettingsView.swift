@@ -20,6 +20,9 @@ struct SettingsView: View {
 
             CloudSettingsTab()
                 .tabItem { Label("Cloud", systemImage: "icloud") }
+
+            AboutSettingsTab()
+                .tabItem { Label("About", systemImage: "info.circle") }
         }
         .frame(width: 600, height: 480)
     }

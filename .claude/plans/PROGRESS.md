@@ -787,9 +787,25 @@ Visual polish pass across all three main screens plus continuous waveform render
 ---
 
 ## Phase 27: Pre-Release
-**Status:** Not started
+**Status:** Complete
+**Date:** 2026-03-03
 
-- [ ] Task 81 — Developer ID signing + notarization + DMG packaging
-- [ ] Task 83 — Release notes + changelog
-- [ ] Task 143 — Check for updates (query GitHub Releases API for latest version, compare with bundled CFBundleShortVersionString, show update-available banner in library with download link to GitHub release page; also add "Check for Updates..." item in the menu bar dropdown)
-- [ ] Task 144 — About section (new Settings tab or window showing app icon, current version from CFBundleShortVersionString + build number, credits/acknowledgements, link to GitHub repo, "Check for Updates" button reusing Task 143 logic)
+### Key Decisions
+- **No Apple Developer Program** — ad-hoc signing only (free)
+- **No notarization** — users right-click → Open on first launch
+- **Custom Homebrew tap** — `iamsachin/homebrew-cloom` (not official homebrew-cask)
+- **GitHub Releases** for DMG hosting
+- **Upgrade path**: add Developer ID + notarization later if needed
+
+### Tasks
+- [x] Task 81a — Ad-hoc code signing + DMG packaging (`scripts/release.sh`: archive → `codesign --sign -` → `create-dmg`)
+- [x] Task 81b — GitHub Actions release workflow (`.github/workflows/release.yml`: build Rust + Xcode → ad-hoc sign → DMG → GitHub Release → update Homebrew tap on `v*` tag)
+- [x] Task 81c — Homebrew custom tap (created `iamsachin/homebrew-cloom` repo with `Casks/cloom.rb`, auto-updated by CI)
+- [x] Task 81d — ExportOptions.plist for Xcode archive export (ad-hoc `mac-application` method)
+- [x] Task 83 — `CHANGELOG.md` with full v0.1.0 feature list
+- [x] Task 143 — `UpdateChecker` (@Observable): queries GitHub Releases API, semantic version compare, menu bar "Update Available" item, auto-checks on launch
+- [x] Task 144 — `AboutSettingsTab`: 7th Settings tab with app icon, version, GitHub/Issues/License links, "Check for Updates" button
+
+**New files:** `scripts/release.sh`, `ExportOptions.plist`, `CHANGELOG.md`, `.github/workflows/release.yml`, `CloomApp/Sources/App/UpdateChecker.swift`, `CloomApp/Sources/Settings/AboutSettingsTab.swift`, `CloomTests/UpdateCheckerTests.swift`
+
+**Milestone verified:** Build succeeds (0 errors). 10 UpdateChecker tests pass. Homebrew tap live at github.com/iamsachin/homebrew-cloom.

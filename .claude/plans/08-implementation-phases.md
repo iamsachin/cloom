@@ -364,12 +364,36 @@ UI tests were removed — MenuBarExtra apps aren't hittable by XCUIApplication, 
 
 ---
 
-## Phase 25: Pre-Release — Not Started
+## Phase 27: Pre-Release — Complete
 
-| # | Task | Module | Features |
-|---|------|--------|----------|
-| 81 | Developer ID signing + notarization + DMG packaging | Build/Release | L1-L2 |
-| 83 | Release notes + changelog | Docs | L4 |
+### Decisions
+
+- **No Apple Developer Program** ($99/year) — shipping as a free open-source app
+- **Ad-hoc code signing** (`codesign --sign -`) — prevents "damaged app" errors, but Gatekeeper will warn "unidentified developer"
+- **No notarization** — users right-click → Open on first launch to bypass Gatekeeper
+- **DMG packaging** via `create-dmg` CLI tool — drag-to-Applications installer
+- **GitHub Releases** for hosting the DMG (predictable URL: `releases/download/v{version}/Cloom-{version}.dmg`)
+- **Custom Homebrew tap** — separate repo `iamsachin/homebrew-cloom` with `Casks/cloom.rb`
+  - Install: `brew tap iamsachin/cloom && brew install --cask cloom`
+  - No official `homebrew-cask` submission (requires 225+ stars for self-submitted apps)
+- **CI/CD via GitHub Actions** — triggered on `v*` tag push: build Rust → build Xcode → ad-hoc sign → create DMG → upload to GitHub Release → update Homebrew tap
+- **Upgrade path**: add Developer ID signing + notarization later if project grows
+
+### Tasks
+
+| # | Task | Module | Features | Details |
+|---|------|--------|----------|---------|
+| 81a | Ad-hoc signing + DMG packaging | Build/Release | L1-L2 | `scripts/release.sh`: archive → ad-hoc `codesign --sign -` → `create-dmg` for drag-to-Applications DMG |
+| 81b | GitHub Actions release workflow | CI | L1-L2 | `.github/workflows/release.yml`: build Rust + Xcode archive, ad-hoc sign, create DMG, upload to GitHub Release on `v*` tag push, auto-update Homebrew tap |
+| 81c | Homebrew custom tap | Distribution | L1-L2 | Created `iamsachin/homebrew-cloom` repo with `Casks/cloom.rb`, auto-updated by CI |
+| 81d | ExportOptions.plist | Build/Release | L1-L2 | Xcode export options for `mac-application` method (ad-hoc variant) |
+| 83 | Release notes + changelog | Docs | L4 | `CHANGELOG.md` with full v0.1.0 feature list |
+| 143 | Check for updates | App | L6 | `UpdateChecker`: queries GitHub Releases API, semantic version compare, update banner in menu bar + About tab |
+| 144 | About section | App | L7 | `AboutSettingsTab`: 7th Settings tab with app icon, version, links (GitHub, Issues, License), "Check for Updates" button |
+
+**New files:** `scripts/release.sh`, `ExportOptions.plist`, `CHANGELOG.md`, `.github/workflows/release.yml`, `UpdateChecker.swift`, `AboutSettingsTab.swift`, `UpdateCheckerTests.swift` (10 tests)
+
+**Milestone verified:** Build succeeds (0 errors). 10 UpdateChecker tests pass. Homebrew tap live at github.com/iamsachin/homebrew-cloom. CI workflow triggers on `v*` tag push.
 
 ---
 
