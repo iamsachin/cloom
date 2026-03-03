@@ -31,6 +31,7 @@ struct AsyncThumbnailImage: View {
             if let nsImage = thumbnailImage {
                 Image(nsImage: nsImage)
                     .resizable()
+                    .scaledToFill()
             } else {
                 Rectangle()
                     .fill(.quaternary)
