@@ -765,7 +765,7 @@ Manual upload-to-Google-Drive with shareable links. Google Sign-In SDK for OAuth
 
 ---
 
-## Phase 27: UI Polish — Welcome, Library, Editor + Smooth Waveform
+## Phase 26: UI Polish — Welcome, Library, Editor + Smooth Waveform
 **Status:** Complete
 **Date:** 2026-03-03
 
@@ -786,7 +786,7 @@ Visual polish pass across all three main screens plus continuous waveform render
 
 ---
 
-## Phase 26: Pre-Release
+## Phase 27: Pre-Release
 **Status:** Not started
 
 - [ ] Task 81 — Developer ID signing + notarization + DMG packaging
