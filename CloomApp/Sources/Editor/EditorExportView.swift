@@ -24,6 +24,15 @@ struct EditorExportView: View {
     private var authService: GoogleAuthService { GoogleAuthService.shared }
     private var uploadManager: DriveUploadManager { DriveUploadManager.shared }
 
+    private var exportFileName: String {
+        var name = editableTitle
+        name += "-\(selectedQuality.rawValue)"
+        if includeSubtitles {
+            name += "-sub"
+        }
+        return name + ".mp4"
+    }
+
     var body: some View {
         VStack(spacing: 20) {
             headerSection
@@ -230,7 +239,7 @@ struct EditorExportView: View {
     private func startExport() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.mpeg4Movie]
-        panel.nameFieldStringValue = editableTitle + " (Export).mp4"
+        panel.nameFieldStringValue = exportFileName
 
         guard panel.runModal() == .OK, let destURL = panel.url else { return }
 
@@ -276,7 +285,7 @@ struct EditorExportView: View {
         Task {
             do {
                 let tempDir = FileManager.default.temporaryDirectory
-                let tempURL = tempDir.appendingPathComponent("\(editableTitle) (Export).mp4")
+                let tempURL = tempDir.appendingPathComponent(exportFileName)
                 try? FileManager.default.removeItem(at: tempURL)
 
                 try await ExportService.exportMP4(

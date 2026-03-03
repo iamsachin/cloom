@@ -4,6 +4,8 @@ struct CutRegionOverlay: View {
     let editorState: EditorState
     let timelineWidth: CGFloat
 
+    @State private var hoveredCutID: String?
+
     var body: some View {
         GeometryReader { geometry in
             let height = geometry.size.height
@@ -30,8 +32,27 @@ struct CutRegionOverlay: View {
                             }
                         }
                     }
+                    .overlay(alignment: .topTrailing) {
+                        if hoveredCutID == cut.id {
+                            Button {
+                                editorState.removeCut(id: cut.id)
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(.white, .red)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(2)
+                            .transition(.opacity)
+                        }
+                    }
                     .frame(width: max(w, 2), height: height)
                     .offset(x: x)
+                    .onHover { isHovered in
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            hoveredCutID = isHovered ? cut.id : nil
+                        }
+                    }
                     .contextMenu {
                         Button("Remove Cut") {
                             editorState.removeCut(id: cut.id)
