@@ -11,6 +11,7 @@ DerivedData/
 
 # Build artifacts
 libs/
+build/
 CloomApp/Sources/Bridge/Generated/
 
 # Environment variables

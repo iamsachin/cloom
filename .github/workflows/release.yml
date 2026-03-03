@@ -1,0 +1,199 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-release:
+    name: Build & Release
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Rust toolchain ──────────────────────────────────────────────
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Cache Cargo registry & build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            cloom-core/target
+          key: rust-release-${{ runner.os }}-${{ hashFiles('cloom-core/Cargo.lock') }}
+          restore-keys: rust-release-${{ runner.os }}-
+
+      # ── Build Rust + UniFFI bindings ────────────────────────────────
+      - name: Build Rust & generate UniFFI bindings
+        run: ./build.sh
+
+      # ── Xcode project ──────────────────────────────────────────────
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app || sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Install xcodegen
+        run: brew install xcodegen || true
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      # ── Stub Secrets.xcconfig for CI ────────────────────────────────
+      - name: Create Secrets.xcconfig stub
+        run: cp CloomApp/Resources/Secrets.xcconfig.example CloomApp/Resources/Secrets.xcconfig
+
+      # ── Extract version from tag ────────────────────────────────────
+      - name: Extract version
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          echo "version=$TAG" >> "$GITHUB_OUTPUT"
+          echo "tag=v$TAG" >> "$GITHUB_OUTPUT"
+
+      # ── Update Info.plist version ───────────────────────────────────
+      - name: Set version in Info.plist
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" CloomApp/Resources/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" CloomApp/Resources/Info.plist
+
+      # ── Archive ─────────────────────────────────────────────────────
+      - name: Archive Xcode project
+        run: |
+          xcodebuild archive \
+            -scheme Cloom \
+            -archivePath build/Cloom.xcarchive \
+            -destination 'generic/platform=macOS' \
+            -configuration Release \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_ALLOWED=YES \
+            -quiet
+
+      # ── Extract & sign ──────────────────────────────────────────────
+      - name: Extract and ad-hoc sign app
+        run: |
+          cp -R build/Cloom.xcarchive/Products/Applications/Cloom.app build/Cloom.app
+          codesign --sign - --force --deep build/Cloom.app
+          codesign --verify --verbose build/Cloom.app
+
+      # ── Create DMG ──────────────────────────────────────────────────
+      - name: Install create-dmg
+        run: brew install create-dmg || true
+
+      - name: Create DMG
+        run: |
+          create-dmg \
+            --volname "Cloom" \
+            --volicon "CloomApp/Resources/Assets.xcassets/AppIcon.appiconset/icon_512x512@1x.png" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "Cloom.app" 175 190 \
+            --app-drop-link 425 190 \
+            --hide-extension "Cloom.app" \
+            "build/Cloom-${{ steps.version.outputs.version }}.dmg" \
+            "build/Cloom.app" || true
+
+      # ── Compute SHA256 ──────────────────────────────────────────────
+      - name: Compute SHA256
+        id: sha
+        run: |
+          SHA=$(shasum -a 256 "build/Cloom-${{ steps.version.outputs.version }}.dmg" | cut -d ' ' -f 1)
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "SHA256: $SHA"
+
+      # ── Create GitHub Release ───────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Cloom ${{ steps.version.outputs.tag }}
+          body: |
+            ## Cloom ${{ steps.version.outputs.tag }}
+
+            ### Installation
+
+            1. Download `Cloom-${{ steps.version.outputs.version }}.dmg` below
+            2. Open the DMG and drag **Cloom** to your Applications folder
+            3. On first launch, right-click the app and select **Open** (Gatekeeper bypass for unsigned apps)
+
+            ### Homebrew
+
+            ```bash
+            brew tap iamsachin/cloom
+            brew install --cask cloom
+            ```
+
+            ### SHA256
+
+            ```
+            ${{ steps.sha.outputs.sha256 }}
+            ```
+
+            ### System Requirements
+
+            - macOS 26.0 (Tahoe) or later
+            - Apple Silicon (arm64)
+          files: build/Cloom-${{ steps.version.outputs.version }}.dmg
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+
+      # ── Update Homebrew tap ─────────────────────────────────────────
+      - name: Update Homebrew tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "Skipping Homebrew tap update — HOMEBREW_TAP_TOKEN not set."
+            exit 0
+          fi
+
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA256="${{ steps.sha.outputs.sha256 }}"
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Cloom-${VERSION}.dmg"
+
+          CASK_CONTENT=$(cat <<CASK_EOF
+          cask "cloom" do
+            version "${VERSION}"
+            sha256 "${SHA256}"
+
+            url "${DOWNLOAD_URL}"
+            name "Cloom"
+            desc "Open-source screen recorder for macOS"
+            homepage "https://github.com/${{ github.repository }}"
+
+            depends_on macos: ">= :tahoe"
+            depends_on arch: :arm64
+
+            app "Cloom.app"
+
+            zap trash: [
+              "~/Library/Application Support/Cloom",
+              "~/Library/Preferences/com.cloom.app.plist",
+              "~/Library/Caches/com.cloom.app",
+            ]
+          end
+          CASK_EOF
+          )
+
+          # Clone the tap repo, update the cask, push
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/iamsachin/homebrew-cloom.git" /tmp/homebrew-cloom
+          mkdir -p /tmp/homebrew-cloom/Casks
+          echo "$CASK_CONTENT" > /tmp/homebrew-cloom/Casks/cloom.rb
+          cd /tmp/homebrew-cloom
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/cloom.rb
+          git diff --cached --quiet && echo "No changes to Homebrew cask" && exit 0
+          git commit -m "Update cloom to ${VERSION}"
+          git push origin main
