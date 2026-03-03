@@ -6,114 +6,82 @@ private let logger = Logger(subsystem: "com.cloom.app", category: "ExportWriter+
 
 extension ExportWriter {
 
-    /// Create AVAssetWriterInput for tx3g (3GPP Timed Text) subtitles.
-    static func createSubtitleWriterInput() -> AVAssetWriterInput {
-        let input: AVAssetWriterInput
-        if let fd = makeTx3gFormatDescription() {
-            input = AVAssetWriterInput(mediaType: .subtitle, outputSettings: nil, sourceFormatHint: fd)
-        } else {
-            logger.warning("Could not create tx3g format description, subtitle track may not work in all players")
-            input = AVAssetWriterInput(mediaType: .subtitle, outputSettings: nil)
-        }
-        input.expectsMediaDataInRealTime = false
-        return input
-    }
-
-    /// Write tx3g subtitle samples for each phrase.
-    static func writeSubtitleSamples(
-        to writerInput: AVAssetWriterInput,
+    /// Build a complete list of subtitle samples with empty gap-fillers so the
+    /// subtitle track spans the full video duration.
+    static func buildSamplesWithGaps(
         phrases: [SubtitlePhrase],
-        progress: @escaping @Sendable (Double) -> Void
-    ) async {
-        guard !phrases.isEmpty else {
-            writerInput.markAsFinished()
-            return
-        }
+        durationMs: Int64
+    ) -> [SubtitlePhrase] {
+        var samples: [SubtitlePhrase] = []
+        var cursor: Int64 = 0
 
-        guard let fd = makeTx3gFormatDescription() else {
-            logger.error("Failed to create tx3g format description for subtitle writing")
-            writerInput.markAsFinished()
-            return
-        }
-
-        nonisolated(unsafe) let input = writerInput
-
-        let phraseIndex = OSAllocatedUnfairLock(initialState: 0)
-
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            let queue = DispatchQueue(label: "com.cloom.export.subtitle")
-
-            input.requestMediaDataWhenReady(on: queue) {
-                while input.isReadyForMoreMediaData {
-                    let idx = phraseIndex.withLock { $0 }
-                    guard idx < phrases.count else {
-                        input.markAsFinished()
-                        continuation.resume()
-                        return
-                    }
-
-                    let phrase = phrases[idx]
-                    if let sb = buildTx3gSampleBuffer(phrase: phrase, formatDescription: fd) {
-                        input.append(sb)
-                    }
-
-                    let newIdx = phraseIndex.withLock { val -> Int in
-                        val += 1
-                        return val
-                    }
-                    progress(Double(newIdx) / Double(phrases.count))
-                }
+        for phrase in phrases {
+            // Fill gap before this phrase with an empty sample
+            if phrase.startMs > cursor {
+                samples.append(SubtitlePhrase(text: "", startMs: cursor, endMs: phrase.startMs))
             }
+            samples.append(phrase)
+            cursor = phrase.endMs
         }
+
+        // Trailing empty sample to cover remainder of video
+        if cursor < durationMs {
+            samples.append(SubtitlePhrase(text: "", startMs: cursor, endMs: durationMs))
+        }
+
+        return samples
     }
 
     // MARK: - tx3g Helpers
 
-    /// Shared tx3g format description builder (eliminates duplication).
+    /// Create tx3g format description using Apple's named extension keys.
     static func makeTx3gFormatDescription() -> CMFormatDescription? {
-        let tx3gInitData = Data([
-            0x00, 0x00, 0x00, 0x00, // displayFlags
-            0x00,                     // horizontal-justification (left)
-            0x01,                     // vertical-justification (bottom)
-            0x00, 0x00, 0x00, 0x00,  // background-color-rgba
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // default-text-box
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // style-record (start)
-            0x00, 0x00,             // startChar, endChar
-            0x00, 0x01,             // font-ID
-            0x00,                    // face-style-flags
-            0x12,                    // font-size (18pt)
-            0xFF, 0xFF, 0xFF, 0xFF, // text-color-rgba (white)
-        ])
+        let extensions: [CFString: Any] = [
+            kCMTextFormatDescriptionExtension_DisplayFlags: 0 as CFNumber,
+            kCMTextFormatDescriptionExtension_HorizontalJustification: 0 as CFNumber,
+            kCMTextFormatDescriptionExtension_VerticalJustification: 1 as CFNumber,
+            kCMTextFormatDescriptionExtension_BackgroundColor: [
+                kCMTextFormatDescriptionColor_Red: 0 as CFNumber,
+                kCMTextFormatDescriptionColor_Green: 0 as CFNumber,
+                kCMTextFormatDescriptionColor_Blue: 0 as CFNumber,
+                kCMTextFormatDescriptionColor_Alpha: 0 as CFNumber,
+            ] as CFDictionary,
+            kCMTextFormatDescriptionExtension_DefaultTextBox: [
+                kCMTextFormatDescriptionRect_Top: 0 as CFNumber,
+                kCMTextFormatDescriptionRect_Left: 0 as CFNumber,
+                kCMTextFormatDescriptionRect_Bottom: 0 as CFNumber,
+                kCMTextFormatDescriptionRect_Right: 0 as CFNumber,
+            ] as CFDictionary,
+            kCMTextFormatDescriptionExtension_DefaultStyle: [
+                kCMTextFormatDescriptionStyle_StartChar: 0 as CFNumber,
+                kCMTextFormatDescriptionStyle_EndChar: 0 as CFNumber,
+                kCMTextFormatDescriptionStyle_Font: 1 as CFNumber,
+                kCMTextFormatDescriptionStyle_FontFace: 0 as CFNumber,
+                kCMTextFormatDescriptionStyle_FontSize: 18 as CFNumber,
+                kCMTextFormatDescriptionStyle_ForegroundColor: [
+                    kCMTextFormatDescriptionColor_Red: 255 as CFNumber,
+                    kCMTextFormatDescriptionColor_Green: 255 as CFNumber,
+                    kCMTextFormatDescriptionColor_Blue: 255 as CFNumber,
+                    kCMTextFormatDescriptionColor_Alpha: 255 as CFNumber,
+                ] as CFDictionary,
+            ] as CFDictionary,
+            kCMTextFormatDescriptionExtension_FontTable: [
+                "1" as CFString: "Sans-Serif" as CFString,
+            ] as CFDictionary,
+        ]
 
         var formatDescription: CMFormatDescription?
-
-        tx3gInitData.withUnsafeBytes { rawBuffer in
-            let ptr = rawBuffer.baseAddress!
-            let extensions = [
-                "mdia" as CFString: [
-                    "minf" as CFString: [
-                        "stbl" as CFString: [
-                            "stsd" as CFString: [
-                                "tx3g" as CFString: NSData(bytes: ptr, length: tx3gInitData.count),
-                            ] as CFDictionary,
-                        ] as CFDictionary,
-                    ] as CFDictionary,
-                ] as CFDictionary,
-            ] as CFDictionary
-
-            CMFormatDescriptionCreate(
-                allocator: kCFAllocatorDefault,
-                mediaType: kCMMediaType_Subtitle,
-                mediaSubType: FourCharCode(0x74783367), // 'tx3g'
-                extensions: extensions,
-                formatDescriptionOut: &formatDescription
-            )
-        }
-
+        CMFormatDescriptionCreate(
+            allocator: kCFAllocatorDefault,
+            mediaType: kCMMediaType_Subtitle,
+            mediaSubType: kCMTextFormatType_3GText,
+            extensions: extensions as CFDictionary,
+            formatDescriptionOut: &formatDescription
+        )
         return formatDescription
     }
 
-    private static func buildTx3gSampleBuffer(
+    static func buildTx3gSampleBuffer(
         phrase: SubtitlePhrase,
         formatDescription: CMFormatDescription
     ) -> CMSampleBuffer? {
