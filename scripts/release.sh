@@ -58,6 +58,7 @@ xcodebuild archive \
     -archivePath "$ARCHIVE_PATH" \
     -destination 'generic/platform=macOS' \
     -configuration Release \
+    ARCHS=arm64 \
     CODE_SIGN_IDENTITY="-" \
     CODE_SIGNING_ALLOWED=YES \
     -quiet
