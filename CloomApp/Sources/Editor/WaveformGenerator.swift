@@ -64,6 +64,10 @@ actor WaveformGenerator {
         // Estimate total samples from track duration to avoid accumulating all buffers.
         // PCM output is 16-bit, so default to 48kHz stereo (2 channels) as a reasonable estimate.
         let duration = try await asset.load(.duration)
+        guard duration.isValid, duration.isNumeric else {
+            logger.warning("Audio track has invalid/indefinite duration — returning empty peaks")
+            return [Float](repeating: 0, count: peakCount)
+        }
         let durationSec = CMTimeGetSeconds(duration)
         let sampleRate: Double = 48000
         let channels: Double = 2

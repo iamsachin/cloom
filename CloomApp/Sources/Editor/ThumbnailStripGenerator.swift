@@ -7,6 +7,10 @@ actor ThumbnailStripGenerator {
     func generate(from url: URL, count: Int) async throws -> [(timeMs: Int64, image: CGImage)] {
         let asset = AVURLAsset(url: url)
         let duration = try await asset.load(.duration)
+        guard duration.isValid, duration.isNumeric else {
+            logger.warning("Asset has invalid/indefinite duration — skipping thumbnail generation")
+            return []
+        }
         let durationMs = Int64(duration.seconds * 1000)
 
         guard durationMs > 0, count > 0 else { return [] }
