@@ -179,5 +179,5 @@ Status indicators: **Done** = implemented, **Deferred** = planned for later phas
 | L3 | App icon + branding | 1024x1024 master icon + all macOS sizes + custom menu bar icon (Phase 14) | Done |
 | L4 | Release notes | `CHANGELOG.md` with full v0.1.0 feature list | Done |
 | L5 | CI release workflow | `.github/workflows/release.yml`: build → ad-hoc sign → DMG → GitHub Release → update Homebrew tap on `v*` tag | Done |
-| L6 | Check for updates | `UpdateChecker` queries GitHub Releases API, semantic version compare, update banner in menu bar | Done |
-| L7 | About section | `AboutSettingsTab`: 7th Settings tab with app icon, version, links, "Check for Updates" button | Done |
+| L6 | Auto-update via Sparkle | Sparkle framework checks appcast on GitHub Pages, downloads DMG, replaces app, relaunches | Done |
+| L7 | About section | `AboutSettingsTab`: 7th Settings tab with app icon, version, links, "Check for Updates" button (Sparkle) | Done |

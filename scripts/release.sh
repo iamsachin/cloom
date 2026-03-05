@@ -97,15 +97,29 @@ create-dmg \
     "$DMG_PATH" \
     "$APP_PATH" || true
 
-if [ -f "$DMG_PATH" ]; then
-    DMG_SIZE=$(du -h "$DMG_PATH" | cut -f1)
-    echo ""
-    echo "==> Release build complete!"
-    echo "    Version:  v${VERSION}"
-    echo "    DMG:      $DMG_PATH ($DMG_SIZE)"
-    echo "    Signing:  ad-hoc (users right-click → Open on first launch)"
-else
+if [ ! -f "$DMG_PATH" ]; then
     echo ""
     echo "Error: DMG creation failed."
     exit 1
 fi
+
+DMG_SIZE=$(du -h "$DMG_PATH" | cut -f1)
+
+# ── Step 6: Sparkle EdDSA signing (optional) ──────────────────────────
+SIGN_TOOL=$(find ~/Library/Developer/Xcode/DerivedData -name "sign_update" -path "*/Sparkle/bin/*" 2>/dev/null | head -1 || true)
+if [ -n "$SIGN_TOOL" ]; then
+    echo ""
+    echo "==> Step 6/6: Signing DMG with Sparkle EdDSA..."
+    ED_SIG=$("$SIGN_TOOL" "$DMG_PATH" -p 2>/dev/null || true)
+    if [ -n "$ED_SIG" ]; then
+        echo "    EdDSA:    $ED_SIG"
+    else
+        echo "    EdDSA:    (no key in Keychain — skipped)"
+    fi
+fi
+
+echo ""
+echo "==> Release build complete!"
+echo "    Version:  v${VERSION}"
+echo "    DMG:      $DMG_PATH ($DMG_SIZE)"
+echo "    Signing:  ad-hoc (users right-click → Open on first launch)"

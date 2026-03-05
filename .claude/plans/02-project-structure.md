@@ -37,6 +37,7 @@ cloom/
 │   │   │   ├── NavigationState.swift          # @Observable navigation state (library/editor mode, view style)
 │   │   │   ├── PermissionChecker.swift        # TCC permission detection + request
 │   │   │   ├── OnboardingView.swift           # Permission setup flow with live status
+│   │   │   ├── SparkleUpdater.swift           # Sparkle auto-update wrapper (SPUStandardUpdaterController)
 │   │   │   └── Theme.swift                    # Dark mode semantic colors
 │   │   ├── Bridge/
 │   │   │   ├── Cloom-Bridging-Header.h        # Bridging header for UniFFI modulemap
@@ -160,7 +161,7 @@ cloom/
 │   │       └── ToolbarToggleButton.swift          # Reusable toggle button for toolbars
 │   └── Resources/
 │       ├── Assets.xcassets                        # App icon + menu bar icon
-│       ├── Info.plist                             # TCC usage descriptions + $(GOOGLE_REVERSED_CLIENT_ID)
+│       ├── Info.plist                             # TCC descriptions, SUFeedURL, SUPublicEDKey, $(GOOGLE_REVERSED_CLIENT_ID)
 │       ├── Cloom.entitlements                     # App sandbox + capabilities
 │       └── Secrets.xcconfig.example               # Template for Google OAuth build-time variables
 │
@@ -201,6 +202,9 @@ cloom/
 │
 ├── build.sh                           # Rust build + UniFFI codegen + copy .a to libs/
 ├── project.yml                        # xcodegen configuration
+├── scripts/
+│   ├── release.sh                     # Local release build (Rust → Xcode → DMG + EdDSA sign)
+│   └── generate-appcast.sh            # Generate/update Sparkle appcast.xml
 └── .gitignore
 ```
 
@@ -210,7 +214,7 @@ cloom/
 |--------|-------|-------------|
 | AI/ | 4 | AI orchestration pipeline, audio extraction, API key storage |
 | Annotations/ | 11 | Drawing tools, canvas, input handler, renderer, click/cursor effects |
-| App/ | 8 | App entry, state, navigation, main window, hotkeys, permissions, onboarding, theme |
+| App/ | 9 | App entry, state, navigation, main window, hotkeys, permissions, onboarding, Sparkle updater, theme |
 | Bridge/ | 3 | UniFFI generated bindings (gitignored) |
 | Capture/ | 18 | Screen capture, camera, webcam UI, shapes, themes, adjustments, mic gain |
 | Compositing/ | 6 | VideoWriter, webcam compositor (+ shape/emoji extensions), segment stitcher, export progress |

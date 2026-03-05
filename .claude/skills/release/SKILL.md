@@ -24,12 +24,27 @@ Build Cloom for distribution — compiles Rust + Swift, ad-hoc signs, and packag
 
 ## After a successful build
 
-- Tell the user where the DMG is: `build/Cloom-<version>.dmg`
-- Ask if they want to commit the version bump and create a git tag (`v<version>`)
-- If yes: commit the Info.plist + CHANGELOG.md changes, create an annotated tag, but do NOT push unless asked
+Complete the full release flow automatically (don't ask — just do all steps):
+
+### 1. Commit, tag, and push
+- Commit `Info.plist` + `CHANGELOG.md` version bump
+- Create git tag `v<version>`
+- Push main and the tag to remote
+
+### 2. GitHub Release
+- Compute SHA256 of the DMG: `shasum -a 256 build/Cloom-<version>.dmg`
+- Create a GitHub Release via `gh release create v<version>` with the DMG attached
+- Include changelog notes, SHA256, and system requirements (macOS 26+, Apple Silicon) in the release body
+
+### 3. Homebrew Tap
+- Clone or pull `iamsachin/homebrew-cloom` to `/tmp/homebrew-cloom`
+- Update `Casks/cloom.rb`: set `version` and `sha256` to the new values
+- Commit and push to main
+
+### 4. Report
+Show a summary table with GitHub Release URL, Homebrew status, and SHA256.
 
 ## Rules
 
-- Never push tags or commits without explicit confirmation.
 - Never modify `Secrets.xcconfig` — the build script handles it.
 - Do NOT use the Agent or TodoWrite tools.

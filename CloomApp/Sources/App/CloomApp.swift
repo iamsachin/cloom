@@ -8,12 +8,12 @@ struct CloomApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var appState = AppState()
     @StateObject private var permissionChecker = PermissionChecker()
-    @State private var updateChecker = UpdateChecker()
+    @StateObject private var sparkleUpdater = SparkleUpdater()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
 
     var body: some Scene {
         MenuBarExtra("Cloom", image: "MenuBarIcon") {
-            MenuBarView(updateChecker: updateChecker)
+            MenuBarView(sparkleUpdater: sparkleUpdater)
                 .environmentObject(appState)
                 .environmentObject(permissionChecker)
         }
@@ -39,12 +39,13 @@ struct CloomApp: App {
         Settings {
             SettingsView()
                 .environmentObject(permissionChecker)
+                .environmentObject(sparkleUpdater)
         }
     }
 }
 
 struct MenuBarView: View {
-    var updateChecker: UpdateChecker
+    @ObservedObject var sparkleUpdater: SparkleUpdater
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var permissionChecker: PermissionChecker
     @Environment(\.openWindow) private var openWindow
@@ -76,10 +77,7 @@ struct MenuBarView: View {
             }
 
             Menu("Start Recording") {
-                Button("Full Screen") {
-                    showPostOnboardingHint = false
-                    appState.startRecording()
-                }
+                FullScreenMenuItems(appState: appState, showPostOnboardingHint: $showPostOnboardingHint)
 
                 Button("Choose Window or Display...") {
                     showPostOnboardingHint = false
@@ -137,15 +135,10 @@ struct MenuBarView: View {
 
         Divider()
 
-        if updateChecker.updateAvailable, let version = updateChecker.latestVersion {
-            Button("Update Available (v\(version))...") {
-                if let url = updateChecker.downloadURL {
-                    NSWorkspace.shared.open(url)
-                }
-            }
-
-            Divider()
+        Button("Check for Updates...") {
+            sparkleUpdater.checkForUpdates()
         }
+        .disabled(!sparkleUpdater.canCheckForUpdates)
 
         Button("Settings...") {
             NSApp.activate()
@@ -167,6 +160,34 @@ struct MenuBarView: View {
         case .selectingContent: "Selecting content..."
         case .paused: "Paused"
         default: ""
+        }
+    }
+}
+
+// MARK: - Full Screen Display Menu
+
+/// Shows a submenu of displays when multiple monitors are connected,
+/// or a single "Full Screen" button when only one display is available.
+private struct FullScreenMenuItems: View {
+    let appState: AppState
+    @Binding var showPostOnboardingHint: Bool
+
+    var body: some View {
+        let screens = NSScreen.screens
+        if screens.count > 1 {
+            Menu("Full Screen") {
+                ForEach(screens, id: \.displayID) { screen in
+                    Button(screen.displayLabel) {
+                        showPostOnboardingHint = false
+                        appState.startRecording(displayID: screen.displayID)
+                    }
+                }
+            }
+        } else {
+            Button("Full Screen") {
+                showPostOnboardingHint = false
+                appState.startRecording()
+            }
         }
     }
 }

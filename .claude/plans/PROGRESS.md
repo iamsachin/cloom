@@ -809,3 +809,24 @@ Visual polish pass across all three main screens plus continuous waveform render
 **New files:** `scripts/release.sh`, `ExportOptions.plist`, `CHANGELOG.md`, `.github/workflows/release.yml`, `CloomApp/Sources/App/UpdateChecker.swift`, `CloomApp/Sources/Settings/AboutSettingsTab.swift`, `CloomTests/UpdateCheckerTests.swift`
 
 **Milestone verified:** Build succeeds (0 errors). 10 UpdateChecker tests pass. Homebrew tap live at github.com/iamsachin/homebrew-cloom.
+
+---
+
+## Phase 28: Sparkle Auto-Update
+**Status:** Complete
+**Date:** 2026-03-05
+
+### Tasks
+- [x] Task 170 — Added Sparkle 2.6+ SPM dependency to `project.yml`
+- [x] Task 171 — Created `SparkleUpdater.swift`: `@MainActor ObservableObject` wrapping `SPUStandardUpdaterController`
+- [x] Task 172 — Replaced `UpdateChecker` with Sparkle in `CloomApp.swift`, `MenuBarView`, and `AboutSettingsTab`
+- [x] Task 173 — Added `SUFeedURL` and `SUPublicEDKey` to `Info.plist`
+- [x] Task 174 — Generated EdDSA keypair (public key in Info.plist, private key in Keychain + `SPARKLE_ED_PRIVATE_KEY` GitHub secret)
+- [x] Task 175 — Created `scripts/generate-appcast.sh` for appcast.xml generation
+- [x] Task 176 — Updated CI release workflow: EdDSA DMG signing → appcast generation → gh-pages deployment
+- [x] Task 177 — Created `gh-pages` branch with initial appcast.xml, GitHub Pages enabled at `https://iamsachin.github.io/cloom/appcast.xml`
+
+**Deleted files:** `UpdateChecker.swift`
+**New files:** `SparkleUpdater.swift`, `scripts/generate-appcast.sh`
+
+**Milestone verified:** Build succeeds (1 warning). Sparkle auto-checks appcast every 24h on launch. "Check for Updates" in menu bar + About tab. CI signs DMGs and publishes appcast to GitHub Pages.
