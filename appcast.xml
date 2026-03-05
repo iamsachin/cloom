@@ -5,7 +5,6 @@
         <link>https://iamsachin.github.io/cloom/appcast.xml</link>
         <description>Cloom app updates</description>
         <language>en</language>
-    </channel>
         <item>
             <title>Version 0.1.3</title>
             <pubDate>Thu, 05 Mar 2026 13:42:58 +0000</pubDate>
@@ -17,4 +16,5 @@
                 length="7271586"
                 type="application/octet-stream" />
         </item>
+    </channel>
 </rss>
