@@ -339,7 +339,12 @@ final class EditorState {
     // MARK: - Async Loaders
 
     func loadWaveform() async {
-        let url = URL(fileURLWithPath: videoRecord.filePath)
+        let path = videoRecord.filePath
+        guard FileManager.default.fileExists(atPath: path) else {
+            logger.warning("Video file missing at \(path) — skipping waveform generation")
+            return
+        }
+        let url = URL(fileURLWithPath: path)
         let generator = WaveformGenerator()
         do {
             let sensitivity = UserDefaults.standard.integer(forKey: UserDefaultsKeys.micSensitivity)
@@ -351,7 +356,12 @@ final class EditorState {
     }
 
     func loadThumbnailStrip() async {
-        let url = URL(fileURLWithPath: videoRecord.filePath)
+        let path = videoRecord.filePath
+        guard FileManager.default.fileExists(atPath: path) else {
+            logger.warning("Video file missing at \(path) — skipping thumbnail strip generation")
+            return
+        }
+        let url = URL(fileURLWithPath: path)
         let generator = ThumbnailStripGenerator()
         do {
             let images = try await generator.generate(from: url, count: 20)
