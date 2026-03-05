@@ -4,7 +4,7 @@ set -euo pipefail
 # Generates/updates appcast.xml for Sparkle auto-updates.
 #
 # Usage:
-#   ./scripts/generate-appcast.sh <version> <dmg-path> <ed-signature> <dmg-size>
+#   ./scripts/generate-appcast.sh <version> <dmg-path> <ed-signature> <dmg-size> [output-dir]
 #
 # Example:
 #   ./scripts/generate-appcast.sh 0.2.0 build/Cloom-0.2.0.dmg "BASE64SIG" 45678901
@@ -20,8 +20,9 @@ PUB_DATE=$(date -u +"%a, %d %b %Y %H:%M:%S +0000")
 APPCAST_DIR="${5:-.}"
 APPCAST_FILE="${APPCAST_DIR}/appcast.xml"
 
-# Build the new <item> block
-NEW_ITEM=$(cat <<ITEM_EOF
+# Write the new <item> block to a temp file
+ITEM_FILE=$(mktemp)
+cat > "$ITEM_FILE" <<ITEM_EOF
         <item>
             <title>Version ${VERSION}</title>
             <pubDate>${PUB_DATE}</pubDate>
@@ -34,16 +35,11 @@ NEW_ITEM=$(cat <<ITEM_EOF
                 type="application/octet-stream" />
         </item>
 ITEM_EOF
-)
 
 if [ -f "$APPCAST_FILE" ]; then
-    # Insert new item before the closing </channel> tag
-    # Use a temp file for portable sed
+    # Insert new item before the closing </channel> tag using sed
     TEMP_FILE=$(mktemp)
-    awk -v item="$NEW_ITEM" '
-        /<\/channel>/ { print item }
-        { print }
-    ' "$APPCAST_FILE" > "$TEMP_FILE"
+    sed "/<\/channel>/r ${ITEM_FILE}" "$APPCAST_FILE" > "$TEMP_FILE"
     mv "$TEMP_FILE" "$APPCAST_FILE"
 else
     # Create fresh appcast
@@ -55,10 +51,11 @@ else
         <link>https://iamsachin.github.io/cloom/appcast.xml</link>
         <description>Cloom app updates</description>
         <language>en</language>
-${NEW_ITEM}
+$(cat "$ITEM_FILE")
     </channel>
 </rss>
 APPCAST_EOF
 fi
 
+rm -f "$ITEM_FILE"
 echo "Appcast updated: ${APPCAST_FILE}"
