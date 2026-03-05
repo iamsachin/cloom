@@ -46,9 +46,11 @@ jobs:
       - name: Install xcodegen
         run: brew install xcodegen || true
 
-      # ── Stub Secrets.xcconfig for CI ────────────────────────────────
-      - name: Create Secrets.xcconfig stub
-        run: cp CloomApp/Resources/Secrets.xcconfig.example CloomApp/Resources/Secrets.xcconfig
+      # ── Stub secrets for CI ─────────────────────────────────────────
+      - name: Create Secrets stubs
+        run: |
+          cp CloomApp/Resources/Secrets.xcconfig.example CloomApp/Resources/Secrets.xcconfig
+          cp CloomApp/Sources/Cloud/Secrets.swift.example CloomApp/Sources/Cloud/Secrets.swift
 
       - name: Generate Xcode project
         run: xcodegen generate
