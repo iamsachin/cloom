@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AboutSettingsTab: View {
-    @State private var updateChecker = UpdateChecker()
+    @EnvironmentObject private var sparkleUpdater: SparkleUpdater
 
     var body: some View {
         VStack(spacing: 20) {
@@ -17,9 +17,6 @@ struct AboutSettingsTab: View {
         }
         .padding(30)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task {
-            await updateChecker.checkForUpdates()
-        }
     }
 
     // MARK: - Sections
@@ -33,7 +30,7 @@ struct AboutSettingsTab: View {
             Text("Cloom")
                 .font(.title.bold())
 
-            Text("Version \(updateChecker.currentVersion)")
+            Text("Version \(currentVersion)")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -57,40 +54,12 @@ struct AboutSettingsTab: View {
     }
 
     private var updateSection: some View {
-        VStack(spacing: 8) {
-            if updateChecker.isChecking {
-                ProgressView()
-                    .controlSize(.small)
-                Text("Checking for updates...")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else if updateChecker.updateAvailable, let latest = updateChecker.latestVersion {
-                Label("Cloom v\(latest) is available", systemImage: "arrow.down.circle.fill")
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(.tint)
-
-                if let url = updateChecker.downloadURL {
-                    Link("Download Update", destination: url)
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.regular)
-                }
-            } else if let error = updateChecker.error {
-                Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                Label("You're up to date", systemImage: "checkmark.circle")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-
-            Button("Check for Updates") {
-                Task { await updateChecker.checkForUpdates() }
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .disabled(updateChecker.isChecking)
+        Button("Check for Updates...") {
+            sparkleUpdater.checkForUpdates()
         }
+        .buttonStyle(.bordered)
+        .controlSize(.regular)
+        .disabled(!sparkleUpdater.canCheckForUpdates)
         .padding(.top, 4)
     }
 
@@ -98,5 +67,9 @@ struct AboutSettingsTab: View {
         Text("Open-source screen recorder for macOS")
             .font(.caption)
             .foregroundStyle(.tertiary)
+    }
+
+    private var currentVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
     }
 }

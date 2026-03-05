@@ -77,7 +77,12 @@
 
 ## Swift Package Dependencies (Third-Party)
 
-**None.** The project uses only system frameworks. No SPM/CocoaPods/Carthage dependencies.
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `GoogleSignIn` | 8.0+ | Google OAuth for Drive uploads |
+| `LaunchAtLogin` | 1.1+ | SMAppService wrapper for login item |
+| `KeyboardShortcuts` | 2.0+ | Global keyboard shortcut recording UI |
+| `Sparkle` | 2.6+ | In-app auto-updates (appcast + EdDSA verification + install + relaunch) |
 
 ## macOS Info.plist Keys
 
@@ -85,6 +90,8 @@
 NSScreenCaptureUsageDescription — "Cloom needs screen recording access to capture your screen."
 NSCameraUsageDescription — "Cloom needs camera access for webcam recording."
 NSMicrophoneUsageDescription — "Cloom needs microphone access to record audio."
+SUFeedURL — "https://iamsachin.github.io/cloom/appcast.xml"
+SUPublicEDKey — EdDSA public key for Sparkle update verification
 ```
 
 ## Entitlements (Cloom.entitlements)
@@ -117,10 +124,11 @@ NSMicrophoneUsageDescription — "Cloom needs microphone access to record audio.
 
 **Apple Silicon only** (`aarch64-apple-darwin`) for v1.
 
-## Distribution (Phase 18 — Not Yet Implemented)
+## Distribution
 
-1. Archive/export the app from Xcode for Developer ID distribution
-2. Sign with `Developer ID Application`
-3. Submit for notarization (`xcrun notarytool submit ... --wait`)
-4. Staple the notarization ticket (`xcrun stapler staple ...`)
-5. Package as DMG for sharing
+1. Ad-hoc code signing (`codesign --sign -`)
+2. DMG packaging via `create-dmg`
+3. GitHub Releases hosting
+4. Homebrew tap (`iamsachin/homebrew-cloom`)
+5. **Auto-updates via Sparkle** — appcast.xml hosted on GitHub Pages (`iamsachin.github.io/cloom/appcast.xml`), EdDSA-signed DMGs, in-app download + install + relaunch
+6. CI: tag push → build → sign → DMG → GitHub Release → update appcast → update Homebrew tap

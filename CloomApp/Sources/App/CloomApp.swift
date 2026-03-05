@@ -8,12 +8,12 @@ struct CloomApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var appState = AppState()
     @StateObject private var permissionChecker = PermissionChecker()
-    @State private var updateChecker = UpdateChecker()
+    @StateObject private var sparkleUpdater = SparkleUpdater()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
 
     var body: some Scene {
         MenuBarExtra("Cloom", image: "MenuBarIcon") {
-            MenuBarView(updateChecker: updateChecker)
+            MenuBarView(sparkleUpdater: sparkleUpdater)
                 .environmentObject(appState)
                 .environmentObject(permissionChecker)
         }
@@ -39,12 +39,13 @@ struct CloomApp: App {
         Settings {
             SettingsView()
                 .environmentObject(permissionChecker)
+                .environmentObject(sparkleUpdater)
         }
     }
 }
 
 struct MenuBarView: View {
-    var updateChecker: UpdateChecker
+    @ObservedObject var sparkleUpdater: SparkleUpdater
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var permissionChecker: PermissionChecker
     @Environment(\.openWindow) private var openWindow
@@ -134,15 +135,10 @@ struct MenuBarView: View {
 
         Divider()
 
-        if updateChecker.updateAvailable, let version = updateChecker.latestVersion {
-            Button("Update Available (v\(version))...") {
-                if let url = updateChecker.downloadURL {
-                    NSWorkspace.shared.open(url)
-                }
-            }
-
-            Divider()
+        Button("Check for Updates...") {
+            sparkleUpdater.checkForUpdates()
         }
+        .disabled(!sparkleUpdater.canCheckForUpdates)
 
         Button("Settings...") {
             NSApp.activate()
