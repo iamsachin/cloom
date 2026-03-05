@@ -37,9 +37,14 @@ cat > "$ITEM_FILE" <<ITEM_EOF
 ITEM_EOF
 
 if [ -f "$APPCAST_FILE" ]; then
-    # Insert new item before the closing </channel> tag using sed
+    # Insert new item before the closing </channel> tag
     TEMP_FILE=$(mktemp)
-    sed "/<\/channel>/r ${ITEM_FILE}" "$APPCAST_FILE" > "$TEMP_FILE"
+    while IFS= read -r line; do
+        if [[ "$line" == *"</channel>"* ]]; then
+            cat "$ITEM_FILE"
+        fi
+        printf '%s\n' "$line"
+    done < "$APPCAST_FILE" > "$TEMP_FILE"
     mv "$TEMP_FILE" "$APPCAST_FILE"
 else
     # Create fresh appcast
