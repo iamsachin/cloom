@@ -393,6 +393,29 @@ UI tests were removed — MenuBarExtra apps aren't hittable by XCUIApplication, 
 
 **New files:** `scripts/release.sh`, `ExportOptions.plist`, `CHANGELOG.md`, `.github/workflows/release.yml`, `UpdateChecker.swift`, `AboutSettingsTab.swift`, `UpdateCheckerTests.swift` (10 tests)
 
+---
+
+## Phase 28: Sparkle Auto-Update — Complete
+
+**Goal:** Replace manual DMG download with in-app auto-update via Sparkle framework.
+
+| # | Task | Module | Description |
+|---|------|--------|-------------|
+| 170 | Add Sparkle SPM dependency | Build | Sparkle 2.6+ via Swift Package Manager in project.yml |
+| 171 | SparkleUpdater wrapper | App/ | `SparkleUpdater.swift`: `@MainActor ObservableObject` wrapping `SPUStandardUpdaterController` |
+| 172 | Replace UpdateChecker | App/ | Removed `UpdateChecker.swift`, replaced with Sparkle in CloomApp + MenuBarView + AboutSettingsTab |
+| 173 | Info.plist keys | Resources/ | `SUFeedURL` → GitHub Pages appcast, `SUPublicEDKey` → EdDSA public key |
+| 174 | EdDSA keypair | Security | Generated via Sparkle's `generate_keys`, public key in Info.plist, private key in Keychain + GitHub secret |
+| 175 | Appcast generation script | Scripts/ | `scripts/generate-appcast.sh`: creates/updates `appcast.xml` with version, EdDSA signature, download URL |
+| 176 | CI release workflow update | CI | EdDSA DMG signing + appcast.xml generation + gh-pages deployment |
+| 177 | GitHub Pages setup | Infra | `gh-pages` branch with `appcast.xml` at `https://iamsachin.github.io/cloom/appcast.xml` |
+
+**Deleted files:** `UpdateChecker.swift`
+**New files:** `SparkleUpdater.swift`, `scripts/generate-appcast.sh`
+**Modified files:** `project.yml`, `CloomApp.swift`, `AboutSettingsTab.swift`, `Info.plist`, `release.yml`, `release.sh`, `UpdateCheckerTests.swift`
+
+**Milestone:** Sparkle checks appcast on launch every 24h. "Check for Updates" in menu bar + About tab. On update: shows dialog with release notes → downloads DMG → replaces app → relaunches. CI signs DMGs with EdDSA and publishes appcast to GitHub Pages.
+
 **Milestone verified:** Build succeeds (0 errors). 10 UpdateChecker tests pass. Homebrew tap live at github.com/iamsachin/homebrew-cloom. CI workflow triggers on `v*` tag push.
 
 ---

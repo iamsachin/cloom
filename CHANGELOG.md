@@ -5,6 +5,19 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-03-05
+
+### Added
+- **Automatic updates via Sparkle** — the app now checks for updates on launch and every 24 hours. When a new version is available, a dialog shows release notes with an "Install Update" button that downloads, installs, and relaunches the app automatically.
+- "Check for Updates..." button in the menu bar and About settings tab
+
+### Changed
+- Replaced manual "Download Update" link with Sparkle's in-app update flow
+- Release CI now signs DMGs with EdDSA and publishes an appcast to GitHub Pages
+
+### Removed
+- Old `UpdateChecker` class (replaced by Sparkle framework)
+
 ## [0.1.2] - 2026-03-05
 
 ### Added
@@ -96,5 +109,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI/CD release pipeline
 - In-app update checker via GitHub Releases API
 
+[0.1.3]: https://github.com/iamsachin/cloom/releases/tag/v0.1.3
 [0.1.2]: https://github.com/iamsachin/cloom/releases/tag/v0.1.2
 [0.1.0]: https://github.com/iamsachin/cloom/releases/tag/v0.1.0
