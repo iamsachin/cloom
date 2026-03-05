@@ -5,6 +5,14 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-03-05
+
+### Added
+- Multi-display selection for full-screen recording — when multiple monitors are connected, "Full Screen" shows a submenu listing each display by name and resolution
+
+### Fixed
+- Crash when opening video with invalid or missing file duration (NaN guard)
+
 ## [0.1.0] - 2026-03-03
 
 ### Added
@@ -88,4 +96,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI/CD release pipeline
 - In-app update checker via GitHub Releases API
 
+[0.1.2]: https://github.com/iamsachin/cloom/releases/tag/v0.1.2
 [0.1.0]: https://github.com/iamsachin/cloom/releases/tag/v0.1.0
