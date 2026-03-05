@@ -8,4 +8,11 @@ extension NSScreen {
             return (screen.deviceDescription[key] as? CGDirectDisplayID) == displayID
         }
     }
+
+    /// Human-readable label including the localized name and resolution.
+    var displayLabel: String {
+        let w = Int(frame.width)
+        let h = Int(frame.height)
+        return "\(localizedName) (\(w)×\(h))"
+    }
 }

@@ -82,6 +82,12 @@ final class RecordingCoordinator: ObservableObject {
         beginPreRecordingFlow()
     }
 
+    func startRecording(displayID: CGDirectDisplayID) {
+        guard state.isIdle else { return }
+        selectedMode = .fullScreen(displayID: displayID)
+        beginPreRecordingFlow()
+    }
+
     func startRecordingWithPicker() {
         guard state.isIdle else { return }
         state = .selectingContent

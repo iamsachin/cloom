@@ -76,10 +76,7 @@ struct MenuBarView: View {
             }
 
             Menu("Start Recording") {
-                Button("Full Screen") {
-                    showPostOnboardingHint = false
-                    appState.startRecording()
-                }
+                FullScreenMenuItems(appState: appState, showPostOnboardingHint: $showPostOnboardingHint)
 
                 Button("Choose Window or Display...") {
                     showPostOnboardingHint = false
@@ -167,6 +164,34 @@ struct MenuBarView: View {
         case .selectingContent: "Selecting content..."
         case .paused: "Paused"
         default: ""
+        }
+    }
+}
+
+// MARK: - Full Screen Display Menu
+
+/// Shows a submenu of displays when multiple monitors are connected,
+/// or a single "Full Screen" button when only one display is available.
+private struct FullScreenMenuItems: View {
+    let appState: AppState
+    @Binding var showPostOnboardingHint: Bool
+
+    var body: some View {
+        let screens = NSScreen.screens
+        if screens.count > 1 {
+            Menu("Full Screen") {
+                ForEach(screens, id: \.displayID) { screen in
+                    Button(screen.displayLabel) {
+                        showPostOnboardingHint = false
+                        appState.startRecording(displayID: screen.displayID)
+                    }
+                }
+            }
+        } else {
+            Button("Full Screen") {
+                showPostOnboardingHint = false
+                appState.startRecording()
+            }
         }
     }
 }

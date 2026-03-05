@@ -106,6 +106,10 @@ final class AppState: ObservableObject {
         recordingCoordinator.startRecording()
     }
 
+    func startRecording(displayID: CGDirectDisplayID) {
+        recordingCoordinator.startRecording(displayID: displayID)
+    }
+
     func startRecordingWithPicker() {
         recordingCoordinator.startRecordingWithPicker()
     }
