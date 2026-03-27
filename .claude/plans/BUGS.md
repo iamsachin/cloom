@@ -1,10 +1,24 @@
 # Cloom — Bug Fix Log
 
-Chronological record of bugs fixed, with root cause analysis and PR links.
+Chronological record of bugs fixed, with root cause analysis and PR links. Newest first.
 
 ---
 
-## #39 — Transcript not appearing in player when opened before transcription completes
+## Export quality picker has no effect on unmodified recordings
+**Date:** 2026-03-27
+
+**Symptom:** Changing the quality setting (Low/Medium/High) in the export sheet produces identical output files for unmodified recordings.
+
+**Root cause:** `ExportService.exportMP4` had 3 branches. For unmodified recordings (no trim/cut/speed edits), it used `FileManager.copyItem` (passthrough copy) which completely ignored the `quality` parameter. The quality picker only affected exports of edited videos that went through `AVAssetExportSession`.
+
+**Fix:**
+1. Added `recordingQuality` field to `VideoRecord` to track what quality each video was recorded at.
+2. Changed `ExportService` to only passthrough when export quality matches recording quality — otherwise re-encodes through `AVAssetExportSession` with the selected preset.
+3. `EditorExportView` now defaults the quality picker to the recording's actual quality (instead of always `.medium`).
+
+---
+
+## Transcript not appearing in player when opened before transcription completes
 **Date:** 2026-03-03
 **PR:** [#39](https://github.com/iamsachin/cloom/pull/39)
 
@@ -16,7 +30,7 @@ Chronological record of bugs fixed, with root cause analysis and PR links.
 
 ---
 
-## #37 — Subtitle export fails with "The operation could not be completed"
+## Subtitle export fails with "The operation could not be completed"
 **Date:** 2026-03-03
 **PR:** [#37](https://github.com/iamsachin/cloom/pull/37)
 
@@ -28,7 +42,7 @@ Chronological record of bugs fixed, with root cause analysis and PR links.
 
 ---
 
-## #36 — Export deadlock and unnecessary video re-encode
+## Export deadlock and unnecessary video re-encode
 **Date:** 2026-03-01
 **PR:** [#36](https://github.com/iamsachin/cloom/pull/36)
 
@@ -40,7 +54,7 @@ Chronological record of bugs fixed, with root cause analysis and PR links.
 
 ---
 
-## #34 — Cuts at timeline start silently skipped in buildTimeRanges
+## Cuts at timeline start silently skipped in buildTimeRanges
 **Date:** 2026-03-01
 **PR:** [#34](https://github.com/iamsachin/cloom/pull/34)
 
@@ -52,7 +66,7 @@ Chronological record of bugs fixed, with root cause analysis and PR links.
 
 ---
 
-## #32 — Passthrough export crash on Drive upload
+## Passthrough export crash on Drive upload
 **Date:** 2026-02-28
 **PR:** [#32](https://github.com/iamsachin/cloom/pull/32)
 
@@ -64,7 +78,7 @@ Chronological record of bugs fixed, with root cause analysis and PR links.
 
 ---
 
-## #28 — Long recording stress test failures
+## Long recording stress test failures
 **Date:** 2026-02-27
 **PR:** [#28](https://github.com/iamsachin/cloom/pull/28)
 
@@ -76,7 +90,7 @@ Chronological record of bugs fixed, with root cause analysis and PR links.
 
 ---
 
-## #23 — Chapter timestamps inaccurate and waveform too sparse
+## Chapter timestamps inaccurate and waveform too sparse
 **Date:** 2026-02-26
 **PR:** [#23](https://github.com/iamsachin/cloom/pull/23)
 
@@ -88,7 +102,7 @@ Chronological record of bugs fixed, with root cause analysis and PR links.
 
 ---
 
-## #22 — Real-time drawing not rendering during mouse drag
+## Real-time drawing not rendering during mouse drag
 **Date:** 2026-02-26
 **PR:** [#22](https://github.com/iamsachin/cloom/pull/22)
 
@@ -100,7 +114,7 @@ Chronological record of bugs fixed, with root cause analysis and PR links.
 
 ---
 
-## #19 — Audio export bugs (silent output, missing tracks)
+## Audio export bugs (silent output, missing tracks)
 **Date:** 2026-02-25
 **PR:** [#19](https://github.com/iamsachin/cloom/pull/19)
 
@@ -112,7 +126,7 @@ Chronological record of bugs fixed, with root cause analysis and PR links.
 
 ---
 
-## #17 — Webcam compositing offset and library toolbar issues
+## Webcam compositing offset and library toolbar issues
 **Date:** 2026-02-25
 **PR:** [#17](https://github.com/iamsachin/cloom/pull/17)
 
@@ -124,7 +138,7 @@ Chronological record of bugs fixed, with root cause analysis and PR links.
 
 ---
 
-## #16 — Waveform invisible and library timestamps wrong
+## Waveform invisible and library timestamps wrong
 **Date:** 2026-02-25
 **PR:** [#16](https://github.com/iamsachin/cloom/pull/16)
 
@@ -136,7 +150,7 @@ Chronological record of bugs fixed, with root cause analysis and PR links.
 
 ---
 
-## #15 — UI bugs in waveform, webcam bubble, and tooltips
+## UI bugs in waveform, webcam bubble, and tooltips
 **Date:** 2026-02-25
 **PR:** [#15](https://github.com/iamsachin/cloom/pull/15)
 
@@ -148,7 +162,7 @@ Chronological record of bugs fixed, with root cause analysis and PR links.
 
 ---
 
-## #2 — Content picker fails without Screen Recording TCC permission
+## Content picker fails without Screen Recording TCC permission
 **Date:** 2026-02-11
 **PR:** [#2](https://github.com/iamsachin/cloom/pull/2)
 

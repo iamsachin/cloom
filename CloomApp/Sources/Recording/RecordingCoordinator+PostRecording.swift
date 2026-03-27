@@ -55,6 +55,7 @@ extension RecordingCoordinator {
         tracker.updateStep(.saving)
         let context = ModelContext(modelContainer)
         let durationMs = Int64(duration.seconds * 1000)
+        let recordingQuality = RecordingSettings.fromDefaults().quality
         let record = VideoRecord(
             title: outputURL.deletingPathExtension().lastPathComponent,
             filePath: outputURL.path,
@@ -66,6 +67,7 @@ extension RecordingCoordinator {
             recordingType: recordingType,
             webcamFilePath: nil
         )
+        record.recordingQuality = recordingQuality.rawValue
         context.insert(record)
         do {
             try context.save()

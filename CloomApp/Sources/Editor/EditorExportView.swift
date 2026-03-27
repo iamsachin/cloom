@@ -11,7 +11,7 @@ struct EditorExportView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
-    @State private var selectedQuality: VideoQuality = .medium
+    @State private var selectedQuality: VideoQuality = .medium  // overridden in onAppear
     @State private var isExporting = false
     @State private var exportProgress: Double = 0
     @State private var exportError: String?
@@ -52,6 +52,10 @@ struct EditorExportView: View {
         .frame(width: 400)
         .onAppear {
             editableTitle = editorState.videoRecord.title
+            if let raw = editorState.videoRecord.recordingQuality,
+               let quality = VideoQuality(rawValue: raw) {
+                selectedQuality = quality
+            }
             authService.restoreSessionIfNeeded()
         }
         .onChange(of: editableTitle) { _, newValue in
@@ -253,12 +257,14 @@ struct EditorExportView: View {
 
         Task {
             do {
+                let recQuality = VideoQuality(rawValue: editorState.videoRecord.recordingQuality ?? "")
                 try await ExportService.exportMP4(
                     filePath: filePath,
                     edlSnapshot: edlSnapshot,
                     transcriptWords: words,
                     durationMs: duration,
                     quality: selectedQuality,
+                    recordingQuality: recQuality,
                     includeSubtitles: includeSubtitles,
                     destURL: destURL
                 ) { p in exportProgress = p }
@@ -288,12 +294,14 @@ struct EditorExportView: View {
                 let tempURL = tempDir.appendingPathComponent(exportFileName)
                 try? FileManager.default.removeItem(at: tempURL)
 
+                let recQuality = VideoQuality(rawValue: editorState.videoRecord.recordingQuality ?? "")
                 try await ExportService.exportMP4(
                     filePath: filePath,
                     edlSnapshot: edlSnapshot,
                     transcriptWords: words,
                     durationMs: duration,
                     quality: selectedQuality,
+                    recordingQuality: recQuality,
                     includeSubtitles: includeSubtitles,
                     destURL: tempURL
                 ) { p in exportProgress = p }

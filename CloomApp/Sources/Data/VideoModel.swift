@@ -30,6 +30,9 @@ final class VideoRecord {
     var hasTranscript: Bool
     var summary: String?
 
+    // Recording settings
+    var recordingQuality: String?  // VideoQuality rawValue ("low" | "medium" | "high")
+
     // Cloud upload
     var driveFileId: String?
     var shareUrl: String?
