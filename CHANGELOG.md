@@ -5,6 +5,17 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2026-03-27
+
+### Fixed
+- **Export quality picker now works** — previously had no effect on unmodified recordings (passthrough copy ignored quality selection). Now re-encodes when export quality differs from recording quality.
+
+### Added
+- Recording details in editor info panel — codec, bitrate, FPS, audio tracks, quality setting, recording type
+- Hover tooltip on video cards — shows resolution, duration, file size, quality, type, and date
+- Resolution and file size columns in library list view
+- `recordingQuality` field on VideoRecord — tracks quality used at recording time; export picker defaults to it
+
 ## [0.1.3] - 2026-03-05
 
 ### Added
