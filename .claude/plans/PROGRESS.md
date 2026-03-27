@@ -830,3 +830,33 @@ Visual polish pass across all three main screens plus continuous waveform render
 **New files:** `SparkleUpdater.swift`, `scripts/generate-appcast.sh`
 
 **Milestone verified:** Build succeeds (1 warning). Sparkle auto-checks appcast every 24h on launch. "Check for Updates" in menu bar + About tab. CI signs DMGs and publishes appcast to GitHub Pages.
+
+---
+
+## Phase 29: Recording Details Display + Export Quality Fix
+**Status:** In Progress
+**Date:** 2026-03-27
+
+### Bug Fix: Export Quality Picker
+- [x] Task 178 — Added `recordingQuality` field to `VideoRecord`
+- [x] Task 179 — Fixed `ExportService` to re-encode via `AVAssetExportSession` when export quality differs from recording quality
+- [x] Task 180 — `EditorExportView` defaults quality picker to recording's actual quality
+
+### Recording Details Display
+- [x] Task 181 — Created `VideoMetadataLoader` helper (reads bitrate, codec, FPS, audio tracks from AVAsset)
+- [x] Task 182 — Updated `EditorInfoPanel` with Details + Encoding sections (quality, recording type, codec, bitrate, FPS, audio tracks)
+- [x] Task 183 — Added hover tooltip to `VideoCardView` (resolution, duration, file size, quality, type, date)
+- [x] Task 184 — Added resolution and file size columns to `LibraryListRowView`
+- [ ] Task 185 — Build verification
+
+### New Files
+- `CloomApp/Sources/Shared/VideoMetadataLoader.swift`
+
+### Modified Files
+- `CloomApp/Sources/Data/VideoModel.swift` (+recordingQuality field)
+- `CloomApp/Sources/Recording/RecordingCoordinator+PostRecording.swift` (store quality on save)
+- `CloomApp/Sources/Editor/ExportService.swift` (+recordingQuality param, re-encode when quality differs)
+- `CloomApp/Sources/Editor/EditorExportView.swift` (default picker to recording quality, pass recordingQuality)
+- `CloomApp/Sources/Editor/EditorInfoPanel.swift` (Details + Encoding sections with async metadata loading)
+- `CloomApp/Sources/Library/VideoCardView.swift` (hover tooltip with recording details)
+- `CloomApp/Sources/Library/LibraryListRowView.swift` (resolution + file size columns)

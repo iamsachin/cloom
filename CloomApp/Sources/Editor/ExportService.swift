@@ -11,6 +11,7 @@ enum ExportService {
         transcriptWords: [TranscriptWordSnapshot],
         durationMs: Int64,
         quality: VideoQuality,
+        recordingQuality: VideoQuality?,
         includeSubtitles: Bool,
         destURL: URL,
         progress: @escaping @MainActor (Double) -> Void
@@ -31,18 +32,62 @@ enum ExportService {
         let unmodified = isExportUnmodified(
             snapshot: snapshot, durationMs: durationMs
         )
+        let qualityMatchesRecording = quality == (recordingQuality ?? quality)
 
-        // Unmodified + no subtitles → passthrough copy
-        if unmodified && subtitlePhrases.isEmpty {
+        // Unmodified + quality matches recording + no subtitles → passthrough copy
+        if unmodified && qualityMatchesRecording && subtitlePhrases.isEmpty {
             try FileManager.default.copyItem(at: sourceURL, to: destURL)
             logger.info("Passthrough copy → \(destURL.lastPathComponent)")
             return
         }
 
-        // Unmodified + subtitles → inject directly into source
-        if unmodified && !subtitlePhrases.isEmpty {
+        // Unmodified + quality matches recording + subtitles → inject directly
+        if unmodified && qualityMatchesRecording && !subtitlePhrases.isEmpty {
             try await ExportWriter.injectSubtitles(
                 sourceURL: sourceURL,
+                outputURL: destURL,
+                phrases: subtitlePhrases,
+                durationMs: durationMs
+            ) { p in Task { @MainActor in progress(p) } }
+            return
+        }
+
+        // Unmodified + different quality → re-encode from source asset
+        if unmodified {
+            let asset = AVAsset(url: sourceURL)
+            if subtitlePhrases.isEmpty {
+                guard let session = AVAssetExportSession(
+                    asset: asset,
+                    presetName: presetForQuality(quality)
+                ) else {
+                    throw NSError(
+                        domain: "ExportService", code: -1,
+                        userInfo: [NSLocalizedDescriptionKey: "Could not create export session"]
+                    )
+                }
+                try await session.export(to: destURL, as: .mp4)
+                logger.info("Re-encoded at \(quality.rawValue) quality → \(destURL.lastPathComponent)")
+                return
+            }
+
+            // Re-encode to temp, then inject subtitles
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString + ".mp4")
+            defer { try? FileManager.default.removeItem(at: tempURL) }
+
+            guard let session = AVAssetExportSession(
+                asset: asset,
+                presetName: presetForQuality(quality)
+            ) else {
+                throw NSError(
+                    domain: "ExportService", code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Could not create export session"]
+                )
+            }
+            try await session.export(to: tempURL, as: .mp4)
+
+            try await ExportWriter.injectSubtitles(
+                sourceURL: tempURL,
                 outputURL: destURL,
                 phrases: subtitlePhrases,
                 durationMs: durationMs

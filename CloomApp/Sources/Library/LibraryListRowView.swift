@@ -57,6 +57,19 @@ struct LibraryListRowView: View {
                 // Cloud status
                 CloudStatusBadgeView(videoId: video.id, uploadStatus: video.uploadStatus ?? "", iconFontSize: 10)
 
+                // Resolution
+                Text("\(video.width)x\(video.height)")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 72, alignment: .trailing)
+                    .monospacedDigit()
+
+                // File size
+                Text(formattedFileSize)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 56, alignment: .trailing)
+
                 // Duration
                 Text(video.durationMs.formattedDuration)
                     .font(.caption)
@@ -98,6 +111,13 @@ struct LibraryListRowView: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in isHovered = hovering }
+    }
+
+    private var formattedFileSize: String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        formatter.allowedUnits = [.useMB, .useGB]
+        return formatter.string(fromByteCount: video.fileSizeBytes)
     }
 
     private var formattedDate: String {

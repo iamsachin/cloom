@@ -105,6 +105,7 @@ struct VideoCardView: View {
                 hasAppeared = true
             }
         }
+        .help(videoTooltip)
         .accessibilityLabel("\(video.title), \(video.durationMs.formattedDuration)")
     }
 
@@ -139,6 +140,26 @@ struct VideoCardView: View {
                     .background(.quaternary, in: Capsule())
             }
         }
+    }
+
+    private var videoTooltip: String {
+        var lines: [String] = []
+        lines.append("\(video.width)x\(video.height)")
+        lines.append(video.durationMs.formattedDuration)
+        lines.append(formattedFileSize(video.fileSizeBytes))
+        if let raw = video.recordingQuality, let quality = VideoQuality(rawValue: raw) {
+            lines.append("Quality: \(quality.label)")
+        }
+        let type = video.recordingType == "screenAndWebcam" ? "Screen + Webcam" : "Screen Only"
+        lines.append(type)
+        lines.append(video.createdAt.formatted(date: .abbreviated, time: .shortened))
+        return lines.joined(separator: "\n")
+    }
+
+    private func formattedFileSize(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: bytes)
     }
 
     private func relativeTime(from date: Date) -> String {
