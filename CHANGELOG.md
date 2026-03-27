@@ -5,6 +5,20 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-03-28
+
+### Added
+- **Undo/redo for all editor operations** — Cmd+Z / Shift+Cmd+Z for trim, cut, speed, stitch, and thumbnail changes (in-memory stack, max 50 history)
+- **Auto-cut silence removal** — "Silences" button highlights detected silent regions on timeline; preview before applying cuts
+- **Auto-cut filler word removal** — "Fillers" button highlights filler words (um, uh, like, etc.) on timeline; preview before applying
+- **Editor keyboard shortcuts** — J/K/L shuttle playback (-8x to 8x), left/right arrow frame-step (~33ms), I/O mark-in/mark-out, Home/End jump to trim boundaries, B for bookmarks
+- **Mark-in timeline indicator** — orange line with flag and shaded region when marking a cut
+- **Silence detection persistence** — silence ranges from AI pipeline are now saved to the database for reuse in the editor
+
+### Fixed
+- **Sparkle auto-update version comparison** — CFBundleVersion now matches semantic version (was using integer build number, causing Sparkle to think installed version was newer)
+- **GitHub Release notes** — now include changelog content instead of only install instructions
+
 ## [0.1.4] - 2026-03-27
 
 ### Fixed
@@ -120,6 +134,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI/CD release pipeline
 - In-app update checker via GitHub Releases API
 
+[0.1.5]: https://github.com/iamsachin/cloom/releases/tag/v0.1.5
+[0.1.4]: https://github.com/iamsachin/cloom/releases/tag/v0.1.4
 [0.1.3]: https://github.com/iamsachin/cloom/releases/tag/v0.1.3
 [0.1.2]: https://github.com/iamsachin/cloom/releases/tag/v0.1.2
 [0.1.0]: https://github.com/iamsachin/cloom/releases/tag/v0.1.0

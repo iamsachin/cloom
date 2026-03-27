@@ -37,13 +37,13 @@ cat > "$ITEM_FILE" <<ITEM_EOF
 ITEM_EOF
 
 if [ -f "$APPCAST_FILE" ]; then
-    # Insert new item before the closing </channel> tag
+    # Insert new item after <language>en</language> (newest first ordering)
     TEMP_FILE=$(mktemp)
     while IFS= read -r line; do
-        if [[ "$line" == *"</channel>"* ]]; then
+        printf '%s\n' "$line"
+        if [[ "$line" == *"<language>"*"</language>"* ]]; then
             cat "$ITEM_FILE"
         fi
-        printf '%s\n' "$line"
     done < "$APPCAST_FILE" > "$TEMP_FILE"
     mv "$TEMP_FILE" "$APPCAST_FILE"
 else

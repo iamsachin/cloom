@@ -67,7 +67,7 @@ jobs:
       - name: Set version in Info.plist
         run: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" CloomApp/Resources/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" CloomApp/Resources/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.version }}" CloomApp/Resources/Info.plist
 
       # ── Archive ─────────────────────────────────────────────────────
       - name: Archive Xcode project
@@ -139,41 +139,64 @@ jobs:
           echo "signature=$SIG" >> "$GITHUB_OUTPUT"
           echo "EdDSA signature generated"
 
+      # ── Extract changelog for this version ─────────────────────────
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # Extract the section for this version from CHANGELOG.md
+          NOTES=$(awk "/^## \\[${VERSION}\\]/{found=1; next} /^## \\[/{if(found) exit} found{print}" CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            NOTES="No changelog entry for this version."
+          fi
+          # Write to file to preserve newlines
+          echo "$NOTES" > /tmp/release-notes.md
+
       # ── Create GitHub Release ───────────────────────────────────────
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: Cloom ${{ steps.version.outputs.tag }}
-          body: |
-            ## Cloom ${{ steps.version.outputs.tag }}
+        env:
+          RELEASE_NOTES: ""
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          SHA="${{ steps.sha.outputs.sha256 }}"
+          NOTES=$(cat /tmp/release-notes.md)
 
-            ### Installation
+          BODY=$(cat <<RELEASE_EOF
+          ## What's Changed
 
-            1. Download `Cloom-${{ steps.version.outputs.version }}.dmg` below
-            2. Open the DMG and drag **Cloom** to your Applications folder
-            3. On first launch, right-click the app and select **Open** (Gatekeeper bypass for unsigned apps)
+          ${NOTES}
 
-            ### Homebrew
+          ## Installation
 
-            ```bash
-            brew tap iamsachin/cloom
-            brew install --cask cloom
-            ```
+          1. Download \`Cloom-${VERSION}.dmg\` below
+          2. Open the DMG and drag **Cloom** to your Applications folder
+          3. On first launch, right-click the app and select **Open** (Gatekeeper bypass for unsigned apps)
 
-            ### SHA256
+          **Homebrew:**
+          \`\`\`bash
+          brew tap iamsachin/cloom
+          brew install --cask cloom
+          \`\`\`
 
-            ```
-            ${{ steps.sha.outputs.sha256 }}
-            ```
+          **SHA256:** \`${SHA}\`
 
-            ### System Requirements
+          **System Requirements:** macOS 26.0 (Tahoe) or later, Apple Silicon (arm64)
+          RELEASE_EOF
+          )
 
-            - macOS 26.0 (Tahoe) or later
-            - Apple Silicon (arm64)
-          files: build/Cloom-${{ steps.version.outputs.version }}.dmg
-          draft: false
-          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          gh release create "$TAG" \
+            --title "Cloom ${TAG}" \
+            --notes "$BODY" \
+            "build/Cloom-${VERSION}.dmg"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Mark release as prerelease if needed
+        if: contains(steps.version.outputs.version, '-')
+        run: gh release edit "${{ steps.version.outputs.tag }}" --prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       # ── Update Homebrew tap ─────────────────────────────────────────
       - name: Update Homebrew tap
