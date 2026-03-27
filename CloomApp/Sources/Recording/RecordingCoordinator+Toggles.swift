@@ -81,4 +81,19 @@ extension RecordingCoordinator {
             cursorSpotlightMonitor?.stop()
         }
     }
+
+    func toggleZoom() {
+        zoomEnabled.toggle()
+        if zoomEnabled {
+            if let store = annotationStore {
+                if zoomClickMonitor == nil {
+                    zoomClickMonitor = ZoomClickMonitor(store: store)
+                }
+                zoomClickMonitor?.start(captureArea: getCaptureAreaScreenRect())
+            }
+        } else {
+            zoomClickMonitor?.stop()
+            annotationStore?.setZoomEnabled(false)
+        }
+    }
 }

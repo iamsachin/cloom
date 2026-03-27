@@ -20,6 +20,7 @@ final class RecordingToolbarPanel {
         onToggleAnnotations: @escaping () -> Void = {},
         onToggleClickEmphasis: @escaping () -> Void = {},
         onToggleCursorSpotlight: @escaping () -> Void = {},
+        onToggleZoom: @escaping () -> Void = {},
         onDiscard: @escaping () -> Void = {}
     ) {
         self.onStop = onStop
@@ -41,6 +42,7 @@ final class RecordingToolbarPanel {
                 onToggleAnnotations: onToggleAnnotations,
                 onToggleClickEmphasis: onToggleClickEmphasis,
                 onToggleCursorSpotlight: onToggleCursorSpotlight,
+                onToggleZoom: onToggleZoom,
                 onDiscard: onDiscard
             )
         )

@@ -55,8 +55,8 @@ extension ScreenCaptureService: SCStreamOutput {
             afterWebcam = pixelBuffer
         }
 
-        // Step 2: Composite annotations if available
-        let outputBuffer: CVPixelBuffer
+        // Step 2: Composite annotations (before zoom so annotations get zoomed with content)
+        let afterAnnotations: CVPixelBuffer
         if let renderer = state.annotationRenderer, let pool = state.bufferPool {
             let screenWidth = CVPixelBufferGetWidth(afterWebcam)
             let screenHeight = CVPixelBufferGetHeight(afterWebcam)
@@ -71,15 +71,41 @@ extension ScreenCaptureService: SCStreamOutput {
                 if status == kCVReturnSuccess, let output = poolBuffer {
                     let extent = CGRect(x: 0, y: 0, width: screenWidth, height: screenHeight)
                     renderer.renderToBuffer(final, to: output, bounds: extent)
-                    outputBuffer = output
+                    afterAnnotations = output
                 } else {
-                    outputBuffer = afterWebcam
+                    afterAnnotations = afterWebcam
                 }
             } else {
-                outputBuffer = afterWebcam
+                afterAnnotations = afterWebcam
             }
         } else {
-            outputBuffer = afterWebcam
+            afterAnnotations = afterWebcam
+        }
+
+        // Step 3: Apply zoom if active (after annotations so they zoom with content)
+        let outputBuffer: CVPixelBuffer
+        if let renderer = state.annotationRenderer, let pool = state.bufferPool {
+            let zoomWidth = CVPixelBufferGetWidth(afterAnnotations)
+            let zoomHeight = CVPixelBufferGetHeight(afterAnnotations)
+            let zoomTime = ProcessInfo.processInfo.systemUptime
+
+            if let zoomedImage = renderer.applyZoom(to: CIImage(cvPixelBuffer: afterAnnotations),
+                                                     screenWidth: zoomWidth, screenHeight: zoomHeight,
+                                                     currentTime: zoomTime) {
+                var poolBuffer: CVPixelBuffer?
+                let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &poolBuffer)
+                if status == kCVReturnSuccess, let output = poolBuffer {
+                    let extent = CGRect(x: 0, y: 0, width: zoomWidth, height: zoomHeight)
+                    renderer.renderToBuffer(zoomedImage, to: output, bounds: extent)
+                    outputBuffer = output
+                } else {
+                    outputBuffer = afterAnnotations
+                }
+            } else {
+                outputBuffer = afterAnnotations
+            }
+        } else {
+            outputBuffer = afterAnnotations
         }
 
         let wrapped = SendableCVBuffer(buffer: outputBuffer)

@@ -58,6 +58,7 @@ extension RecordingCoordinator {
         annotationsEnabled = false
         clickEmphasisEnabled = false
         cursorSpotlightEnabled = false
+        zoomEnabled = false
         annotationCanvas?.dismiss()
         annotationCanvas = nil
         annotationToolbar?.dismiss()
@@ -66,6 +67,8 @@ extension RecordingCoordinator {
         clickEmphasisMonitor = nil
         cursorSpotlightMonitor?.stop()
         cursorSpotlightMonitor = nil
+        zoomClickMonitor?.stop()
+        zoomClickMonitor = nil
         annotationStore = nil
         annotationRenderer = nil
     }

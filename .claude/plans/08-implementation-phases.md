@@ -420,6 +420,23 @@ UI tests were removed — MenuBarExtra apps aren't hittable by XCUIApplication, 
 
 ---
 
+## Phase 31: Annotations & Presenter Tools — Complete
+
+**Goal:** New annotation tools and presenter features for richer recordings.
+
+| # | Task | Module | Description |
+|---|------|--------|-------------|
+| 191 | Text annotation tool | Annotations/ | Click-to-place text on screen, Enter/Escape to commit/cancel, renders in canvas + video burn-in via Core Text |
+| 192 | Custom color picker | Annotations/ | Rainbow button opens popover with ColorPicker + hex input, keeps 6 quick-access swatches |
+| 193 | Zoom/magnifier presenter tool | Annotations/, Capture/ | Click to zoom 2.5x with ease-in/out animation, full-screen crop overlay with close button, annotations zoom with content |
+
+**New files:** `ZoomClickMonitor.swift`
+**Bug fix:** Welcome window focus restoration after permission dialogs
+
+**Milestone:** Text annotations on screen during recording. Full color picker with hex input. Zoom presenter tool with animated crop, close button, and pass-through clicks. All features render correctly in exported video.
+
+---
+
 ## Deferred Features
 
 | Feature | Original Phase | Reason |

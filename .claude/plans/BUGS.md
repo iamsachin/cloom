@@ -4,6 +4,17 @@ Chronological record of bugs fixed, with root cause analysis and PR links. Newes
 
 ---
 
+## Welcome window goes behind other windows after permission dialog
+**Date:** 2026-03-28
+
+**Symptom:** Clicking "Allow" on the Camera or Microphone permission dialog causes the "Welcome to Cloom" onboarding window to fall behind other windows (e.g., browser, terminal).
+
+**Root cause:** `AVCaptureDevice.requestAccess(for:)` shows a system dialog that steals app focus. When the dialog dismisses, macOS doesn't automatically restore focus to the Cloom window — focus goes to whatever window was behind it.
+
+**Fix:** Added `bringWindowToFront()` call after `AVCaptureDevice.requestAccess` completes. Uses `NSApp.activate()` + `orderFrontRegardless()` on the onboarding window.
+
+---
+
 ## Export quality picker has no effect on unmodified recordings
 **Date:** 2026-03-27
 

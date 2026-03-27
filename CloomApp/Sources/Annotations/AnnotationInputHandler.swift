@@ -12,14 +12,20 @@ extension AnnotationCanvasView {
             eraseAt(loc)
 
         case .pen, .highlighter:
+            commitActiveText()
             isDrawing = true
             activePoints = [toPixel(loc)]
 
         case .arrow, .line, .rectangle, .ellipse:
+            commitActiveText()
             isDrawing = true
             shapeOrigin = normalize(loc)
             shapeEndpoint = normalize(loc)
             activePoints = []
+
+        case .text:
+            placeTextField(at: loc)
+            return
         }
 
         needsDisplay = true
@@ -54,6 +60,9 @@ extension AnnotationCanvasView {
                     endpoint: normalize(loc)
                 ))
             }
+
+        case .text:
+            break
         }
 
         needsDisplay = true
@@ -98,6 +107,9 @@ extension AnnotationCanvasView {
             resetShapeState()
 
         case .eraser:
+            break
+
+        case .text:
             break
         }
 

@@ -1,5 +1,6 @@
 import CoreImage
 import CoreGraphics
+import CoreText
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "AnnotationRenderer")
@@ -168,6 +169,23 @@ final class AnnotationRenderer: @unchecked Sendable {
                     context.strokeEllipse(in: rect)
                 }
 
+            case .text:
+                if let text = stroke.text, let origin = stroke.origin {
+                    let pos = scalePoint(origin, width: width, height: height)
+                    let fontSize = (stroke.fontSize ?? 24.0) * 2.0 // Retina
+                    let font = CTFontCreateWithName("SFPro-Medium" as CFString, fontSize, nil)
+                    let attrs: [CFString: Any] = [
+                        kCTFontAttributeName: font,
+                        kCTForegroundColorAttributeName: stroke.color.cgColor
+                    ]
+                    let attrString = CFAttributedStringCreate(nil, text as CFString, attrs as CFDictionary)!
+                    let ctLine = CTLineCreateWithAttributedString(attrString)
+                    context.saveGState()
+                    context.textPosition = CGPoint(x: pos.x, y: pos.y - fontSize * 0.3)
+                    CTLineDraw(ctLine, context)
+                    context.restoreGState()
+                }
+
             case .eraser:
                 break // Eraser removes strokes, doesn't draw
             }
@@ -248,6 +266,64 @@ final class AnnotationRenderer: @unchecked Sendable {
         filter.setValue(CIColor.clear, forKey: "inputColor1")
 
         return filter.outputImage?.cropped(to: CGRect(x: 0, y: 0, width: width, height: height))
+    }
+
+    // MARK: - Zoom
+
+    func applyZoom(to baseImage: CIImage, screenWidth: Int, screenHeight: Int, currentTime: TimeInterval) -> CIImage? {
+        let snap = store.snapshot()
+        let zoom = snap.zoom
+
+        // Handle both zoom-in (isActive) and zoom-out (isAnimatingOut) states
+        guard zoom.isActive || zoom.isAnimatingOut else { return nil }
+
+        let elapsed = currentTime - zoom.startTime
+        let rawProgress = min(1.0, elapsed / zoom.animationDuration)
+        // Ease-in-out curve
+        let easedProgress = rawProgress < 0.5
+            ? 2.0 * rawProgress * rawProgress
+            : 1.0 - pow(-2.0 * rawProgress + 2.0, 2) / 2.0
+
+        let progress: CGFloat
+        if zoom.isActive {
+            // Zooming in: 0 → 1
+            progress = easedProgress
+        } else {
+            // Zooming out: 1 → 0
+            progress = 1.0 - easedProgress
+            if rawProgress >= 1.0 {
+                // Animation complete — clear the animating-out state
+                store.clearZoomAnimation()
+                return nil
+            }
+        }
+
+        let currentZoom = 1.0 + (zoom.zoomLevel - 1.0) * progress
+        guard currentZoom > 1.001 else { return nil }
+
+        let w = CGFloat(screenWidth)
+        let h = CGFloat(screenHeight)
+        let centerX = zoom.normalizedCenterX * w
+        let centerY = zoom.normalizedCenterY * h
+
+        // Crop region size (inverse of zoom level)
+        let cropW = w / currentZoom
+        let cropH = h / currentZoom
+
+        // Clamp crop rect to image bounds
+        let cropX = min(max(centerX - cropW / 2, 0), w - cropW)
+        let cropY = min(max(centerY - cropH / 2, 0), h - cropH)
+        let cropRect = CGRect(x: cropX, y: cropY, width: cropW, height: cropH)
+
+        // Crop and scale back to full resolution
+        let cropped = baseImage.cropped(to: cropRect)
+        let scaleX = w / cropW
+        let scaleY = h / cropH
+        let scaled = cropped
+            .transformed(by: CGAffineTransform(translationX: -cropX, y: -cropY))
+            .transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
+
+        return scaled
     }
 
     // MARK: - Spotlight Rendering

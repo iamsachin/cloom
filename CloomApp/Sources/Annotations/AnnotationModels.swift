@@ -1,5 +1,6 @@
 import CoreGraphics
 import CoreImage
+import AppKit
 
 // MARK: - Tool Types
 
@@ -11,6 +12,7 @@ enum AnnotationTool: Sendable, Equatable, CaseIterable {
     case rectangle
     case ellipse
     case eraser
+    case text
 }
 
 // MARK: - Stroke Data
@@ -35,6 +37,13 @@ struct StrokeColor: Sendable, Equatable {
     var b: CGFloat
     var a: CGFloat
 
+    init(r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat) {
+        self.r = r
+        self.g = g
+        self.b = b
+        self.a = a
+    }
+
     var cgColor: CGColor {
         CGColor(srgbRed: r, green: g, blue: b, alpha: a)
     }
@@ -43,12 +52,12 @@ struct StrokeColor: Sendable, Equatable {
         CIColor(red: r, green: g, blue: b, alpha: a)
     }
 
-    static let red = StrokeColor(r: 1, g: 0.23, b: 0.19, a: 1)
-    static let blue = StrokeColor(r: 0.0, g: 0.48, b: 1.0, a: 1)
-    static let green = StrokeColor(r: 0.3, g: 0.85, b: 0.39, a: 1)
-    static let orange = StrokeColor(r: 1.0, g: 0.58, b: 0.0, a: 1)
-    static let white = StrokeColor(r: 1, g: 1, b: 1, a: 1)
-    static let black = StrokeColor(r: 0, g: 0, b: 0, a: 1)
+    static let red = StrokeColor(r: 1.0, g: 0.23, b: 0.19, a: 1.0)
+    static let blue = StrokeColor(r: 0.0, g: 0.48, b: 1.0, a: 1.0)
+    static let green = StrokeColor(r: 0.3, g: 0.85, b: 0.39, a: 1.0)
+    static let orange = StrokeColor(r: 1.0, g: 0.58, b: 0.0, a: 1.0)
+    static let white = StrokeColor(r: 1.0, g: 1.0, b: 1.0, a: 1.0)
+    static let black = StrokeColor(r: 0.0, g: 0.0, b: 0.0, a: 1.0)
 
     static let palette: [StrokeColor] = [.red, .blue, .green, .orange, .white, .black]
 
@@ -63,6 +72,35 @@ struct StrokeColor: Sendable, Equatable {
         default: return "Custom"
         }
     }
+
+    var hexString: String {
+        let ri = Int(r * 255)
+        let gi = Int(g * 255)
+        let bi = Int(b * 255)
+        return String(format: "#%02X%02X%02X", ri, gi, bi)
+    }
+
+    init?(hex: String) {
+        var hexStr = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if hexStr.hasPrefix("#") { hexStr.removeFirst() }
+        guard hexStr.count == 6, let value = UInt64(hexStr, radix: 16) else { return nil }
+        self.r = CGFloat((value >> 16) & 0xFF) / 255.0
+        self.g = CGFloat((value >> 8) & 0xFF) / 255.0
+        self.b = CGFloat(value & 0xFF) / 255.0
+        self.a = 1.0
+    }
+
+    init(nsColor: NSColor) {
+        let c = nsColor.usingColorSpace(.sRGB) ?? nsColor
+        self.r = c.redComponent
+        self.g = c.greenComponent
+        self.b = c.blueComponent
+        self.a = c.alphaComponent
+    }
+
+    var nsColor: NSColor {
+        NSColor(srgbRed: r, green: g, blue: b, alpha: a)
+    }
 }
 
 struct AnnotationStroke: Sendable, Identifiable {
@@ -75,6 +113,10 @@ struct AnnotationStroke: Sendable, Identifiable {
     var origin: CGPoint?
     /// For shape tools: the ending point (mouseUp location)
     var endpoint: CGPoint?
+    /// For text tool: the committed text content
+    var text: String?
+    /// For text tool: font size in points
+    var fontSize: CGFloat?
     let timestamp: TimeInterval
 
     init(
@@ -85,6 +127,8 @@ struct AnnotationStroke: Sendable, Identifiable {
         points: [StrokePoint] = [],
         origin: CGPoint? = nil,
         endpoint: CGPoint? = nil,
+        text: String? = nil,
+        fontSize: CGFloat? = nil,
         timestamp: TimeInterval = ProcessInfo.processInfo.systemUptime
     ) {
         self.id = id
@@ -94,6 +138,8 @@ struct AnnotationStroke: Sendable, Identifiable {
         self.points = points
         self.origin = origin
         self.endpoint = endpoint
+        self.text = text
+        self.fontSize = fontSize
         self.timestamp = timestamp
     }
 }
@@ -156,11 +202,44 @@ struct SpotlightState: Sendable {
     }
 }
 
+// MARK: - Zoom State
+
+struct ZoomState: Sendable {
+    var isActive: Bool
+    var isAnimatingOut: Bool
+    /// Normalized center X (0-1) relative to capture area
+    var normalizedCenterX: CGFloat
+    /// Normalized center Y (0-1) relative to capture area
+    var normalizedCenterY: CGFloat
+    var zoomLevel: CGFloat
+    var startTime: TimeInterval
+    var animationDuration: TimeInterval
+
+    init(
+        isActive: Bool = false,
+        isAnimatingOut: Bool = false,
+        normalizedCenterX: CGFloat = 0.5,
+        normalizedCenterY: CGFloat = 0.5,
+        zoomLevel: CGFloat = 2.5,
+        startTime: TimeInterval = 0,
+        animationDuration: TimeInterval = 0.3
+    ) {
+        self.isActive = isActive
+        self.isAnimatingOut = isAnimatingOut
+        self.normalizedCenterX = normalizedCenterX
+        self.normalizedCenterY = normalizedCenterY
+        self.zoomLevel = zoomLevel
+        self.startTime = startTime
+        self.animationDuration = animationDuration
+    }
+}
+
 // MARK: - Snapshot (immutable copy for renderer)
 
 struct AnnotationSnapshot: Sendable {
     let strokes: [AnnotationStroke]
     let ripples: [ClickRipple]
     let spotlight: SpotlightState
+    let zoom: ZoomState
     let hasActiveStroke: Bool
 }
