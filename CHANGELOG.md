@@ -5,6 +5,16 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-03-28
+
+### Added
+- **Text annotation tool** — click anywhere on screen during recording to place text labels/callouts. Press Enter to commit, Escape to cancel. Text renders in both the live canvas preview and the exported video.
+- **Custom color picker** — rainbow button next to the 6 palette swatches opens a full color picker with hex input. Custom colors work with all annotation tools.
+- **Zoom/magnifier presenter tool** — click to zoom into a screen region at 2.5x with smooth ease-in/out animation. A full-screen overlay shows the crop region with a blue border and "ZOOM" badge. Close button (X) dismisses zoom. Clicks pass through to apps while zoomed. Annotations zoom with content.
+
+### Fixed
+- **Welcome window focus** — the onboarding window no longer falls behind other windows after dismissing Camera or Microphone permission dialogs.
+
 ## [0.1.5] - 2026-03-28
 
 ### Added
