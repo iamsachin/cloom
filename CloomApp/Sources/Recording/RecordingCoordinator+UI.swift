@@ -36,6 +36,7 @@ extension RecordingCoordinator {
             onToggleAnnotations: { [weak self] in self?.toggleAnnotations() },
             onToggleClickEmphasis: { [weak self] in self?.toggleClickEmphasis() },
             onToggleCursorSpotlight: { [weak self] in self?.toggleCursorSpotlight() },
+            onToggleZoom: { [weak self] in self?.toggleZoom() },
             onDiscard: { [weak self] in self?.discardRecording() }
         )
     }

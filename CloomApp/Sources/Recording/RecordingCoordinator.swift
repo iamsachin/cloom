@@ -17,6 +17,7 @@ final class RecordingCoordinator: ObservableObject {
     @Published var annotationsEnabled: Bool = false
     @Published var clickEmphasisEnabled: Bool = false
     @Published var cursorSpotlightEnabled: Bool = false
+    @Published var zoomEnabled: Bool = false
 
     let modelContainer: ModelContainer
     let captureService = ScreenCaptureService()
@@ -44,6 +45,7 @@ final class RecordingCoordinator: ObservableObject {
     var annotationToolbar: AnnotationToolbarPanel?
     var clickEmphasisMonitor: ClickEmphasisMonitor?
     var cursorSpotlightMonitor: CursorSpotlightMonitor?
+    var zoomClickMonitor: ZoomClickMonitor?
 
     let systemPicker = SystemContentPicker()
     var pendingFilter: SCContentFilter?

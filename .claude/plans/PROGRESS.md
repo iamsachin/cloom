@@ -889,13 +889,17 @@ Auto-cut integration + undo stack — the detection logic exists, this phase wir
 ---
 
 ## Phase 31: Annotations & Presenter Tools
-**Status:** Not Started
+**Status:** Complete
+**Date:** 2026-03-28
 
-New annotation tools and presenter features for richer recordings.
+- [x] Task 191 — Text annotation tool: click-to-place text on screen, Enter to commit, Escape to cancel. Renders in both canvas preview (NSString.draw) and video burn-in (CTLineDraw). KeyablePanel subclass for keyboard input in borderless NSPanel.
+- [x] Task 192 — Custom color picker: rainbow button after 6 palette swatches opens popover with SwiftUI ColorPicker + hex input. Custom colors flow through existing onColorChanged callback.
+- [x] Task 193 — Zoom/magnifier presenter tool: click to zoom in (2.5x) with ease-in-out animation, close button to dismiss. Full-screen overlay shows crop region (dimmed outside, blue border, ZOOM badge). Zoom applied AFTER annotations so markup zooms with content. Smooth zoom-out animation.
 
-- [ ] Task 191 — Text annotation tool: type labels/callouts on screen during recording
-- [ ] Task 192 — Custom color picker: replace fixed 6-color palette with full ColorPicker + hex input
-- [ ] Task 193 — Zoom/magnifier presenter tool: zoom into a screen region during recording for emphasis
+**New files:** `ZoomClickMonitor.swift` (zoom monitor + overlay window + close button)
+**Modified files:** `AnnotationModels.swift` (text tool, ZoomState, StrokeColor hex/NSColor), `AnnotationStore.swift` (zoom state), `AnnotationCanvasView.swift` (text field lifecycle, KeyablePanel), `AnnotationInputHandler.swift` (text tool), `AnnotationCanvasRenderer.swift` (text rendering), `AnnotationRenderer.swift` (text burn-in, applyZoom), `AnnotationCanvasWindow.swift` (KeyablePanel subclass), `AnnotationToolbarContentView.swift` (text button, custom color picker), `AnnotationToolbarPanel.swift` (wider for new buttons), `ScreenCaptureService+StreamOutput.swift` (annotations before zoom pipeline), `RecordingCoordinator.swift` (zoomEnabled, zoomClickMonitor), `RecordingCoordinator+Toggles.swift` (toggleZoom), `RecordingCoordinator+Annotations.swift` (zoom cleanup), `RecordingCoordinator+UI.swift` (onToggleZoom), `RecordingToolbarContentView.swift` (zoom button), `RecordingToolbarPanel.swift` (onToggleZoom param), `PermissionChecker.swift` (bring window to front after permission dialog)
+
+**Bug fix:** Welcome window goes behind other windows after dismissing Camera/Microphone permission dialog — added `bringWindowToFront()` after `AVCaptureDevice.requestAccess` completes.
 
 ---
 

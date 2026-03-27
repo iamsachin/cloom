@@ -36,6 +36,7 @@ extension AnnotationCanvasView {
             ctx.setLineWidth(1.5)
             ctx.strokeEllipse(in: CGRect(x: localPoint.x - size/2, y: localPoint.y - size/2, width: size, height: size))
         }
+
     }
 
     func drawStroke(_ stroke: AnnotationStroke, in ctx: CGContext) {
@@ -109,6 +110,17 @@ extension AnnotationCanvasView {
                     width: abs(p2.x - p1.x), height: abs(p2.y - p1.y)
                 )
                 ctx.strokeEllipse(in: rect)
+            }
+
+        case .text:
+            if let text = stroke.text, let origin = stroke.origin {
+                let viewPos = viewPoint(from: origin)
+                let fontSize = stroke.fontSize ?? AnnotationCanvasView.defaultFontSize
+                let attrs: [NSAttributedString.Key: Any] = [
+                    .font: NSFont.systemFont(ofSize: fontSize, weight: .medium),
+                    .foregroundColor: color
+                ]
+                (text as NSString).draw(at: CGPoint(x: viewPos.x, y: viewPos.y - fontSize / 2), withAttributes: attrs)
             }
 
         case .eraser:

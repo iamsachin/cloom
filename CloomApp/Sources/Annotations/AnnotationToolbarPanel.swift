@@ -37,11 +37,11 @@ final class AnnotationToolbarPanel {
                 onDismiss: onDismiss
             )
         )
-        hostingView.frame = NSRect(x: 0, y: 0, width: 420, height: 44)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 480, height: 44)
         panel.contentView = hostingView
 
         if let screen = NSScreen.main {
-            let x = screen.frame.midX - 210
+            let x = screen.frame.midX - 240
             let y = screen.frame.maxY - 110
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
@@ -57,7 +57,7 @@ final class AnnotationToolbarPanel {
 
     private func createPanel() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 44),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 44),
             styleMask: [.borderless, .nonactivatingPanel, .hudWindow],
             backing: .buffered,
             defer: false

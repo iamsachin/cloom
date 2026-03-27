@@ -9,6 +9,7 @@ struct RecordingToolbarContentView: View {
     @State var annotationsEnabled: Bool = false
     @State var clickEmphasisEnabled: Bool = false
     @State var spotlightEnabled: Bool = false
+    @State var zoomEnabled: Bool = false
     let onStop: () -> Void
     let onToggleMic: () -> Void
     let onToggleCamera: () -> Void
@@ -17,6 +18,7 @@ struct RecordingToolbarContentView: View {
     let onToggleAnnotations: () -> Void
     let onToggleClickEmphasis: () -> Void
     let onToggleCursorSpotlight: () -> Void
+    let onToggleZoom: () -> Void
     let onDiscard: () -> Void
 
     init(
@@ -33,6 +35,7 @@ struct RecordingToolbarContentView: View {
         onToggleAnnotations: @escaping () -> Void,
         onToggleClickEmphasis: @escaping () -> Void,
         onToggleCursorSpotlight: @escaping () -> Void,
+        onToggleZoom: @escaping () -> Void,
         onDiscard: @escaping () -> Void
     ) {
         self.startedAt = startedAt
@@ -48,6 +51,7 @@ struct RecordingToolbarContentView: View {
         self.onToggleAnnotations = onToggleAnnotations
         self.onToggleClickEmphasis = onToggleClickEmphasis
         self.onToggleCursorSpotlight = onToggleCursorSpotlight
+        self.onToggleZoom = onToggleZoom
         self.onDiscard = onDiscard
     }
 
@@ -99,6 +103,9 @@ struct RecordingToolbarContentView: View {
             }
             ToolbarToggleButton(icon: "light.max", isActive: spotlightEnabled, activeColor: .blue, help: spotlightEnabled ? "Disable cursor spotlight" : "Enable cursor spotlight") {
                 spotlightEnabled.toggle(); onToggleCursorSpotlight()
+            }
+            ToolbarToggleButton(icon: "plus.magnifyingglass", isActive: zoomEnabled, activeColor: .blue, help: zoomEnabled ? "Disable zoom" : "Enable zoom") {
+                zoomEnabled.toggle(); onToggleZoom()
             }
 
             Divider().frame(height: 20)

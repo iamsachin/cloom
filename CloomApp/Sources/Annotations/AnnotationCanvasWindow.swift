@@ -3,6 +3,11 @@ import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "AnnotationCanvas")
 
+/// Custom NSPanel subclass that can become key window for text input.
+private class KeyablePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 /// Transparent NSPanel overlay for drawing annotations.
 /// Uses sharingType = .none so SCStream ignores it (annotations are burned in via AnnotationRenderer).
 @MainActor
@@ -18,7 +23,6 @@ final class AnnotationCanvasWindow {
             panel?.ignoresMouseEvents = !isDrawingEnabled
             if isDrawingEnabled {
                 panel?.level = .screenSaver
-                // Make canvas first responder so it receives key events
                 panel?.makeKey()
                 if let view = canvasView {
                     panel?.makeFirstResponder(view)
@@ -59,7 +63,7 @@ final class AnnotationCanvasWindow {
     private func createPanel(screen: NSScreen, store: AnnotationStore) {
         let frame = screen.frame
 
-        let panel = NSPanel(
+        let panel = KeyablePanel(
             contentRect: frame,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,

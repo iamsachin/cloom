@@ -114,6 +114,7 @@ final class PermissionChecker: ObservableObject {
             Task {
                 await AVCaptureDevice.requestAccess(for: mediaType)
                 checkAll()
+                bringWindowToFront()
             }
         } else if status == .denied || status == .restricted {
             openSystemSettings()
@@ -124,6 +125,13 @@ final class PermissionChecker: ObservableObject {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy") {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    private func bringWindowToFront() {
+        NSApp.activate()
+        NSApp.windows
+            .first { $0.title == "Welcome to Cloom" }?
+            .orderFrontRegardless()
     }
 
     // MARK: - Polling
