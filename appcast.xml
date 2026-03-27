@@ -16,5 +16,16 @@
                 length="7271586"
                 type="application/octet-stream" />
         </item>
+        <item>
+            <title>Version 0.1.4</title>
+            <pubDate>Fri, 27 Mar 2026 09:21:01 +0000</pubDate>
+            <sparkle:version>0.1.4</sparkle:version>
+            <sparkle:shortVersionString>0.1.4</sparkle:shortVersionString>
+            <enclosure
+                url="https://github.com/iamsachin/cloom/releases/download/v0.1.4/Cloom-0.1.4.dmg"
+                sparkle:edSignature="fYxSLft+ym02KjzEVRWALsf9e/yJYr0QG9X97lNbAiYHIu/uwuL0Ezxls2wFBXnLS1W/f7FWBRg0KVFrppjmDg=="
+                length="7433240"
+                type="application/octet-stream" />
+        </item>
     </channel>
 </rss>
