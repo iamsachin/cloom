@@ -79,7 +79,7 @@ struct EditorContentView: View {
 
                 Divider()
 
-                EditorTimelineView(editorState: state)
+                EditorTimelineView(editorState: state, cutMarkInMs: cutMarkInMs)
                     .frame(height: 120)
                     .padding(.horizontal, 8)
 
@@ -125,10 +125,7 @@ struct EditorContentView: View {
         .animation(.easeInOut(duration: 0.25), value: state.showTranscript)
         .animation(.easeInOut(duration: 0.25), value: showInfoPanel)
         .animation(.easeInOut(duration: 0.25), value: showBookmarksPanel)
-        .onKeyPress("b") {
-            state.addBookmark(ms: state.currentTimeMs)
-            return .handled
-        }
+        .editorKeyboardShortcuts(state: state, cutMarkInMs: $cutMarkInMs)
         .navigationTitle(state.videoRecord.title)
         .toolbar {
             ToolbarItem(placement: .navigation) {

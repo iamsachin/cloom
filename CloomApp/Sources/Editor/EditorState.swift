@@ -33,9 +33,20 @@ final class EditorState {
     private(set) var captionPhrases: [CaptionPhrase] = []
     private(set) var transcriptSentences: [TranscriptSentence] = []
 
+    // Auto-cut preview ranges (shown on timeline before applying)
+    private(set) var previewCutRanges: [(startMs: Int64, endMs: Int64)] = []
+    private(set) var previewCutLabel: String = ""  // "silences" or "filler words"
+    var isShowingCutPreview: Bool { !previewCutRanges.isEmpty }
+
+    // Persisted silence ranges from AI pipeline
+    private(set) var silenceRanges: [SilenceRange] = []
+
     // Transcript polling
     private(set) var isTranscribing: Bool = false
     @ObservationIgnored private var transcriptPollingTask: Task<Void, Never>?
+
+    // Undo/Redo
+    let undoManager = EDLUndoManager()
 
     // PiP
     @ObservationIgnored var pipController: AVPictureInPictureController?
@@ -83,6 +94,8 @@ final class EditorState {
         self.bookmarks = videoRecord.bookmarks
             .sorted { $0.timestampMs < $1.timestampMs }
             .map { BookmarkSnapshot(id: $0.id, text: $0.text, timestampMs: $0.timestampMs) }
+
+        self.silenceRanges = videoRecord.silenceRanges
 
         setupTimeObserver()
         setupEndObserver()
@@ -197,6 +210,8 @@ final class EditorState {
             .sorted { $0.startMs < $1.startMs }
             .map { ChapterSnapshot(id: $0.id, title: $0.title, startMs: $0.startMs) }
 
+        self.silenceRanges = freshVideo.silenceRanges
+
         return true
     }
 
@@ -252,9 +267,57 @@ final class EditorState {
         currentTimeMs = ms
     }
 
+    // MARK: - Shuttle Playback (J/K/L)
+
+    private static let shuttleSpeeds: [Float] = [-8, -4, -2, -1, 1, 2, 4, 8]
+    @ObservationIgnored private var shuttleIndex: Int = 4 // index 4 = 1x forward
+
+    /// Shuttle backward: decrease speed or reverse.
+    func shuttleBackward() {
+        shuttleIndex = max(0, shuttleIndex - 1)
+        let rate = Self.shuttleSpeeds[shuttleIndex]
+        player.rate = rate
+        isPlaying = rate != 0
+    }
+
+    /// Shuttle forward: increase speed.
+    func shuttleForward() {
+        shuttleIndex = min(Self.shuttleSpeeds.count - 1, shuttleIndex + 1)
+        let rate = Self.shuttleSpeeds[shuttleIndex]
+        player.rate = rate
+        isPlaying = rate != 0
+    }
+
+    /// Stop shuttle (pause).
+    func shuttleStop() {
+        player.pause()
+        isPlaying = false
+        shuttleIndex = 4
+    }
+
+    // MARK: - Frame Nudge (Arrow Keys)
+
+    /// Step backward by one frame (~33ms at 30fps).
+    func nudgeBackward() {
+        player.pause()
+        isPlaying = false
+        let ms = max(0, currentTimeMs - 33)
+        seekTo(ms: ms)
+    }
+
+    /// Step forward by one frame (~33ms at 30fps).
+    func nudgeForward() {
+        player.pause()
+        isPlaying = false
+        let trimEnd = edl.trimEndMs > 0 ? edl.trimEndMs : durationMs
+        let ms = min(trimEnd, currentTimeMs + 33)
+        seekTo(ms: ms)
+    }
+
     // MARK: - Trim
 
     func setTrimStart(ms: Int64) {
+        undoManager.recordState(edl)
         edl.trimStartMs = max(0, ms)
         edl.updatedAt = .now
         if currentTimeMs < ms {
@@ -264,6 +327,7 @@ final class EditorState {
     }
 
     func setTrimEnd(ms: Int64) {
+        undoManager.recordState(edl)
         edl.trimEndMs = min(durationMs, ms)
         edl.updatedAt = .now
         if currentTimeMs > ms {
@@ -276,6 +340,7 @@ final class EditorState {
 
     func addCut(startMs: Int64, endMs: Int64) {
         guard startMs < endMs else { return }
+        undoManager.recordState(edl)
         var cuts = edl.cuts
         cuts.append(CutRange(startMs: startMs, endMs: endMs))
         cuts.sort { $0.startMs < $1.startMs }
@@ -284,8 +349,22 @@ final class EditorState {
     }
 
     func removeCut(id: String) {
+        undoManager.recordState(edl)
         var cuts = edl.cuts
         cuts.removeAll { $0.id == id }
+        edl.cuts = cuts
+        save()
+    }
+
+    /// Add multiple cuts at once (single undo snapshot). Used by auto-cut features.
+    func addCuts(ranges: [(startMs: Int64, endMs: Int64)]) {
+        guard !ranges.isEmpty else { return }
+        undoManager.recordState(edl)
+        var cuts = edl.cuts
+        for r in ranges where r.startMs < r.endMs {
+            cuts.append(CutRange(startMs: r.startMs, endMs: r.endMs))
+        }
+        cuts.sort { $0.startMs < $1.startMs }
         edl.cuts = cuts
         save()
     }
@@ -293,6 +372,7 @@ final class EditorState {
     // MARK: - Speed
 
     func setSpeed(_ multiplier: Double) {
+        undoManager.recordState(edl)
         edl.speedMultiplier = multiplier
         edl.updatedAt = .now
         if isPlaying {
@@ -306,12 +386,14 @@ final class EditorState {
     func addStitchVideo(id: String) {
         var ids = edl.stitchVideoIDs
         guard !ids.contains(id) else { return }
+        undoManager.recordState(edl)
         ids.append(id)
         edl.stitchVideoIDs = ids
         save()
     }
 
     func removeStitchVideo(id: String) {
+        undoManager.recordState(edl)
         var ids = edl.stitchVideoIDs
         ids.removeAll { $0 == id }
         edl.stitchVideoIDs = ids
@@ -321,9 +403,55 @@ final class EditorState {
     // MARK: - Thumbnail
 
     func setThumbnailTime(ms: Int64) {
+        undoManager.recordState(edl)
         edl.thumbnailTimeMs = ms
         edl.updatedAt = .now
         save()
+    }
+
+    // MARK: - Undo / Redo
+
+    func undo() {
+        if undoManager.undo(current: edl) {
+            save()
+        }
+    }
+
+    func redo() {
+        if undoManager.redo(current: edl) {
+            save()
+        }
+    }
+
+    // MARK: - Auto-Cut Preview
+
+    /// Show silence ranges as preview highlights on the timeline.
+    func previewSilenceRemoval() {
+        let ranges = silenceRanges.map { (startMs: $0.startMs, endMs: $0.endMs) }
+        previewCutRanges = ranges
+        previewCutLabel = "silences"
+    }
+
+    /// Show filler word ranges as preview highlights on the timeline.
+    func previewFillerRemoval() {
+        let ranges = transcriptWords
+            .filter { $0.isFillerWord }
+            .map { (startMs: $0.startMs, endMs: $0.endMs) }
+        previewCutRanges = ranges
+        previewCutLabel = "filler words"
+    }
+
+    /// Apply the previewed cut ranges as actual EDL cuts.
+    func applyPreviewedCuts() {
+        addCuts(ranges: previewCutRanges)
+        previewCutRanges = []
+        previewCutLabel = ""
+    }
+
+    /// Dismiss the preview without applying.
+    func dismissCutPreview() {
+        previewCutRanges = []
+        previewCutLabel = ""
     }
 
     // MARK: - Persistence

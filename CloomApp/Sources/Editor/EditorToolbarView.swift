@@ -17,6 +17,8 @@ struct EditorToolbarView: View {
             playbackControls
             Divider().frame(height: 20)
             cutControls
+            Divider().frame(height: 20)
+            AutoCutToolbarView(state: state)
             Spacer()
             trailingControls
         }

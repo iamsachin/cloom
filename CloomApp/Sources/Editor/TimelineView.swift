@@ -2,6 +2,7 @@ import SwiftUI
 
 struct EditorTimelineView: View {
     let editorState: EditorState
+    var cutMarkInMs: Int64? = nil
 
     @State private var isDragging = false
 
@@ -35,11 +36,19 @@ struct EditorTimelineView: View {
                 // Cut region overlays
                 CutRegionOverlay(editorState: editorState, timelineWidth: width)
 
+                // Auto-cut preview overlay (silences/fillers)
+                if editorState.isShowingCutPreview {
+                    AutoCutPreviewOverlay(editorState: editorState, timelineWidth: width)
+                }
+
                 // Chapter markers
                 chapterMarkers(chapters: editorState.chapters, durationMs: durationMs, width: width, height: height)
 
                 // Bookmark markers
                 bookmarkMarkers(bookmarks: editorState.bookmarks, durationMs: durationMs, width: width, height: height)
+
+                // Mark-in indicator
+                markInIndicator(durationMs: durationMs, currentTimeMs: currentTimeMs, width: width, height: height)
 
                 // Playhead
                 playhead(currentTimeMs: currentTimeMs, durationMs: durationMs, width: width, height: height)
@@ -225,6 +234,43 @@ struct EditorTimelineView: View {
                 }
                 .help(tooltip)
             }
+        }
+    }
+
+    // MARK: - Mark-In Indicator
+
+    @ViewBuilder
+    private func markInIndicator(durationMs: Int64, currentTimeMs: Int64, width: CGFloat, height: CGFloat) -> some View {
+        if let markIn = cutMarkInMs, durationMs > 0 {
+            let markFrac = CGFloat(markIn) / CGFloat(durationMs)
+            let markX = markFrac * width
+            let currentFrac = CGFloat(currentTimeMs) / CGFloat(durationMs)
+            let currentX = currentFrac * width
+            let regionWidth = currentX - markX
+
+            // Shaded region from mark-in to playhead
+            if regionWidth > 0 {
+                Rectangle()
+                    .fill(Color.orange.opacity(0.15))
+                    .frame(width: regionWidth, height: height)
+                    .offset(x: markX + regionWidth / 2 - width / 2)
+                    .allowsHitTesting(false)
+            }
+
+            // Orange vertical line at mark-in point
+            Rectangle()
+                .fill(Color.orange)
+                .frame(width: 2, height: height)
+                .offset(x: markX)
+
+            // Small flag at top of mark-in line
+            Path { path in
+                path.move(to: CGPoint(x: markX, y: 0))
+                path.addLine(to: CGPoint(x: markX + 8, y: 4))
+                path.addLine(to: CGPoint(x: markX, y: 8))
+                path.closeSubpath()
+            }
+            .fill(Color.orange)
         }
     }
 

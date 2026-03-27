@@ -29,6 +29,7 @@ final class VideoRecord {
     // AI-generated
     var hasTranscript: Bool
     var summary: String?
+    var silenceRangesJSON: String?  // JSON array of {startMs, endMs}
 
     // Recording settings
     var recordingQuality: String?  // VideoQuality rawValue ("low" | "medium" | "high")
@@ -72,5 +73,26 @@ final class VideoRecord {
         self.bookmarks = []
         self.hasTranscript = hasTranscript
         self.webcamFilePath = webcamFilePath
+    }
+}
+
+// MARK: - Silence Ranges
+
+struct SilenceRange: Codable, Equatable, Sendable {
+    var startMs: Int64
+    var endMs: Int64
+}
+
+extension VideoRecord {
+    var silenceRanges: [SilenceRange] {
+        get {
+            guard let json = silenceRangesJSON,
+                  let data = json.data(using: .utf8) else { return [] }
+            return (try? JSONDecoder().decode([SilenceRange].self, from: data)) ?? []
+        }
+        set {
+            let data = (try? JSONEncoder().encode(newValue)) ?? Data()
+            silenceRangesJSON = String(data: data, encoding: .utf8)
+        }
     }
 }
