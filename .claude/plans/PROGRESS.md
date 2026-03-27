@@ -860,3 +860,73 @@ Visual polish pass across all three main screens plus continuous waveform render
 - `CloomApp/Sources/Editor/EditorInfoPanel.swift` (Details + Encoding sections with async metadata loading)
 - `CloomApp/Sources/Library/VideoCardView.swift` (hover tooltip with recording details)
 - `CloomApp/Sources/Library/LibraryListRowView.swift` (resolution + file size columns)
+
+---
+
+## Phase 30: Smart Editing
+**Status:** Complete
+
+Auto-cut integration + undo stack — the detection logic exists, this phase wires it into the editor UI.
+
+- [x] Task 186 — Undo/redo stack for EDL operations (trim, cut, speed, stitch) with Cmd+Z / Cmd+Shift+Z
+- [x] Task 187 — Persist silence detection results on VideoRecord / EditDecisionList
+- [x] Task 188 — "Remove all silences" button in editor — auto-generates EDL cuts from detected silence ranges
+- [x] Task 189 — "Remove all filler words" button in editor — auto-generates EDL cuts from detected filler word timestamps
+- [x] Task 190 — Editor keyboard shortcuts: J/K/L shuttle, left/right arrow nudge, additional timeline navigation
+
+### Files Changed
+- `CloomApp/Sources/Editor/EDLUndoManager.swift` (new — EDLState snapshot + undo/redo stack)
+- `CloomApp/Sources/Editor/AutoCutPreviewOverlay.swift` (new — orange dashed preview on timeline)
+- `CloomApp/Sources/Editor/AutoCutToolbarView.swift` (new — silence/filler buttons + apply/cancel)
+- `CloomApp/Sources/Editor/EditorState.swift` (undo/redo, shuttle, nudge, auto-cut preview methods)
+- `CloomApp/Sources/Editor/EditorContentView.swift` (keyboard shortcuts: Cmd+Z/Shift+Cmd+Z, J/K/L, arrows, I/O, Home/End)
+- `CloomApp/Sources/Editor/EditorToolbarView.swift` (added AutoCutToolbarView section)
+- `CloomApp/Sources/Editor/TimelineView.swift` (added AutoCutPreviewOverlay layer)
+- `CloomApp/Sources/Data/VideoModel.swift` (silenceRangesJSON field + SilenceRange type)
+- `CloomApp/Sources/AI/TranscriptPersistenceService.swift` (accepts + persists silence ranges)
+- `CloomApp/Sources/AI/AIOrchestrator.swift` (passes silence ranges to persistence)
+
+---
+
+## Phase 31: Annotations & Presenter Tools
+**Status:** Not Started
+
+New annotation tools and presenter features for richer recordings.
+
+- [ ] Task 191 — Text annotation tool: type labels/callouts on screen during recording
+- [ ] Task 192 — Custom color picker: replace fixed 6-color palette with full ColorPicker + hex input
+- [ ] Task 193 — Zoom/magnifier presenter tool: zoom into a screen region during recording for emphasis
+
+---
+
+## Phase 32: Library Enhancements
+**Status:** Not Started
+
+Better organization, filtering, and browsing in the library.
+
+- [ ] Task 194 — Hover video preview: play a short preview clip when hovering over a video card
+- [ ] Task 195 — Drag-and-drop into folders: drag video cards from grid/list into sidebar folders
+- [ ] Task 196 — Date range and duration range filters in library
+- [ ] Task 197 — Timestamped comments UI: add/view comments on videos (wire up existing VideoComment model)
+
+---
+
+## Phase 33: Export & Sharing
+**Status:** Not Started
+
+More export options and share targets beyond Google Drive.
+
+- [ ] Task 198 — More share targets: AirDrop, clipboard copy, system share sheet integration
+- [ ] Task 199 — Batch export: multi-select videos in library and export all at once
+- [ ] Task 200 — Transcript export: export transcript as Markdown or PDF for meeting notes
+- [ ] Task 201 — Background upload continuation: URLSession background tasks so uploads survive app quit
+
+---
+
+## Phase 34: Settings & Recording Options
+**Status:** Not Started
+
+Make hardcoded values configurable and add recording controls.
+
+- [ ] Task 202 — System audio toggle: setting/toolbar toggle to include or exclude system audio
+- [ ] Task 203 — Configurable settings: countdown duration, default save location, silence detection thresholds, webcam mirroring toggle

@@ -182,6 +182,7 @@ actor AIOrchestrator {
             generatedTitle: generatedTitle,
             generatedSummary: generatedSummary,
             generatedChapters: generatedChapters,
+            silenceRanges: silentRanges,
             modelContainer: modelContainer
         )
 

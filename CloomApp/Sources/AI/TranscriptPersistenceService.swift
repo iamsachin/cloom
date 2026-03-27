@@ -15,6 +15,7 @@ enum TranscriptPersistenceService {
         generatedTitle: String?,
         generatedSummary: String?,
         generatedChapters: [Chapter],
+        silenceRanges: [TimeRange] = [],
         modelContainer: ModelContainer
     ) {
         let context = ModelContext(modelContainer)
@@ -74,6 +75,12 @@ enum TranscriptPersistenceService {
             )
             chapterRecord.video = video
             context.insert(chapterRecord)
+        }
+
+        if !silenceRanges.isEmpty {
+            video.silenceRanges = silenceRanges.map {
+                SilenceRange(startMs: $0.startMs, endMs: $0.endMs)
+            }
         }
 
         video.updatedAt = .now
