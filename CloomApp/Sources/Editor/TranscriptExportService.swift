@@ -219,7 +219,7 @@ enum TranscriptExportService {
 
         let accentColor = NSColor(red: 0.2, green: 0.4, blue: 0.9, alpha: 1.0)
         let darkGray = NSColor(white: 0.2, alpha: 1.0)
-        let mediumGray = NSColor(white: 0.3, alpha: 1.0)
+        let mediumGray = NSColor(white: 0.15, alpha: 1.0)
         let lightGray = NSColor(white: 0.65, alpha: 1.0)
         let dividerColor = NSColor(white: 0.85, alpha: 1.0)
 
