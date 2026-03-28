@@ -28,6 +28,7 @@ final class EditorState {
     private(set) var transcriptWords: [TranscriptWordSnapshot] = []
     private(set) var chapters: [ChapterSnapshot] = []
     var bookmarks: [BookmarkSnapshot] = []
+    var comments: [CommentSnapshot] = []
 
     // Cached computed collections (avoid recomputing every ~33ms tick)
     private(set) var captionPhrases: [CaptionPhrase] = []
@@ -94,6 +95,12 @@ final class EditorState {
         self.bookmarks = videoRecord.bookmarks
             .sorted { $0.timestampMs < $1.timestampMs }
             .map { BookmarkSnapshot(id: $0.id, text: $0.text, timestampMs: $0.timestampMs) }
+
+        self.comments = CommentSnapshot.sorted(
+            videoRecord.comments.map {
+                CommentSnapshot(id: $0.id, timestampMs: $0.timestampMs, text: $0.text, createdAt: $0.createdAt)
+            }
+        )
 
         self.silenceRanges = videoRecord.silenceRanges
 

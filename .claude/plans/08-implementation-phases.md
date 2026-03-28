@@ -437,11 +437,27 @@ UI tests were removed — MenuBarExtra apps aren't hittable by XCUIApplication, 
 
 ---
 
+## Phase 32: Library Enhancements — Complete
+
+**Goal:** Better organization, filtering, and browsing in the library.
+
+| # | Task | Module | Description |
+|---|------|--------|-------------|
+| 194 | Hover video preview | Library/ | HoverPreviewGenerator actor extracts 8 frames, cycles on hover with 400ms timer, 300ms debounce, NSCache |
+| 195 | Drag-and-drop into folders | Library/ | `.draggable` on grid/list items, `.dropDestination` on sidebar folders with highlight |
+| 196 | Date & duration range filters | Library/ | DateRangeFilter (5 presets), DurationRangeFilter (5 presets), filled icon when active |
+| 197 | Timestamped comments UI | Editor/ | CommentsPanelView sidebar panel, add/delete/seek, "At Current Time" toggle |
+
+**New files:** `HoverPreviewGenerator.swift`, `EditorState+Comments.swift`, `CommentsPanelView.swift`
+
+**Milestone:** Hover preview on video cards. Drag videos to sidebar folders. Date and duration filters in toolbar. Comments panel in editor with timestamped seek.
+
+---
+
 ## Deferred Features
 
 | Feature | Original Phase | Reason |
 |---------|---------------|--------|
 | B6 — Virtual backgrounds | Phase 2 | Low priority, complex segmentation |
 | K1 — Local view analytics | Phase 13 | No value without shared links |
-| K2 — Timestamped comments | Phase 13 | Low priority for local-only app |
 | K4 — Beauty / soft-focus filter | Phase 10 | Removed in polish pass |

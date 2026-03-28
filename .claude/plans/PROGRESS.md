@@ -904,14 +904,20 @@ Auto-cut integration + undo stack — the detection logic exists, this phase wir
 ---
 
 ## Phase 32: Library Enhancements
-**Status:** Not Started
+**Status:** Complete
+**Date:** 2026-03-28
 
 Better organization, filtering, and browsing in the library.
 
-- [ ] Task 194 — Hover video preview: play a short preview clip when hovering over a video card
-- [ ] Task 195 — Drag-and-drop into folders: drag video cards from grid/list into sidebar folders
-- [ ] Task 196 — Date range and duration range filters in library
-- [ ] Task 197 — Timestamped comments UI: add/view comments on videos (wire up existing VideoComment model)
+- [x] Task 194 — Hover video preview: HoverPreviewGenerator actor extracts 8 frames via AVAssetImageGenerator, cycles on 400ms timer with 300ms debounce, NSCache (30 videos), progress dots overlay
+- [x] Task 195 — Drag-and-drop into folders: `.draggable(video.id)` on grid/list items, `.dropDestination(for: String.self)` on sidebar folders and "All Videos", blue highlight on drop target
+- [x] Task 196 — Date range and duration range filters: DateRangeFilter (today/thisWeek/thisMonth/last3Months), DurationRangeFilter (under30s/30s-2m/2m-10m/over10m), filter icon fills when active
+- [x] Task 197 — Timestamped comments UI: CommentsPanelView in editor sidebar, CommentSnapshot sorted by timestamp (nil last), add/delete/seek, "At Current Time" toggle, blue highlight near playhead
+
+**New files:** `HoverPreviewGenerator.swift`, `EditorState+Comments.swift`, `CommentsPanelView.swift`, `CommentSortingTests.swift`
+**Modified files:** `LibraryFilterModels.swift`, `LibraryContentView.swift`, `LibraryVideoGrid.swift`, `LibrarySidebarView.swift`, `VideoCardView.swift`, `EditorState.swift`, `EditorContentView.swift`, `EditorToolbarView.swift`, `LibraryFilterTests.swift`
+
+**Tests:** 21 new tests (10 DateRangeFilter + 6 DurationRangeFilter + 7 CommentSorting = 21). Total: **219 Swift tests**, 50 Rust tests.
 
 ---
 

@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 import SwiftData
 @testable import Cloom
@@ -77,5 +78,99 @@ struct TranscriptFilterTests {
         #expect(TranscriptFilter.all.id == "All")
         #expect(TranscriptFilter.hasTranscript.id == "Has Transcript")
         #expect(TranscriptFilter.noTranscript.id == "No Transcript")
+    }
+}
+
+// MARK: - Date Range Filter Tests
+
+@Suite("DateRangeFilter")
+struct DateRangeFilterTests {
+
+    @Test func allMatchesEverything() {
+        let ancient = Date.distantPast
+        let future = Date.distantFuture
+        #expect(DateRangeFilter.all.matches(ancient) == true)
+        #expect(DateRangeFilter.all.matches(future) == true)
+    }
+
+    @Test func todayMatchesNow() {
+        #expect(DateRangeFilter.today.matches(Date.now) == true)
+    }
+
+    @Test func todayRejectsYesterday() {
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date.now)!
+        #expect(DateRangeFilter.today.matches(yesterday) == false)
+    }
+
+    @Test func thisWeekMatchesNow() {
+        #expect(DateRangeFilter.thisWeek.matches(Date.now) == true)
+    }
+
+    @Test func thisWeekRejectsDistantPast() {
+        let longAgo = Calendar.current.date(byAdding: .month, value: -6, to: Date.now)!
+        #expect(DateRangeFilter.thisWeek.matches(longAgo) == false)
+    }
+
+    @Test func thisMonthMatchesNow() {
+        #expect(DateRangeFilter.thisMonth.matches(Date.now) == true)
+    }
+
+    @Test func thisMonthRejectsTwoMonthsAgo() {
+        let twoMonthsAgo = Calendar.current.date(byAdding: .month, value: -2, to: Date.now)!
+        #expect(DateRangeFilter.thisMonth.matches(twoMonthsAgo) == false)
+    }
+
+    @Test func last3MonthsMatchesRecentDate() {
+        let oneMonthAgo = Calendar.current.date(byAdding: .month, value: -1, to: Date.now)!
+        #expect(DateRangeFilter.last3Months.matches(oneMonthAgo) == true)
+    }
+
+    @Test func last3MonthsRejectsOldDate() {
+        let sixMonthsAgo = Calendar.current.date(byAdding: .month, value: -6, to: Date.now)!
+        #expect(DateRangeFilter.last3Months.matches(sixMonthsAgo) == false)
+    }
+
+    @Test func allCasesCount() {
+        #expect(DateRangeFilter.allCases.count == 5)
+    }
+}
+
+// MARK: - Duration Range Filter Tests
+
+@Suite("DurationRangeFilter")
+struct DurationRangeFilterTests {
+
+    @Test func allMatchesEverything() {
+        #expect(DurationRangeFilter.all.matches(0) == true)
+        #expect(DurationRangeFilter.all.matches(999_999) == true)
+    }
+
+    @Test func under30sBoundary() {
+        #expect(DurationRangeFilter.under30s.matches(29_999) == true)
+        #expect(DurationRangeFilter.under30s.matches(30_000) == false)
+    }
+
+    @Test func thirtyToTwoBoundaries() {
+        #expect(DurationRangeFilter.thirtyToTwo.matches(29_999) == false)
+        #expect(DurationRangeFilter.thirtyToTwo.matches(30_000) == true)
+        #expect(DurationRangeFilter.thirtyToTwo.matches(119_999) == true)
+        #expect(DurationRangeFilter.thirtyToTwo.matches(120_000) == false)
+    }
+
+    @Test func twoToTenBoundaries() {
+        #expect(DurationRangeFilter.twoToTen.matches(119_999) == false)
+        #expect(DurationRangeFilter.twoToTen.matches(120_000) == true)
+        #expect(DurationRangeFilter.twoToTen.matches(599_999) == true)
+        #expect(DurationRangeFilter.twoToTen.matches(600_000) == false)
+    }
+
+    @Test func overTenBoundary() {
+        #expect(DurationRangeFilter.overTen.matches(599_999) == false)
+        #expect(DurationRangeFilter.overTen.matches(600_000) == true)
+        #expect(DurationRangeFilter.overTen.matches(999_999) == true)
+    }
+
+    @Test func allCasesCount() {
+        #expect(DurationRangeFilter.allCases.count == 5)
     }
 }

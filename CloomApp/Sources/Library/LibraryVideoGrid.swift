@@ -33,6 +33,7 @@ extension LibraryContentView {
                 }
         }
         .buttonStyle(.plain)
+        .draggable(video.id)
         .contextMenu { videoContextMenu(video) }
     }
 

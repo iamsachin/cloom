@@ -17,6 +17,7 @@ struct EditorContentView: View {
     @State private var showChapterPopover = false
     @State private var showInfoPanel = false
     @State private var showBookmarksPanel = false
+    @State private var showCommentsPanel = false
 
     init(videoID: String) {
         self.videoID = videoID
@@ -94,7 +95,8 @@ struct EditorContentView: View {
                     showThumbnailPicker: $showThumbnailPicker,
                     showExportSheet: $showExportSheet,
                     showInfoPanel: $showInfoPanel,
-                    showBookmarksPanel: $showBookmarksPanel
+                    showBookmarksPanel: $showBookmarksPanel,
+                    showCommentsPanel: $showCommentsPanel
                 )
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
@@ -121,10 +123,17 @@ struct EditorContentView: View {
                 BookmarksPanelView(editorState: state)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
+
+            if showCommentsPanel {
+                Divider()
+                CommentsPanelView(editorState: state)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
         }
         .animation(.easeInOut(duration: 0.25), value: state.showTranscript)
         .animation(.easeInOut(duration: 0.25), value: showInfoPanel)
         .animation(.easeInOut(duration: 0.25), value: showBookmarksPanel)
+        .animation(.easeInOut(duration: 0.25), value: showCommentsPanel)
         .editorKeyboardShortcuts(state: state, cutMarkInMs: $cutMarkInMs)
         .navigationTitle(state.videoRecord.title)
         .toolbar {

@@ -32,6 +32,9 @@ struct LibrarySidebarView: View {
     @State private var showDeleteTagConfirmation = false
     @State private var tagToDelete: TagRecord?
 
+    // Drag-and-drop
+    @State private var dropTargetFolderID: String?
+
     private var rootFolders: [FolderRecord] {
         allFolders.filter { $0.parent == nil }
     }
@@ -50,6 +53,10 @@ struct LibrarySidebarView: View {
                 // All Videos
                 Label("All Videos", systemImage: "film.stack")
                     .tag(SidebarSelection.allVideos)
+                    .dropDestination(for: String.self) { videoIDs, _ in
+                        moveVideos(ids: videoIDs, to: nil)
+                        return true
+                    }
 
                 // Folders section
             Section {
@@ -57,6 +64,18 @@ struct LibrarySidebarView: View {
                     folderLabel(item.folder)
                         .padding(.leading, CGFloat(item.depth) * 16)
                         .tag(SidebarSelection.folder(item.folder.id))
+                        .dropDestination(for: String.self) { videoIDs, _ in
+                            moveVideos(ids: videoIDs, to: item.folder)
+                            return true
+                        } isTargeted: { targeted in
+                            dropTargetFolderID = targeted ? item.folder.id : nil
+                        }
+                        .background(
+                            dropTargetFolderID == item.folder.id
+                                ? Color.accentColor.opacity(0.15)
+                                : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 4)
+                        )
                         .contextMenu { folderContextMenu(item.folder) }
                 }
             } header: {
@@ -288,6 +307,14 @@ struct LibrarySidebarView: View {
         for child in folder.children {
             orphanVideosRecursively(child)
         }
+    }
+
+    private func moveVideos(ids: [String], to folder: FolderRecord?) {
+        let idSet = Set(ids)
+        for video in allVideos where idSet.contains(video.id) {
+            video.folder = folder
+        }
+        do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
     }
 
     private func performDeleteTag() {
