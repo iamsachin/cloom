@@ -5,6 +5,21 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-03-28
+
+### Added
+- **Punch-in re-record** — pause a recording, rewind to any point (preset buttons: 5s/10s/30s/60s or slider), and re-record from there. Eliminates restarts and complex post-production stitching.
+- **Rewind button** in recording toolbar and webcam bubble pill (visible when paused).
+- **Amber timeline markers** in the editor showing where punch-in replacements occurred.
+
+### Changed
+- Segment stitcher rewritten with 3-step pipeline (normalize → compose → export) for robust multi-segment handling.
+- Recording segments now track duration and effective duration for precise rewind calculations.
+
+### Fixed
+- Multi-segment stitching crash caused by `AVMutableComposition` format incompatibility when audio formats differ between segments.
+- Composition passthrough export crash when video format hint was nil for composition tracks.
+
 ## [0.4.0] - 2026-03-28
 
 ### Added
