@@ -137,12 +137,17 @@ cloom/
 │   │   │   ├── RecordingCoordinator+CaptureDelegate.swift # AVCaptureDelegate conformance
 │   │   │   ├── RecordingCoordinator+PauseResume.swift  # Pause/resume/segment management
 │   │   │   ├── RecordingCoordinator+PostRecording.swift # Post-recording pipeline
+│   │   │   ├── RecordingCoordinator+Teleprompter.swift  # Teleprompter toggle, show/dismiss, script panel
 │   │   │   ├── RecordingCoordinator+Toggles.swift      # Mic/camera/blur/annotation toggles
 │   │   │   ├── RecordingCoordinator+UI.swift            # Window management
 │   │   │   ├── RecordingCoordinator+Webcam.swift        # Webcam start/stop/preview/adjustments
 │   │   │   ├── RecordingMetrics.swift              # Frame/drop/segment/memory instrumentation (60s periodic + final log)
 │   │   │   ├── RecordingState.swift               # enum: idle, selectingContent, countdown, recording, paused, stopping
 │   │   │   ├── RecordingToolbarPanel.swift        # NSPanel window management
+│   │   │   ├── TeleprompterContentView.swift      # SwiftUI scrolling text with edge fades
+│   │   │   ├── TeleprompterOverlayWindow.swift    # Floating NSPanel (sharingType .none) teleprompter
+│   │   │   ├── TeleprompterPosition.swift         # enum: top, bottom
+│   │   │   ├── TeleprompterScriptPanel.swift      # Script input panel (paste/type/import .txt/.md)
 │   │   │   ├── RecordingToolbarContentView.swift  # Recording-state toolbar SwiftUI view
 │   │   │   ├── ReadyToolbarContentView.swift      # Ready-state toolbar SwiftUI view
 │   │   │   └── RegionHighlightOverlay.swift       # Region selection feedback

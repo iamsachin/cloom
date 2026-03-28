@@ -16,6 +16,13 @@ struct RecordingSettingsTab: View {
     @AppStorage(UserDefaultsKeys.keystrokePosition) private var keystrokePositionRaw: String = KeystrokePosition.bottomLeft.rawValue
     @AppStorage(UserDefaultsKeys.keystrokeDisplayMode) private var keystrokeDisplayModeRaw: String = KeystrokeDisplayMode.allKeys.rawValue
 
+    // Teleprompter
+    @AppStorage(UserDefaultsKeys.teleprompterFontSize) private var teleprompterFontSize: Double = 40
+    @AppStorage(UserDefaultsKeys.teleprompterScrollSpeed) private var teleprompterScrollSpeed: Double = 60
+    @AppStorage(UserDefaultsKeys.teleprompterOpacity) private var teleprompterOpacity: Double = 0.85
+    @AppStorage(UserDefaultsKeys.teleprompterPosition) private var teleprompterPositionRaw: String = TeleprompterPosition.bottom.rawValue
+    @AppStorage(UserDefaultsKeys.teleprompterMirrorEnabled) private var teleprompterMirrorEnabled: Bool = false
+
     @State private var microphones: [AVCaptureDevice] = []
     @State private var cameras: [AVCaptureDevice] = []
     @StateObject private var micMonitor = MicLevelMonitor()
@@ -31,6 +38,13 @@ struct RecordingSettingsTab: View {
         Binding(
             get: { KeystrokeDisplayMode(rawValue: keystrokeDisplayModeRaw) ?? .allKeys },
             set: { keystrokeDisplayModeRaw = $0.rawValue }
+        )
+    }
+
+    private var teleprompterPosition: Binding<TeleprompterPosition> {
+        Binding(
+            get: { TeleprompterPosition(rawValue: teleprompterPositionRaw) ?? .bottom },
+            set: { teleprompterPositionRaw = $0.rawValue }
         )
     }
 
@@ -149,6 +163,51 @@ struct RecordingSettingsTab: View {
                     }
                 }
                 .help("Show all keys or only modifier combos (⌘S, ⌃C, etc.)")
+            }
+
+            Section("Teleprompter") {
+                HStack {
+                    Text("Font Size")
+                    Slider(value: $teleprompterFontSize, in: 20...72, step: 2)
+                    Text("\(Int(teleprompterFontSize)) pt")
+                        .monospacedDigit()
+                        .frame(width: 45, alignment: .trailing)
+                        .foregroundStyle(teleprompterFontSize != 40 ? Color.accentColor : .secondary)
+                        .onTapGesture { teleprompterFontSize = 40 }
+                }
+                .help("Text size in the teleprompter overlay")
+
+                HStack {
+                    Text("Scroll Speed")
+                    Slider(value: $teleprompterScrollSpeed, in: 10...200, step: 5)
+                    Text("\(Int(teleprompterScrollSpeed)) pt/s")
+                        .monospacedDigit()
+                        .frame(width: 55, alignment: .trailing)
+                        .foregroundStyle(teleprompterScrollSpeed != 60 ? Color.accentColor : .secondary)
+                        .onTapGesture { teleprompterScrollSpeed = 60 }
+                }
+                .help("How fast the script scrolls (points per second)")
+
+                HStack {
+                    Text("Background Opacity")
+                    Slider(value: $teleprompterOpacity, in: 0.3...1.0, step: 0.05)
+                    Text("\(Int(teleprompterOpacity * 100))%")
+                        .monospacedDigit()
+                        .frame(width: 45, alignment: .trailing)
+                        .foregroundStyle(teleprompterOpacity != 0.85 ? Color.accentColor : .secondary)
+                        .onTapGesture { teleprompterOpacity = 0.85 }
+                }
+                .help("Opacity of the teleprompter background")
+
+                Picker("Position", selection: teleprompterPosition) {
+                    ForEach(TeleprompterPosition.allCases) { pos in
+                        Text(pos.rawValue).tag(pos)
+                    }
+                }
+                .help("Where the teleprompter appears on screen")
+
+                Toggle("Mirror Mode", isOn: $teleprompterMirrorEnabled)
+                    .help("Flip text horizontally for use with a physical beamsplitter teleprompter")
             }
 
             Section("Silence Detection") {

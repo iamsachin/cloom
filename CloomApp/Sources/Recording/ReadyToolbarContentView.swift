@@ -8,6 +8,7 @@ struct ReadyToolbarContentView: View {
     @State var clickEmphasisEnabled: Bool = false
     @State var spotlightEnabled: Bool = false
     @State var keystrokeEnabled: Bool = false
+    @State var teleprompterEnabled: Bool = false
     let onToggleMic: () -> Void
     let onToggleCamera: () -> Void
     let onToggleSystemAudio: () -> Void
@@ -15,6 +16,7 @@ struct ReadyToolbarContentView: View {
     let onToggleClickEmphasis: () -> Void
     let onToggleCursorSpotlight: () -> Void
     let onToggleKeystroke: () -> Void
+    let onToggleTeleprompter: () -> Void
     let onRecord: () -> Void
     let onCancel: () -> Void
 
@@ -29,6 +31,7 @@ struct ReadyToolbarContentView: View {
         onToggleClickEmphasis: @escaping () -> Void,
         onToggleCursorSpotlight: @escaping () -> Void,
         onToggleKeystroke: @escaping () -> Void = {},
+        onToggleTeleprompter: @escaping () -> Void = {},
         onRecord: @escaping () -> Void,
         onCancel: @escaping () -> Void
     ) {
@@ -42,6 +45,7 @@ struct ReadyToolbarContentView: View {
         self.onToggleClickEmphasis = onToggleClickEmphasis
         self.onToggleCursorSpotlight = onToggleCursorSpotlight
         self.onToggleKeystroke = onToggleKeystroke
+        self.onToggleTeleprompter = onToggleTeleprompter
         self.onRecord = onRecord
         self.onCancel = onCancel
     }
@@ -80,6 +84,9 @@ struct ReadyToolbarContentView: View {
             }
             ToolbarToggleButton(icon: "keyboard", isActive: keystrokeEnabled, activeColor: .blue, help: keystrokeEnabled ? "Hide keystrokes" : "Show keystrokes") {
                 keystrokeEnabled.toggle(); onToggleKeystroke()
+            }
+            ToolbarToggleButton(icon: "doc.text", isActive: teleprompterEnabled, activeColor: .blue, help: teleprompterEnabled ? "Hide teleprompter" : "Show teleprompter") {
+                teleprompterEnabled.toggle(); onToggleTeleprompter()
             }
 
             Divider().frame(height: 20)

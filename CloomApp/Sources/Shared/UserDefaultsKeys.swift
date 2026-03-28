@@ -27,6 +27,14 @@ enum UserDefaultsKeys {
     static let keystrokePosition = "keystrokePosition"
     static let keystrokeDisplayMode = "keystrokeDisplayMode"
 
+    // MARK: - Teleprompter
+    static let teleprompterScript = "teleprompterScript"
+    static let teleprompterFontSize = "teleprompterFontSize"
+    static let teleprompterScrollSpeed = "teleprompterScrollSpeed"
+    static let teleprompterOpacity = "teleprompterOpacity"
+    static let teleprompterPosition = "teleprompterPosition"
+    static let teleprompterMirrorEnabled = "teleprompterMirrorEnabled"
+
     // MARK: - Webcam
     static let webcamShape = "webcamShape"
     static let webcamFrame = "webcamFrame"

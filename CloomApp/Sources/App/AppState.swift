@@ -76,6 +76,9 @@ final class AppState: ObservableObject {
                 self.resumeRecording()
             }
         }
+        KeyboardShortcuts.onKeyDown(for: .toggleTeleprompterScroll) { [weak self] in
+            self?.recordingCoordinator.toggleTeleprompterScroll()
+        }
     }
 
     // MARK: - Crash Recovery

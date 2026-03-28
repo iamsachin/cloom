@@ -6,6 +6,7 @@ struct ShortcutsSettingsTab: View {
         Form {
             KeyboardShortcuts.Recorder("Start / Stop Recording:", name: .toggleRecording)
             KeyboardShortcuts.Recorder("Pause / Resume:", name: .togglePause)
+            KeyboardShortcuts.Recorder("Teleprompter Scroll:", name: .toggleTeleprompterScroll)
         }
         .formStyle(.grouped)
     }
