@@ -44,33 +44,35 @@ enum TranscriptExportService {
         summary: String?,
         transcript: TranscriptRecord,
         chapters: [ChapterRecord],
+        durationMs: Int64 = 0,
         destURL: URL
     ) throws {
         let attributedString = buildStyledAttributedString(
-            title: title, summary: summary, transcript: transcript, chapters: chapters
+            title: title, summary: summary, transcript: transcript,
+            chapters: chapters, durationMs: durationMs
         )
 
         // A4 dimensions in points
         let a4Width: CGFloat = 595.28
         let a4Height: CGFloat = 841.89
         let margin: CGFloat = 60
+        let footerHeight: CGFloat = 24
         let textWidth = a4Width - margin * 2
-        let textHeight = a4Height - margin * 2
+        let bottomMargin = margin + footerHeight
 
-        // Create a text view sized to A4 text area — NSPrintOperation handles pagination
-        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: textWidth, height: textHeight))
-        textView.textStorage?.setAttributedString(attributedString)
-        textView.textContainer?.lineFragmentPadding = 0
-        textView.textContainer?.containerSize = NSSize(width: textWidth, height: .greatestFiniteMagnitude)
-        textView.isEditable = false
-        textView.backgroundColor = .white
-        textView.layoutManager?.ensureLayout(for: textView.textContainer!)
+        // Create a paginated text view with footer
+        let pdfView = PaginatedPDFView(
+            attributedString: attributedString,
+            pageSize: NSSize(width: a4Width, height: a4Height),
+            margins: NSEdgeInsets(top: margin, left: margin, bottom: bottomMargin, right: margin),
+            title: title
+        )
 
-        // Configure print info for A4 with margins
+        // Configure print info for A4
         let printInfo = NSPrintInfo()
         printInfo.paperSize = NSSize(width: a4Width, height: a4Height)
         printInfo.topMargin = margin
-        printInfo.bottomMargin = margin
+        printInfo.bottomMargin = bottomMargin
         printInfo.leftMargin = margin
         printInfo.rightMargin = margin
         printInfo.horizontalPagination = .fit
@@ -80,7 +82,7 @@ enum TranscriptExportService {
         printInfo.jobDisposition = .save
         printInfo.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = destURL
 
-        let printOp = NSPrintOperation(view: textView, printInfo: printInfo)
+        let printOp = NSPrintOperation(view: pdfView, printInfo: printInfo)
         printOp.showsPrintPanel = false
         printOp.showsProgressPanel = false
         printOp.run()
@@ -116,7 +118,8 @@ enum TranscriptExportService {
         title: String,
         summary: String?,
         transcript: TranscriptRecord,
-        chapters: [ChapterRecord]
+        chapters: [ChapterRecord],
+        durationMs: Int64 = 0
     ) -> NSAttributedString {
         let result = NSMutableAttributedString()
 
@@ -163,22 +166,40 @@ enum TranscriptExportService {
             attributes: [.font: titleFont, .foregroundColor: darkGray, .paragraphStyle: titleStyle]
         ))
 
-        // Meta line: "Cloom Transcript" + date
+        // Meta line: "Cloom Transcript" + duration + date
         let dateStr = Date.now.formatted(date: .abbreviated, time: .shortened)
+        var metaText = "Cloom Transcript"
+        if durationMs > 0 {
+            metaText += "  ·  \(formatTimestamp(ms: durationMs))"
+        }
+        metaText += "  ·  \(dateStr)"
         result.append(NSAttributedString(
-            string: "Cloom Transcript  \(dateStr)\n",
+            string: metaText + "\n",
             attributes: [.font: captionFont, .foregroundColor: lightGray, .paragraphStyle: metaStyle]
         ))
 
         // Summary / description
         if let summary, !summary.isEmpty {
+            let summaryLabelStyle = NSMutableParagraphStyle()
+            summaryLabelStyle.paragraphSpacingBefore = 4
+            summaryLabelStyle.paragraphSpacing = 4
+            result.append(NSAttributedString(
+                string: "SUMMARY\n",
+                attributes: [
+                    .font: captionFont, .foregroundColor: accentColor,
+                    .paragraphStyle: summaryLabelStyle, .kern: 2.0
+                ]
+            ))
             let summaryStyle = NSMutableParagraphStyle()
             summaryStyle.lineSpacing = 3
             summaryStyle.paragraphSpacing = 12
+            let italicFont = NSFontManager.shared.convert(
+                NSFont.systemFont(ofSize: 11), toHaveTrait: .italicFontMask
+            )
             result.append(NSAttributedString(
                 string: summary + "\n",
                 attributes: [
-                    .font: NSFont.systemFont(ofSize: 11, weight: .regular),
+                    .font: italicFont,
                     .foregroundColor: mediumGray,
                     .paragraphStyle: summaryStyle
                 ]
@@ -249,5 +270,79 @@ enum TranscriptExportService {
         let minutes = totalSeconds / 60
         let seconds = totalSeconds % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+}
+
+// MARK: - Paginated PDF View with Footer
+
+/// NSTextView subclass that draws a footer with page number and branding on each printed page.
+private final class PaginatedPDFView: NSTextView {
+    private let pdfTitle: String
+
+    init(
+        attributedString: NSAttributedString,
+        pageSize: NSSize,
+        margins: NSEdgeInsets,
+        title: String
+    ) {
+        let textWidth = pageSize.width - margins.left - margins.right
+        let textHeight = pageSize.height - margins.top - margins.bottom
+        self.pdfTitle = title
+        super.init(frame: NSRect(x: 0, y: 0, width: textWidth, height: textHeight))
+        textStorage?.setAttributedString(attributedString)
+        textContainer?.lineFragmentPadding = 0
+        textContainer?.containerSize = NSSize(width: textWidth, height: .greatestFiniteMagnitude)
+        isEditable = false
+        backgroundColor = .white
+        layoutManager?.ensureLayout(for: textContainer!)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func drawPageBorder(with borderSize: NSSize) {
+        super.drawPageBorder(with: borderSize)
+
+        guard let context = NSGraphicsContext.current else { return }
+        context.saveGraphicsState()
+
+        let margin: CGFloat = 60
+        let footerY: CGFloat = 30
+        let textWidth = borderSize.width - margin * 2
+        let footerFont = NSFont.systemFont(ofSize: 8, weight: .regular)
+        let footerColor = NSColor(white: 0.6, alpha: 1.0)
+        let accentColor = NSColor(red: 0.2, green: 0.4, blue: 0.9, alpha: 1.0)
+
+        // Thin line above footer
+        let lineY = footerY + 14
+        let linePath = NSBezierPath()
+        linePath.move(to: NSPoint(x: margin, y: lineY))
+        linePath.line(to: NSPoint(x: margin + textWidth, y: lineY))
+        NSColor(white: 0.88, alpha: 1.0).setStroke()
+        linePath.lineWidth = 0.5
+        linePath.stroke()
+
+        // Left: "Generated by Cloom"
+        let leftAttrs: [NSAttributedString.Key: Any] = [
+            .font: footerFont, .foregroundColor: footerColor
+        ]
+        let leftStr = NSAttributedString(string: "Generated by Cloom", attributes: leftAttrs)
+        leftStr.draw(at: NSPoint(x: margin, y: footerY))
+
+        // Right: page number
+        let currentPage = self.currentPage
+        let pageStr = NSAttributedString(
+            string: "Page \(currentPage)",
+            attributes: [.font: footerFont, .foregroundColor: accentColor]
+        )
+        let pageStrSize = pageStr.size()
+        pageStr.draw(at: NSPoint(x: margin + textWidth - pageStrSize.width, y: footerY))
+
+        context.restoreGraphicsState()
+    }
+
+    private var currentPage: Int {
+        guard let printOp = NSPrintOperation.current else { return 1 }
+        return printOp.currentPage
     }
 }

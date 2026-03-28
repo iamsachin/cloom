@@ -295,7 +295,8 @@ struct EditorToolbarView: View {
                 )
             case .pdf:
                 try TranscriptExportService.exportAsPDF(
-                    title: title, summary: summary, transcript: transcript, chapters: chapters, destURL: destURL
+                    title: title, summary: summary, transcript: transcript, chapters: chapters,
+                    durationMs: video?.durationMs ?? 0, destURL: destURL
                 )
             }
         } catch {
