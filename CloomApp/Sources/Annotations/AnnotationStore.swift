@@ -10,6 +10,7 @@ final class AnnotationStore: @unchecked Sendable {
         var ripples: [ClickRipple] = []
         var spotlight: SpotlightState = SpotlightState()
         var zoom: ZoomState = ZoomState()
+        var keystroke: KeystrokeState = KeystrokeState()
     }
 
     private let state: OSAllocatedUnfairLock<State>
@@ -119,6 +120,32 @@ final class AnnotationStore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Keystrokes
+
+    func addKeystroke(_ event: KeystrokeEvent) {
+        state.withLock { $0.keystroke.events.append(event) }
+    }
+
+    func pruneExpiredKeystrokes(currentTime: TimeInterval) {
+        state.withLock { state in
+            state.keystroke.events.removeAll { event in
+                currentTime - event.startTime > event.totalDuration
+            }
+        }
+    }
+
+    func setKeystrokeEnabled(_ enabled: Bool) {
+        state.withLock { $0.keystroke.isEnabled = enabled }
+    }
+
+    func setKeystrokePosition(_ position: KeystrokePosition) {
+        state.withLock { $0.keystroke.position = position }
+    }
+
+    func setKeystrokeDisplayMode(_ mode: KeystrokeDisplayMode) {
+        state.withLock { $0.keystroke.displayMode = mode }
+    }
+
     // MARK: - Snapshot
 
     func snapshot() -> AnnotationSnapshot {
@@ -133,6 +160,7 @@ final class AnnotationStore: @unchecked Sendable {
                 ripples: state.ripples,
                 spotlight: state.spotlight,
                 zoom: state.zoom,
+                keystroke: state.keystroke,
                 hasActiveStroke: hasActive
             )
         }

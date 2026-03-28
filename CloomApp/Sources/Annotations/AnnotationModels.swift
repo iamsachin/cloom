@@ -234,6 +234,68 @@ struct ZoomState: Sendable {
     }
 }
 
+// MARK: - Keystroke Event
+
+struct KeystrokeEvent: Sendable, Identifiable {
+    let id: UUID
+    /// Human-readable label (e.g. "⌘S", "Shift+Enter", "A")
+    let label: String
+    let startTime: TimeInterval
+    /// How long the label stays visible before fading
+    let displayDuration: TimeInterval
+    /// Fade-out duration after displayDuration
+    let fadeDuration: TimeInterval
+
+    init(
+        id: UUID = UUID(),
+        label: String,
+        startTime: TimeInterval = ProcessInfo.processInfo.systemUptime,
+        displayDuration: TimeInterval = 1.5,
+        fadeDuration: TimeInterval = 0.5
+    ) {
+        self.id = id
+        self.label = label
+        self.startTime = startTime
+        self.displayDuration = displayDuration
+        self.fadeDuration = fadeDuration
+    }
+
+    var totalDuration: TimeInterval { displayDuration + fadeDuration }
+
+    /// Returns opacity (1.0 during display, fading during fade, 0.0 after)
+    func opacity(at currentTime: TimeInterval) -> CGFloat {
+        let elapsed = currentTime - startTime
+        if elapsed < 0 { return 1.0 }
+        if elapsed < displayDuration { return 1.0 }
+        let fadeElapsed = elapsed - displayDuration
+        if fadeElapsed >= fadeDuration { return 0.0 }
+        return CGFloat(1.0 - fadeElapsed / fadeDuration)
+    }
+}
+
+/// Position corner for the keystroke overlay
+enum KeystrokePosition: String, CaseIterable, Sendable {
+    case bottomLeft = "Bottom Left"
+    case bottomRight = "Bottom Right"
+    case topLeft = "Top Left"
+    case topRight = "Top Right"
+}
+
+/// What keys to show
+enum KeystrokeDisplayMode: String, CaseIterable, Sendable {
+    case allKeys = "All Keys"
+    case modifierCombosOnly = "Modifier Combos Only"
+}
+
+// MARK: - Keystroke State
+
+struct KeystrokeState: Sendable {
+    var isEnabled: Bool = false
+    var events: [KeystrokeEvent] = []
+    var position: KeystrokePosition = .bottomLeft
+    var displayMode: KeystrokeDisplayMode = .allKeys
+}
+
 // MARK: - Snapshot (immutable copy for renderer)
 
 struct AnnotationSnapshot: Sendable {
@@ -241,5 +303,6 @@ struct AnnotationSnapshot: Sendable {
     let ripples: [ClickRipple]
     let spotlight: SpotlightState
     let zoom: ZoomState
+    let keystroke: KeystrokeState
     let hasActiveStroke: Bool
 }

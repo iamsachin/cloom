@@ -7,12 +7,14 @@ struct ReadyToolbarContentView: View {
     @State var annotationsEnabled: Bool = false
     @State var clickEmphasisEnabled: Bool = false
     @State var spotlightEnabled: Bool = false
+    @State var keystrokeEnabled: Bool = false
     let onToggleMic: () -> Void
     let onToggleCamera: () -> Void
     let onToggleSystemAudio: () -> Void
     let onToggleAnnotations: () -> Void
     let onToggleClickEmphasis: () -> Void
     let onToggleCursorSpotlight: () -> Void
+    let onToggleKeystroke: () -> Void
     let onRecord: () -> Void
     let onCancel: () -> Void
 
@@ -26,6 +28,7 @@ struct ReadyToolbarContentView: View {
         onToggleAnnotations: @escaping () -> Void,
         onToggleClickEmphasis: @escaping () -> Void,
         onToggleCursorSpotlight: @escaping () -> Void,
+        onToggleKeystroke: @escaping () -> Void = {},
         onRecord: @escaping () -> Void,
         onCancel: @escaping () -> Void
     ) {
@@ -38,6 +41,7 @@ struct ReadyToolbarContentView: View {
         self.onToggleAnnotations = onToggleAnnotations
         self.onToggleClickEmphasis = onToggleClickEmphasis
         self.onToggleCursorSpotlight = onToggleCursorSpotlight
+        self.onToggleKeystroke = onToggleKeystroke
         self.onRecord = onRecord
         self.onCancel = onCancel
     }
@@ -73,6 +77,9 @@ struct ReadyToolbarContentView: View {
             }
             ToolbarToggleButton(icon: "light.max", isActive: spotlightEnabled, activeColor: .blue, help: spotlightEnabled ? "Disable cursor spotlight" : "Enable cursor spotlight") {
                 spotlightEnabled.toggle(); onToggleCursorSpotlight()
+            }
+            ToolbarToggleButton(icon: "keyboard", isActive: keystrokeEnabled, activeColor: .blue, help: keystrokeEnabled ? "Hide keystrokes" : "Show keystrokes") {
+                keystrokeEnabled.toggle(); onToggleKeystroke()
             }
 
             Divider().frame(height: 20)
