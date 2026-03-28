@@ -956,3 +956,166 @@ Make hardcoded values configurable and add recording controls.
 **New UserDefaults keys:** `systemAudioEnabled`, `countdownDuration`, `defaultSaveLocation`, `silenceThresholdDb`, `silenceMinDurationMs`, `webcamMirrorEnabled`
 
 **Milestone verified:** Build succeeds (0 errors). 222 Swift tests pass. All 6 settings configurable via UI and wired to their respective systems.
+
+---
+
+## Phase 35: Punch-In Re-Record
+**Status:** DONE ✅ (2026-03-28)
+
+Pause recording, rewind to a point, re-record a segment, and continue — without leaving the session. Eliminates restarts and complex post-production stitching.
+
+- [x] Task 204 — Re-record UI: "Rewind" button in recording toolbar (visible when paused), RewindPickerPanel with preset buttons (5s/10s/30s/60s) + slider
+- [x] Task 205 — Segment replacement: discard segments after punch-in point, truncate segment at split point via passthrough AVAssetReader/Writer, start new segment
+- [x] Task 206 — SegmentStitcher update: added `truncateSegment(at:to:)` method for passthrough truncation; refactored `segmentURLs: [URL]` → `segments: [RecordingSegment]` with duration tracking
+- [x] Task 207 — Tests + build verification: PunchInMarker encode/decode, RecordingSegment creation, RecordingState.rewinding predicates (236 tests, 38 suites pass)
+
+### Implementation Notes
+- New types: `RecordingSegment` (URL + index + duration), `PunchInMarker` (Codable, persisted on VideoRecord)
+- New state: `RecordingState.rewinding(startedAt:pausedAt:)` — prevents actions during rewind configuration
+- Paused toolbar now shown after pause (was previously dismissed) with rewind button
+- Segment duration loaded from AVURLAsset on pause for rewind time calculation
+- Editor timeline shows amber markers with backward arrow icon at punch-in points
+- Rewind button also added to BubbleControlPill (webcam bubble)
+- New files: RecordingSegment.swift, PunchInMarker.swift, RewindPickerPanel.swift, RewindPickerContentView.swift, RecordingCoordinator+Rewind.swift, PunchInRewindTests.swift
+
+---
+
+## Phase 36: Keystroke Visualization Overlay
+**Status:** Not Started
+
+Floating overlay showing pressed keys on screen during recording. Highly requested by developers and educators for tutorials.
+
+- [ ] Task 208 — Key event monitor: CGEvent tap or NSEvent.addGlobalMonitorForEvents to capture keystrokes
+- [ ] Task 209 — Keystroke overlay window: floating NSPanel showing recent key combos with fade-out animation
+- [ ] Task 210 — Burn-in rendering: composite keystroke overlay into recorded video frames
+- [ ] Task 211 — Settings: toggle keystroke display on/off, position (corner), style, modifier-only vs all keys
+- [ ] Task 212 — Tests + build verification
+
+---
+
+## Phase 37: Cinematic Webcam (Bokeh)
+**Status:** Not Started
+
+Enable macOS 26's hardware cinematic depth-of-field blur on webcam via `AVCaptureDeviceInput.isCinematicVideoCaptureEnabled`. Single API toggle for cinema-quality bokeh.
+
+- [ ] Task 213 — Enable cinematic capture: detect device support, set `isCinematicVideoCaptureEnabled`
+- [ ] Task 214 — Aperture control: adjustable f-stop slider in webcam settings (uses `simulatedAperture`)
+- [ ] Task 215 — Focus tracking: auto-focus on detected face via `setCinematicVideoTrackingFocus`
+- [ ] Task 216 — Settings UI: cinematic toggle + aperture slider in Settings > Webcam
+- [ ] Task 217 — Tests + build verification
+
+---
+
+## Phase 38: Liquid Glass UI
+**Status:** Not Started
+
+Adopt macOS 26's Liquid Glass styling across the app's chrome — toolbar, floating panels, overlays — for a native Tahoe look.
+
+- [ ] Task 218 — Apply `glassEffect()` to recording toolbar panel and annotation toolbar
+- [ ] Task 219 — Apply `glassEffect()` to floating webcam bubble border/controls
+- [ ] Task 220 — Apply `buttonStyle(.glass)` to primary action buttons across the app
+- [ ] Task 221 — Update MenuBarExtra and settings window chrome
+- [ ] Task 222 — Visual QA pass + build verification
+
+---
+
+## Phase 39: Teleprompter Overlay
+**Status:** Not Started
+
+Floating transparent text overlay visible to the presenter but not captured in the recording. For scripted content — educators, content creators, sales demos.
+
+- [ ] Task 223 — Teleprompter window: transparent NSPanel (excluded from capture via `sharingType: .none`) with scrolling text
+- [ ] Task 224 — Script input: paste or type script text, import from .txt/.md file
+- [ ] Task 225 — Auto-scroll: configurable scroll speed, pause/resume with keyboard shortcut
+- [ ] Task 226 — Controls: font size, opacity, position (top/bottom), mirror mode for external teleprompter
+- [ ] Task 227 — Tests + build verification
+
+---
+
+## Phase 40: Social Media Export Presets
+**Status:** Not Started
+
+One-click reformat to 9:16 (Shorts/Reels), 1:1 (Instagram), 4:5 (LinkedIn) with smart crop/zoom from landscape recordings.
+
+- [ ] Task 228 — Aspect ratio presets: enum with 16:9, 9:16, 1:1, 4:5 + custom
+- [ ] Task 229 — Smart recomposition: auto-crop with focus detection (cursor/webcam position) to keep important content centered
+- [ ] Task 230 — Background fill: configurable gradient/blur/color for letterboxing when content doesn't fill frame
+- [ ] Task 231 — Export UI: preset picker in EditorExportView with live preview of framing
+- [ ] Task 232 — Tests + build verification
+
+---
+
+## Phase 41: Subtitle Style Customization
+**Status:** Not Started
+
+Let users customize burned-in caption appearance — font, size, color, background, position — before export. Currently hardcoded.
+
+- [ ] Task 233 — SubtitleStyle model: font family, size, text color, background color/opacity, position (top/center/bottom), outline
+- [ ] Task 234 — Style UI: subtitle style picker in export view with live preview
+- [ ] Task 235 — Rendering update: apply SubtitleStyle in SubtitleExportService and ExportWriter
+- [ ] Task 236 — Presets: 3-4 built-in styles (Classic, Modern, Minimal, Bold) + custom
+- [ ] Task 237 — Tests + build verification
+
+---
+
+## Phase 42: Live Activity in Menu Bar
+**Status:** Not Started
+
+macOS 26 Live Activity showing recording duration, waveform level indicator, and stop button in the system menu bar.
+
+- [ ] Task 238 — WidgetKit Live Activity definition: recording duration, elapsed time, audio level
+- [ ] Task 239 — Activity lifecycle: start on recording begin, update on timer/audio, end on stop
+- [ ] Task 240 — Interactive controls: stop button, pause/resume in the Live Activity
+- [ ] Task 241 — Tests + build verification
+
+---
+
+## Phase 43: Tag-Based Sidebar Navigation
+**Status:** Not Started
+
+Click a tag in the library sidebar to filter videos by that tag. Model and tagging UI already exist — this adds sidebar entries and click-to-filter.
+
+- [ ] Task 242 — Sidebar tag section: list all tags below folders in LibrarySidebarView
+- [ ] Task 243 — Click-to-filter: selecting a tag filters the library grid/list to videos with that tag
+- [ ] Task 244 — Tag pills clickable: clicking a tag on a video card also filters to that tag
+- [ ] Task 245 — Tests + build verification
+
+---
+
+## Phase 44: Filler Word Configuration
+**Status:** Not Started
+
+Settings UI to customize which words count as fillers and adjust detection sensitivity. Currently hardcoded in Rust.
+
+- [ ] Task 246 — FFI extension: pass custom filler word list from Swift to Rust via UniFFI
+- [ ] Task 247 — Settings UI: editable filler word list in Settings > AI, add/remove words, reset to defaults
+- [ ] Task 248 — Sensitivity slider: adjustable threshold for filler detection confidence
+- [ ] Task 249 — Persist settings: @AppStorage for custom word list and sensitivity
+- [ ] Task 250 — Tests + build verification
+
+---
+
+## Phase 45: PII Redaction / Blur Regions
+**Status:** Not Started
+
+Post-recording blur/pixelate tool to redact sensitive areas (passwords, emails, dashboards) in the editor before export.
+
+- [ ] Task 251 — Blur region model: time range + rect + blur style (Gaussian, pixelate, black box) in EDL
+- [ ] Task 252 — Editor UI: draw blur rectangles on video preview, resize/move handles, per-region time range
+- [ ] Task 253 — Export rendering: apply blur CIFilters to specified regions during re-encode
+- [ ] Task 254 — Undo/redo integration: blur regions participate in EDLUndoManager stack
+- [ ] Task 255 — Tests + build verification
+
+---
+
+## Phase 46: Multi-Language Caption Translation
+**Status:** Not Started
+
+Auto-translate transcript/captions to selected languages before export for international audiences.
+
+- [ ] Task 256 — Translation service: LLM-based or Apple Translation API for transcript text
+- [ ] Task 257 — Language picker: select target language(s) in export view
+- [ ] Task 258 — Multi-language subtitle tracks: embed translated captions as additional tx3g tracks
+- [ ] Task 259 — Transcript export: Markdown/PDF export with translated text
+- [ ] Task 260 — Tests + build verification
+

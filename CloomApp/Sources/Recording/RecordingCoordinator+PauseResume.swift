@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "RecordingCoordinator")
@@ -10,7 +11,8 @@ extension RecordingCoordinator {
     func pauseRecording() {
         guard case .recording(let startedAt) = state else { return }
 
-        state = .paused(startedAt: startedAt, pausedAt: Date())
+        let pausedAt = Date()
+        state = .paused(startedAt: startedAt, pausedAt: pausedAt)
 
         Task {
             do {
@@ -18,9 +20,12 @@ extension RecordingCoordinator {
             } catch {
                 logger.error("Failed to stop capture for pause: \(error)")
             }
-        }
 
-        recordingToolbar.dismiss()
+            // Capture segment duration for rewind calculations
+            await loadCurrentSegmentDuration()
+
+            showPausedToolbar(startedAt: startedAt)
+        }
     }
 
     func resumeRecording() {
@@ -32,7 +37,7 @@ extension RecordingCoordinator {
 
         let settings = currentSettings ?? RecordingSettings.fromDefaults()
         let segmentURL = makeSegmentURL()
-        segmentURLs.append(segmentURL)
+        segments.append(RecordingSegment(url: segmentURL, index: segmentIndex, duration: 0))
 
         // Reuse existing compositor and renderer — they hold no segment-specific state
         let activeCompositor: WebcamCompositor?
@@ -69,6 +74,21 @@ extension RecordingCoordinator {
                 logger.error("Failed to resume capture: \(error)")
                 state = .idle
             }
+        }
+    }
+
+    // MARK: - Segment Duration
+
+    private func loadCurrentSegmentDuration() async {
+        guard let last = segments.last else { return }
+        let asset = AVURLAsset(url: last.url)
+        do {
+            let duration = try await asset.load(.duration)
+            let index = segments.count - 1
+            segments[index].duration = duration.seconds
+            logger.info("Segment \(last.index) duration: \(duration.seconds)s")
+        } catch {
+            logger.error("Failed to load segment duration: \(error)")
         }
     }
 }

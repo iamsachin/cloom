@@ -54,7 +54,7 @@ final class RecordingCoordinator: ObservableObject {
     var pendingFilter: SCContentFilter?
 
     // Pause/resume segment tracking
-    var segmentURLs: [URL] = []
+    var segments: [RecordingSegment] = []
     var segmentIndex: Int = 0
     var currentSettings: RecordingSettings?
     var currentFilter: SCContentFilter?
@@ -64,19 +64,24 @@ final class RecordingCoordinator: ObservableObject {
     var exportProgressWindow: ExportProgressWindow?
     var recordingMetrics: RecordingMetrics?
 
+    // Punch-in re-record
+    var punchInMarkers: [PunchInMarker] = []
+    let rewindPicker = RewindPickerPanel()
+
     init(modelContainer: ModelContainer) {
         self.modelContainer = modelContainer
         captureService.delegate = self
     }
 
     func resetSegmentState() {
-        segmentURLs = []
+        segments = []
         segmentIndex = 0
         pausedDuration = 0
         recordingStartedAt = nil
         currentSettings = nil
         currentFilter = nil
         currentOutputURL = nil
+        punchInMarkers = []
     }
 
     // MARK: - Public API
@@ -193,8 +198,8 @@ final class RecordingCoordinator: ObservableObject {
                 return
             }
 
-            if segmentURLs.count <= 1 {
-                if let segmentURL = segmentURLs.first {
+            if segments.count <= 1 {
+                if let segmentURL = segments.first?.url {
                     tracker.updateStep(.mixingAudio)
                     do {
                         try await stitcher.mixdownAudio(inputURL: segmentURL, to: finalURL)
@@ -212,7 +217,11 @@ final class RecordingCoordinator: ObservableObject {
                 progressWindow.show(message: "Stitching segments...")
 
                 do {
-                    try await stitcher.stitch(segments: segmentURLs, to: finalURL) { progress in
+                    try await stitcher.stitch(
+                        segments: segments.map(\.url),
+                        effectiveDurations: segments.map(\.effectiveDuration),
+                        to: finalURL
+                    ) { progress in
                         Task { @MainActor in
                             progressWindow.updateProgress(progress)
                         }
