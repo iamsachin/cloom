@@ -163,10 +163,15 @@ actor AIOrchestrator {
         // Step 6: Silence detection
         var silentRanges: [TimeRange] = []
         do {
+            let defaults = UserDefaults.standard
+            let threshDb = defaults.object(forKey: UserDefaultsKeys.silenceThresholdDb) != nil
+                ? defaults.double(forKey: UserDefaultsKeys.silenceThresholdDb) : -40.0
+            let minDurMs = defaults.object(forKey: UserDefaultsKeys.silenceMinDurationMs) != nil
+                ? UInt64(defaults.integer(forKey: UserDefaultsKeys.silenceMinDurationMs)) : 500
             silentRanges = try detectSilence(
                 audioPath: extractedAudioPath,
-                thresholdDb: -40.0,
-                minDurationMs: 500
+                thresholdDb: Float(threshDb),
+                minDurationMs: minDurMs
             )
             logger.info("Found \(silentRanges.count) silent regions")
         } catch {

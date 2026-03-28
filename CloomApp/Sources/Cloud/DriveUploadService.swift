@@ -37,7 +37,8 @@ actor DriveUploadService {
         title: String,
         mimeType: String,
         accessToken: String,
-        progress: @escaping @Sendable (Double) -> Void
+        progress: @escaping @Sendable (Double) -> Void,
+        onSessionCreated: (@Sendable (URL, Int64) -> Void)? = nil
     ) async throws -> DriveFileResult {
         let fileURL = URL(fileURLWithPath: filePath)
         guard FileManager.default.fileExists(atPath: filePath) else {
@@ -53,6 +54,9 @@ actor DriveUploadService {
             fileSize: fileSize,
             accessToken: accessToken
         )
+
+        // Notify caller of session URI for persistence
+        onSessionCreated?(sessionURI, fileSize)
 
         // 2. Upload file in chunks
         let fileHandle = try FileHandle(forReadingFrom: fileURL)
@@ -140,6 +144,80 @@ actor DriveUploadService {
               httpResp.statusCode == 204 || httpResp.statusCode == 200 else {
             throw UploadError.uploadFailed("Delete failed")
         }
+    }
+
+    // MARK: - Resume Upload
+
+    /// Resume a previously initiated resumable upload by querying how many bytes were received.
+    func resumeUpload(
+        sessionURI: URL,
+        filePath: String,
+        totalSize: Int64,
+        progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> DriveFileResult {
+        guard FileManager.default.fileExists(atPath: filePath) else {
+            throw UploadError.fileNotFound
+        }
+
+        // Query Google for how much was already uploaded
+        var request = URLRequest(url: sessionURI)
+        request.httpMethod = "PUT"
+        request.setValue("bytes */\(totalSize)", forHTTPHeaderField: "Content-Range")
+        request.setValue("0", forHTTPHeaderField: "Content-Length")
+        request.httpBody = Data()
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+
+        if statusCode == 200 || statusCode == 201 {
+            // Already completed
+            progress(1.0)
+            let (data, _) = try await URLSession.shared.data(for: request)
+            return try parseUploadResponse(data)
+        }
+
+        var resumeOffset: Int64 = 0
+        if statusCode == 308,
+           let rangeHeader = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Range"),
+           let dashIndex = rangeHeader.firstIndex(of: "-"),
+           let lastByte = Int64(rangeHeader[rangeHeader.index(after: dashIndex)...]) {
+            resumeOffset = lastByte + 1
+        }
+
+        logger.info("Resuming upload from byte \(resumeOffset)/\(totalSize)")
+        progress(Double(resumeOffset) / Double(totalSize))
+
+        // Continue uploading from the resume offset
+        let fileHandle = try FileHandle(forReadingFrom: URL(fileURLWithPath: filePath))
+        defer { try? fileHandle.close() }
+
+        var offset = resumeOffset
+        while offset < totalSize {
+            let remaining = totalSize - offset
+            let currentChunkSize = min(Int64(chunkSize), remaining)
+
+            fileHandle.seek(toFileOffset: UInt64(offset))
+            let chunkData = fileHandle.readData(ofLength: Int(currentChunkSize))
+
+            let (responseData, chunkStatus) = try await uploadChunk(
+                sessionURI: sessionURI,
+                data: chunkData,
+                offset: offset,
+                totalSize: totalSize
+            )
+
+            if chunkStatus == 200 || chunkStatus == 201 {
+                progress(1.0)
+                return try parseUploadResponse(responseData)
+            } else if chunkStatus == 308 {
+                offset += currentChunkSize
+                progress(Double(offset) / Double(totalSize))
+            } else {
+                throw UploadError.uploadFailed("Unexpected status \(chunkStatus)")
+            }
+        }
+
+        throw UploadError.uploadFailed("Resume ended without completion response")
     }
 
     // MARK: - Private

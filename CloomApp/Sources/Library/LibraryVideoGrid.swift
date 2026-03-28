@@ -72,6 +72,16 @@ extension LibraryContentView {
             NSWorkspace.shared.selectFile(video.filePath, inFileViewerRootedAtPath: "")
         }
 
+        Button("Share...") {
+            let fileURL = URL(fileURLWithPath: video.filePath)
+            guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
+            let picker = NSSharingServicePicker(items: [fileURL])
+            guard let window = NSApp.keyWindow,
+                  let contentView = window.contentView else { return }
+            let rect = CGRect(x: contentView.bounds.midX - 1, y: contentView.bounds.midY, width: 2, height: 2)
+            picker.show(relativeTo: rect, of: contentView, preferredEdge: .minY)
+        }
+
         Divider()
 
         // Move to folder submenu

@@ -3,11 +3,13 @@ import SwiftUI
 struct ReadyToolbarContentView: View {
     @State var micEnabled: Bool
     @State var cameraEnabled: Bool
+    @State var systemAudioEnabled: Bool
     @State var annotationsEnabled: Bool = false
     @State var clickEmphasisEnabled: Bool = false
     @State var spotlightEnabled: Bool = false
     let onToggleMic: () -> Void
     let onToggleCamera: () -> Void
+    let onToggleSystemAudio: () -> Void
     let onToggleAnnotations: () -> Void
     let onToggleClickEmphasis: () -> Void
     let onToggleCursorSpotlight: () -> Void
@@ -17,8 +19,10 @@ struct ReadyToolbarContentView: View {
     init(
         initialMicEnabled: Bool,
         initialCameraEnabled: Bool,
+        initialSystemAudioEnabled: Bool = true,
         onToggleMic: @escaping () -> Void,
         onToggleCamera: @escaping () -> Void,
+        onToggleSystemAudio: @escaping () -> Void = {},
         onToggleAnnotations: @escaping () -> Void,
         onToggleClickEmphasis: @escaping () -> Void,
         onToggleCursorSpotlight: @escaping () -> Void,
@@ -27,8 +31,10 @@ struct ReadyToolbarContentView: View {
     ) {
         self._micEnabled = State(initialValue: initialMicEnabled)
         self._cameraEnabled = State(initialValue: initialCameraEnabled)
+        self._systemAudioEnabled = State(initialValue: initialSystemAudioEnabled)
         self.onToggleMic = onToggleMic
         self.onToggleCamera = onToggleCamera
+        self.onToggleSystemAudio = onToggleSystemAudio
         self.onToggleAnnotations = onToggleAnnotations
         self.onToggleClickEmphasis = onToggleClickEmphasis
         self.onToggleCursorSpotlight = onToggleCursorSpotlight
@@ -49,6 +55,9 @@ struct ReadyToolbarContentView: View {
 
             ToolbarToggleButton(icon: "mic.fill", offIcon: "mic.slash.fill", isActive: micEnabled, activeColor: .white, offColor: .red, help: micEnabled ? "Mute microphone" : "Unmute microphone") {
                 micEnabled.toggle(); onToggleMic()
+            }
+            ToolbarToggleButton(icon: "speaker.wave.2.fill", offIcon: "speaker.slash.fill", isActive: systemAudioEnabled, activeColor: .white, offColor: .secondary, help: systemAudioEnabled ? "Mute system audio" : "Unmute system audio") {
+                systemAudioEnabled.toggle(); onToggleSystemAudio()
             }
             ToolbarToggleButton(icon: "video.fill", offIcon: "video.slash.fill", isActive: cameraEnabled, activeColor: .white, offColor: .secondary, help: cameraEnabled ? "Turn off camera" : "Turn on camera") {
                 cameraEnabled.toggle(); onToggleCamera()

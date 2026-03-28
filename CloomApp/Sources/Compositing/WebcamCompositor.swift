@@ -81,14 +81,21 @@ final class WebcamCompositor: @unchecked Sendable {
             webcamImage = adjuster.apply(to: webcamImage)
         }
 
-        // Scale and flip webcam
+        // Scale and optionally mirror webcam
         let webcamWidth = CGFloat(CVPixelBufferGetWidth(webcamFrame))
         let webcamHeight = CGFloat(CVPixelBufferGetHeight(webcamFrame))
         let scaleFactor = max(width / webcamWidth, height / webcamHeight)
 
-        let scaledWebcam = webcamImage
-            .transformed(by: CGAffineTransform(scaleX: -scaleFactor, y: scaleFactor))
-            .transformed(by: CGAffineTransform(translationX: webcamWidth * scaleFactor, y: 0))
+        let mirrorEnabled = UserDefaults.standard.object(forKey: UserDefaultsKeys.webcamMirrorEnabled) == nil
+            ? true
+            : UserDefaults.standard.bool(forKey: UserDefaultsKeys.webcamMirrorEnabled)
+        let xScale = mirrorEnabled ? -scaleFactor : scaleFactor
+        var scaledWebcam = webcamImage
+            .transformed(by: CGAffineTransform(scaleX: xScale, y: scaleFactor))
+        if mirrorEnabled {
+            scaledWebcam = scaledWebcam
+                .transformed(by: CGAffineTransform(translationX: webcamWidth * scaleFactor, y: 0))
+        }
 
         // Center-crop
         let scaledW = webcamWidth * scaleFactor

@@ -11,8 +11,10 @@ extension RecordingCoordinator {
         recordingToolbar.showReady(
             micEnabled: micEnabled,
             cameraEnabled: cameraEnabled,
+            systemAudioEnabled: systemAudioEnabled,
             onToggleMic: { [weak self] in self?.toggleMic() },
             onToggleCamera: { [weak self] in self?.toggleCamera() },
+            onToggleSystemAudio: { [weak self] in self?.toggleSystemAudio() },
             onToggleAnnotations: { [weak self] in self?.toggleAnnotations() },
             onToggleClickEmphasis: { [weak self] in self?.toggleClickEmphasis() },
             onToggleCursorSpotlight: { [weak self] in self?.toggleCursorSpotlight() },
@@ -28,6 +30,7 @@ extension RecordingCoordinator {
             isPaused: false,
             micEnabled: micEnabled,
             cameraEnabled: cameraEnabled,
+            systemAudioEnabled: systemAudioEnabled,
             onStop: { [weak self] in self?.stopRecording() },
             onToggleMic: { [weak self] in self?.toggleMic() },
             onToggleCamera: { [weak self] in self?.toggleCamera() },
@@ -37,6 +40,7 @@ extension RecordingCoordinator {
             onToggleClickEmphasis: { [weak self] in self?.toggleClickEmphasis() },
             onToggleCursorSpotlight: { [weak self] in self?.toggleCursorSpotlight() },
             onToggleZoom: { [weak self] in self?.toggleZoom() },
+            onToggleSystemAudio: { [weak self] in self?.toggleSystemAudio() },
             onDiscard: { [weak self] in self?.discardRecording() }
         )
     }

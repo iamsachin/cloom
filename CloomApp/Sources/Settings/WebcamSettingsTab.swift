@@ -11,6 +11,7 @@ struct WebcamSettingsTab: View {
     @AppStorage(UserDefaultsKeys.webcamTint) private var webcamTint: Double = 0
     @AppStorage(UserDefaultsKeys.webcamShape) private var webcamShapeRaw: String = "circle"
     @AppStorage(UserDefaultsKeys.webcamFrame) private var webcamFrameRaw: String = "none"
+    @AppStorage(UserDefaultsKeys.webcamMirrorEnabled) private var webcamMirrorEnabled: Bool = true
 
     @State private var previewImage: NSImage?
     @State private var cameraService: CameraService?
@@ -94,6 +95,9 @@ struct WebcamSettingsTab: View {
                     .labelsHidden()
                     .accessibilityLabel("Webcam shape")
                 }
+
+                Toggle("Mirror webcam", isOn: $webcamMirrorEnabled)
+                    .help("Flip webcam horizontally (like a mirror)")
 
                 // Emoji frame picker
                 VStack(alignment: .leading, spacing: 6) {
@@ -238,10 +242,18 @@ struct WebcamSettingsTab: View {
         let cam = CameraService()
         cam.onFrame = { [ciContext] _, ciImage in
             let adjusted = imageAdjuster.apply(to: ciImage)
-            // Flip horizontally
-            let flipped = adjusted.transformed(by: CGAffineTransform(scaleX: -1, y: 1)
-                .translatedBy(x: -adjusted.extent.width, y: 0))
-            guard let cgImage = ciContext.createCGImage(flipped, from: flipped.extent) else { return }
+            // Flip horizontally if mirror is enabled
+            let shouldMirror = UserDefaults.standard.object(forKey: UserDefaultsKeys.webcamMirrorEnabled) == nil
+                ? true
+                : UserDefaults.standard.bool(forKey: UserDefaultsKeys.webcamMirrorEnabled)
+            let output: CIImage
+            if shouldMirror {
+                output = adjusted.transformed(by: CGAffineTransform(scaleX: -1, y: 1)
+                    .translatedBy(x: -adjusted.extent.width, y: 0))
+            } else {
+                output = adjusted
+            }
+            guard let cgImage = ciContext.createCGImage(output, from: output.extent) else { return }
             let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
             Task { @MainActor in
                 previewImage = nsImage

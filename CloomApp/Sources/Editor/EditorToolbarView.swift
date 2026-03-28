@@ -174,10 +174,19 @@ struct EditorToolbarView: View {
                     NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
                 }
             }
+            if video?.hasTranscript == true, let transcript = video?.transcript {
+                Divider()
+                Button("Export Transcript as Markdown...") {
+                    exportTranscript(format: .markdown, transcript: transcript)
+                }
+                Button("Export Transcript as PDF...") {
+                    exportTranscript(format: .pdf, transcript: transcript)
+                }
+            }
         } label: {
             Image(systemName: "doc.on.doc")
         }
-        .help("Copy path or reveal in Finder")
+        .help("Copy path, reveal in Finder, or export transcript")
 
         Divider().frame(height: 20)
 
@@ -256,6 +265,40 @@ struct EditorToolbarView: View {
             .buttonStyle(.hover)
             .help("Copy Drive share link")
             .accessibilityLabel("Copy share link")
+        }
+    }
+
+    private enum TranscriptFormat { case markdown, pdf }
+
+    private func exportTranscript(format: TranscriptFormat, transcript: TranscriptRecord) {
+        let panel = NSSavePanel()
+        let title = video?.title ?? "Transcript"
+        let chapters = video?.chapters ?? []
+
+        switch format {
+        case .markdown:
+            panel.allowedContentTypes = [.plainText]
+            panel.nameFieldStringValue = "\(title).md"
+        case .pdf:
+            panel.allowedContentTypes = [.pdf]
+            panel.nameFieldStringValue = "\(title).pdf"
+        }
+
+        guard panel.runModal() == .OK, let destURL = panel.url else { return }
+
+        do {
+            switch format {
+            case .markdown:
+                try TranscriptExportService.exportAsMarkdown(
+                    title: title, transcript: transcript, chapters: chapters, destURL: destURL
+                )
+            case .pdf:
+                try TranscriptExportService.exportAsPDF(
+                    title: title, transcript: transcript, chapters: chapters, destURL: destURL
+                )
+            }
+        } catch {
+            // Errors are logged by the service
         }
     }
 

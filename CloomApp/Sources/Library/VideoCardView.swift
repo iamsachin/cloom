@@ -19,12 +19,16 @@ struct VideoCardView: View {
                 AsyncThumbnailImage(thumbnailPath: video.thumbnailPath)
                     .aspectRatio(16 / 9, contentMode: .fit)
 
-                // Hover preview overlay
+                // Hover preview overlay — fills thumbnail frame exactly
                 if isHovered, let frames = previewFrames, !frames.isEmpty {
-                    Image(decorative: frames[previewIndex], scale: 1.0)
-                        .resizable()
-                        .aspectRatio(16 / 9, contentMode: .fill)
-                        .transition(.opacity)
+                    GeometryReader { geo in
+                        Image(decorative: frames[previewIndex], scale: 1.0)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: geo.size.width, height: geo.size.height)
+                            .clipped()
+                    }
+                    .transition(.opacity)
                 }
 
                 // Top-right: transcript status badge
@@ -69,6 +73,7 @@ struct VideoCardView: View {
                     }
                 }
             }
+            .clipped()
             .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10, topTrailingRadius: 10))
 
             // Info section
@@ -96,6 +101,18 @@ struct VideoCardView: View {
                         .help(summary)
                 }
 
+                // Metadata chips
+                HStack(spacing: 4) {
+                    metadataChip("\(video.width)x\(video.height)", color: .blue)
+                    metadataChip(formattedFileSize(video.fileSizeBytes), color: .green)
+                }
+                HStack(spacing: 4) {
+                    if let raw = video.recordingQuality, let q = VideoQuality(rawValue: raw) {
+                        metadataChip(q.label, color: .purple)
+                    }
+                    metadataChip(video.recordingType == "screenAndWebcam" ? "Screen+Cam" : "Screen", color: .orange)
+                }
+
                 // Tag pills
                 if !video.tags.isEmpty {
                     tagPills
@@ -106,9 +123,8 @@ struct VideoCardView: View {
             .padding(.bottom, 10)
         }
         .background(.background, in: RoundedRectangle(cornerRadius: 10))
-        .shadow(color: isHovered ? .cardShadowHover : .cardShadow, radius: isHovered ? 6 : 3, y: isHovered ? 3 : 1)
-        .brightness(isHovered ? 0.03 : 0)
-        .scaleEffect(isHovered ? 1.015 : 1.0)
+        .shadow(color: isHovered ? .cardShadowHover : .cardShadow, radius: isHovered ? 4 : 2, y: isHovered ? 2 : 1)
+        .brightness(isHovered ? 0.02 : 0)
         .animation(.easeOut(duration: 0.15), value: isHovered)
         .onHover { hovering in
             isHovered = hovering
@@ -162,6 +178,16 @@ struct VideoCardView: View {
                     .background(.quaternary, in: Capsule())
             }
         }
+    }
+
+    @ViewBuilder
+    private func metadataChip(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 9, weight: .medium))
+            .foregroundStyle(color)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
     }
 
     private var videoTooltip: String {

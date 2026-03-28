@@ -922,21 +922,37 @@ Better organization, filtering, and browsing in the library.
 ---
 
 ## Phase 33: Export & Sharing
-**Status:** Not Started
+**Status:** Complete
+**Date:** 2026-03-28
 
 More export options and share targets beyond Google Drive.
 
-- [ ] Task 198 — More share targets: AirDrop, clipboard copy, system share sheet integration
-- [ ] Task 199 — Batch export: multi-select videos in library and export all at once
-- [ ] Task 200 — Transcript export: export transcript as Markdown or PDF for meeting notes
-- [ ] Task 201 — Background upload continuation: URLSession background tasks so uploads survive app quit
+- [x] Task 198 — More share targets: NSSharingServicePicker (AirDrop, Messages, Mail) in EditorExportView + library context menu
+- [x] Task 199 — Batch export: multi-select in library → Export button → NSOpenPanel folder picker → copies all selected videos
+- [x] Task 200 — Transcript export: Markdown (.md) and PDF export via TranscriptExportService, accessible from editor toolbar menu
+- [x] Task 201 — Background upload continuation: PendingUploadStore persists resumable session URIs; DriveUploadService.resumeUpload resumes from last byte on relaunch
+
+**New files:** `TranscriptExportService.swift`, `PendingUploadStore.swift`, `TranscriptExportTests.swift`
+
+**Tests:** 3 new tests (formatTimestamp, PendingUpload codable × 2). Total: **222 Swift tests**, 44 Rust tests.
+
+**Milestone verified:** Build succeeds (0 errors). 222 Swift tests pass. Share via system share sheet. Batch export to folder. Transcript as Markdown/PDF. Upload resume on relaunch.
 
 ---
 
 ## Phase 34: Settings & Recording Options
-**Status:** Not Started
+**Status:** Complete
+**Date:** 2026-03-28
 
 Make hardcoded values configurable and add recording controls.
 
-- [ ] Task 202 — System audio toggle: setting/toolbar toggle to include or exclude system audio
-- [ ] Task 203 — Configurable settings: countdown duration, default save location, silence detection thresholds, webcam mirroring toggle
+- [x] Task 202 — System audio toggle: `systemAudioEnabled` @AppStorage, toggle in ready toolbar + recording toolbar + Settings > Recording > Audio, wired through ScreenCaptureService
+- [x] Task 203 — Configurable settings:
+  - Countdown duration: 0/1/3/5/10 seconds picker in Settings > Recording > Countdown (0 = skip countdown)
+  - Default save location: folder picker in Settings > Recording > Save Location (defaults to Desktop)
+  - Silence detection: threshold (-60 to -20 dB) and min duration (100-2000 ms) sliders in Settings > Recording > Silence Detection
+  - Webcam mirroring: toggle in Settings > Webcam (defaults to on)
+
+**New UserDefaults keys:** `systemAudioEnabled`, `countdownDuration`, `defaultSaveLocation`, `silenceThresholdDb`, `silenceMinDurationMs`, `webcamMirrorEnabled`
+
+**Milestone verified:** Build succeeds (0 errors). 222 Swift tests pass. All 6 settings configurable via UI and wired to their respective systems.

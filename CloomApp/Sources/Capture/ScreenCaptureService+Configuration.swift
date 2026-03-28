@@ -68,10 +68,10 @@ extension ScreenCaptureService {
         }
     }
 
-    func configureCommon(_ config: SCStreamConfiguration, settings: RecordingSettings, micEnabled: Bool) {
+    func configureCommon(_ config: SCStreamConfiguration, settings: RecordingSettings, micEnabled: Bool, systemAudioEnabled: Bool = true) {
         config.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(settings.fps))
         config.showsCursor = true
-        config.capturesAudio = true
+        config.capturesAudio = systemAudioEnabled
         config.captureMicrophone = micEnabled
         if let micID = settings.micDeviceID {
             config.microphoneCaptureDeviceID = micID

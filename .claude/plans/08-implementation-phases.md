@@ -454,6 +454,40 @@ UI tests were removed — MenuBarExtra apps aren't hittable by XCUIApplication, 
 
 ---
 
+## Phase 33: Export & Sharing — Complete
+
+**Goal:** More export options and share targets beyond Google Drive.
+
+| # | Task | Module | Description |
+|---|------|--------|-------------|
+| 198 | Share targets | Editor/, Library/ | System share sheet (NSSharingServicePicker) with AirDrop, Messages, Mail — added to EditorExportView and library context menu |
+| 199 | Batch export | Library/ | Multi-select videos in library → Export button → choose folder → copies all selected videos |
+| 200 | Transcript export | Editor/ | Export transcript as Markdown (.md) or PDF from editor toolbar menu (includes chapters + paragraphs) |
+| 201 | Background upload continuation | Cloud/ | PendingUploadStore persists Google Drive resumable session URIs to disk; resumes incomplete uploads on app relaunch |
+
+**New files:** `TranscriptExportService.swift`, `PendingUploadStore.swift`
+
+**Tests:** 3 new tests (TranscriptExportService.formatTimestamp, PendingUpload codable round-trip × 2). Total: **222 Swift tests**, 44 Rust tests.
+
+**Milestone:** Share via AirDrop/Messages/Mail from editor and library. Batch export selected videos to folder. Transcript export as Markdown/PDF. Uploads resume after app quit.
+
+---
+
+## Phase 34: Settings & Recording Options — Complete
+
+**Goal:** Make hardcoded values configurable and add recording controls.
+
+| # | Task | Module | Description |
+|---|------|--------|-------------|
+| 202 | System audio toggle | Capture/, Recording/, Settings/ | Toggle to include/exclude system audio — in ready toolbar, recording toolbar, and Settings > Recording > Audio |
+| 203 | Configurable settings | Settings/, Recording/, AI/, Compositing/ | Countdown duration (0/1/3/5/10s), default save location (folder picker), silence detection thresholds (dB + min duration), webcam mirroring toggle |
+
+**New UserDefaults keys:** `systemAudioEnabled`, `countdownDuration`, `defaultSaveLocation`, `silenceThresholdDb`, `silenceMinDurationMs`, `webcamMirrorEnabled`
+
+**Milestone:** System audio toggle in toolbar and settings. Countdown duration configurable (including skip). Custom save directory. Adjustable silence detection sensitivity. Webcam mirror toggle.
+
+---
+
 ## Deferred Features
 
 | Feature | Original Phase | Reason |

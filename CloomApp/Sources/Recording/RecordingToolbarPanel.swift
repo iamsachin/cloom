@@ -12,6 +12,7 @@ final class RecordingToolbarPanel {
         isPaused: Bool = false,
         micEnabled: Bool,
         cameraEnabled: Bool,
+        systemAudioEnabled: Bool = true,
         onStop: @escaping () -> Void,
         onToggleMic: @escaping () -> Void,
         onToggleCamera: @escaping () -> Void,
@@ -21,6 +22,7 @@ final class RecordingToolbarPanel {
         onToggleClickEmphasis: @escaping () -> Void = {},
         onToggleCursorSpotlight: @escaping () -> Void = {},
         onToggleZoom: @escaping () -> Void = {},
+        onToggleSystemAudio: @escaping () -> Void = {},
         onDiscard: @escaping () -> Void = {}
     ) {
         self.onStop = onStop
@@ -34,6 +36,7 @@ final class RecordingToolbarPanel {
                 initialIsPaused: isPaused,
                 initialMicEnabled: micEnabled,
                 initialCameraEnabled: cameraEnabled,
+                initialSystemAudioEnabled: systemAudioEnabled,
                 onStop: onStop,
                 onToggleMic: onToggleMic,
                 onToggleCamera: onToggleCamera,
@@ -43,6 +46,7 @@ final class RecordingToolbarPanel {
                 onToggleClickEmphasis: onToggleClickEmphasis,
                 onToggleCursorSpotlight: onToggleCursorSpotlight,
                 onToggleZoom: onToggleZoom,
+                onToggleSystemAudio: onToggleSystemAudio,
                 onDiscard: onDiscard
             )
         )
@@ -54,8 +58,10 @@ final class RecordingToolbarPanel {
     func showReady(
         micEnabled: Bool,
         cameraEnabled: Bool,
+        systemAudioEnabled: Bool = true,
         onToggleMic: @escaping () -> Void,
         onToggleCamera: @escaping () -> Void,
+        onToggleSystemAudio: @escaping () -> Void = {},
         onToggleAnnotations: @escaping () -> Void = {},
         onToggleClickEmphasis: @escaping () -> Void = {},
         onToggleCursorSpotlight: @escaping () -> Void = {},
@@ -69,8 +75,10 @@ final class RecordingToolbarPanel {
             rootView: ReadyToolbarContentView(
                 initialMicEnabled: micEnabled,
                 initialCameraEnabled: cameraEnabled,
+                initialSystemAudioEnabled: systemAudioEnabled,
                 onToggleMic: onToggleMic,
                 onToggleCamera: onToggleCamera,
+                onToggleSystemAudio: onToggleSystemAudio,
                 onToggleAnnotations: onToggleAnnotations,
                 onToggleClickEmphasis: onToggleClickEmphasis,
                 onToggleCursorSpotlight: onToggleCursorSpotlight,

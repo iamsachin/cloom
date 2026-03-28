@@ -25,6 +25,75 @@ final class DriveUploadManager {
         activeUploads[videoID] ?? 0
     }
 
+    // MARK: - Resume Pending Uploads
+
+    /// Call on app launch to resume any uploads that were interrupted.
+    func resumePendingUploads(modelContainer: ModelContainer) {
+        let pending = PendingUploadStore.loadAll()
+        guard !pending.isEmpty else { return }
+        logger.info("Found \(pending.count) pending upload(s) to resume")
+
+        for upload in pending {
+            Task {
+                guard let accessToken = await GoogleAuthService.shared.refreshTokenIfNeeded() else {
+                    logger.warning("Cannot resume upload for \(upload.videoID) — no auth token")
+                    return
+                }
+
+                let context = ModelContext(modelContainer)
+                let videoID = upload.videoID
+                let descriptor = FetchDescriptor<VideoRecord>(
+                    predicate: #Predicate { $0.id == videoID }
+                )
+                guard let videoRecord = try? context.fetch(descriptor).first else {
+                    logger.warning("VideoRecord not found for pending upload \(upload.videoID)")
+                    PendingUploadStore.remove(videoID: upload.videoID)
+                    return
+                }
+
+                guard let sessionURI = URL(string: upload.sessionURI) else {
+                    PendingUploadStore.remove(videoID: upload.videoID)
+                    return
+                }
+
+                activeUploads[upload.videoID] = 0
+
+                do {
+                    let result = try await uploadService.resumeUpload(
+                        sessionURI: sessionURI,
+                        filePath: upload.filePath,
+                        totalSize: upload.totalBytes,
+                        progress: { [weak self] fraction in
+                            Task { @MainActor in
+                                self?.activeUploads[upload.videoID] = fraction
+                            }
+                        }
+                    )
+
+                    let shareLink = try await uploadService.createShareLink(
+                        fileId: result.fileId, accessToken: accessToken
+                    )
+
+                    videoRecord.driveFileId = result.fileId
+                    videoRecord.shareUrl = shareLink
+                    videoRecord.uploadStatus = UploadStatus.uploaded.rawValue
+                    videoRecord.uploadedAt = .now
+                    try? context.save()
+
+                    PendingUploadStore.remove(videoID: upload.videoID)
+                    activeUploads.removeValue(forKey: upload.videoID)
+                    logger.info("Resumed upload complete for \(upload.videoID)")
+                } catch {
+                    videoRecord.uploadStatus = UploadStatus.failed.rawValue
+                    try? context.save()
+                    PendingUploadStore.remove(videoID: upload.videoID)
+                    activeUploads.removeValue(forKey: upload.videoID)
+                    logger.error("Resumed upload failed for \(upload.videoID): \(error)")
+                }
+            }
+        }
+    }
+
     // MARK: - Upload
 
     /// Upload the raw recording file to Google Drive.
@@ -93,6 +162,16 @@ final class DriveUploadManager {
                     Task { @MainActor in
                         self?.activeUploads[videoID] = fraction
                     }
+                },
+                onSessionCreated: { sessionURI, totalBytes in
+                    PendingUploadStore.save(PendingUploadStore.PendingUpload(
+                        videoID: videoID,
+                        filePath: filePath,
+                        title: title,
+                        sessionURI: sessionURI.absoluteString,
+                        totalBytes: totalBytes,
+                        startedAt: .now
+                    ))
                 }
             )
 
@@ -110,6 +189,7 @@ final class DriveUploadManager {
             do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
 
             activeUploads.removeValue(forKey: videoID)
+            PendingUploadStore.remove(videoID: videoID)
 
             // Copy to clipboard
             NSPasteboard.general.clearContents()
@@ -120,6 +200,7 @@ final class DriveUploadManager {
             videoRecord.uploadStatus = UploadStatus.failed.rawValue
             do { try modelContext.save() } catch { logger.error("Failed to save: \(error)") }
             activeUploads.removeValue(forKey: videoID)
+            PendingUploadStore.remove(videoID: videoID)
             logger.error("Upload failed for \(videoID): \(error.localizedDescription)")
         }
     }

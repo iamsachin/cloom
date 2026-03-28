@@ -6,6 +6,7 @@ import SwiftData
 struct MainWindowView: View {
     @State private var navigationState = NavigationState()
     @State private var sidebarSelection: SidebarSelection? = .allVideos
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         NavigationSplitView {
@@ -15,6 +16,9 @@ struct MainWindowView: View {
                 .animation(.easeInOut(duration: 0.2), value: navigationState.currentMode)
         }
         .environment(navigationState)
+        .onAppear {
+            DriveUploadManager.shared.resumePendingUploads(modelContainer: modelContext.container)
+        }
         .onChange(of: sidebarSelection) { _, _ in
             if navigationState.isInEditor {
                 navigationState.goBackToLibrary()
