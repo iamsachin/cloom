@@ -23,7 +23,8 @@ final class RecordingToolbarPanel {
         onToggleCursorSpotlight: @escaping () -> Void = {},
         onToggleZoom: @escaping () -> Void = {},
         onToggleSystemAudio: @escaping () -> Void = {},
-        onDiscard: @escaping () -> Void = {}
+        onDiscard: @escaping () -> Void = {},
+        onRewind: @escaping () -> Void = {}
     ) {
         self.onStop = onStop
         if panel == nil { createPanel() }
@@ -47,7 +48,8 @@ final class RecordingToolbarPanel {
                 onToggleCursorSpotlight: onToggleCursorSpotlight,
                 onToggleZoom: onToggleZoom,
                 onToggleSystemAudio: onToggleSystemAudio,
-                onDiscard: onDiscard
+                onDiscard: onDiscard,
+                onRewind: onRewind
             )
         )
 

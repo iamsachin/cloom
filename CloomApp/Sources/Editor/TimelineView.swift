@@ -47,6 +47,9 @@ struct EditorTimelineView: View {
                 // Bookmark markers
                 bookmarkMarkers(bookmarks: editorState.bookmarks, durationMs: durationMs, width: width, height: height)
 
+                // Punch-in re-record markers
+                punchInMarkerOverlays(markers: editorState.punchInMarkers, durationMs: durationMs, width: width, height: height)
+
                 // Mark-in indicator
                 markInIndicator(durationMs: durationMs, currentTimeMs: currentTimeMs, width: width, height: height)
 
@@ -233,6 +236,40 @@ struct EditorTimelineView: View {
                         .contentShape(Rectangle())
                 }
                 .help(tooltip)
+            }
+        }
+    }
+
+    // MARK: - Punch-In Markers
+
+    @ViewBuilder
+    private func punchInMarkerOverlays(markers: [PunchInMarker], durationMs: Int64, width: CGFloat, height: CGFloat) -> some View {
+        if !markers.isEmpty && durationMs > 0 {
+            ForEach(markers) { marker in
+                let fraction = CGFloat(marker.timestampMs) / CGFloat(durationMs)
+                let x = fraction * width
+
+                ZStack {
+                    // Amber arrow indicator
+                    Image(systemName: "backward.fill")
+                        .font(.system(size: 8))
+                        .foregroundStyle(Color.orange)
+                        .offset(x: x, y: -height * 0.35)
+
+                    // Amber vertical line
+                    Rectangle()
+                        .fill(Color.orange.opacity(0.5))
+                        .frame(width: 1.5, height: height)
+                        .offset(x: x)
+
+                    // Invisible hit-test area
+                    Rectangle()
+                        .fill(Color.clear)
+                        .frame(width: 16, height: height)
+                        .offset(x: x)
+                        .contentShape(Rectangle())
+                }
+                .help("Punch-in at \(formatMs(marker.timestampMs))")
             }
         }
     }

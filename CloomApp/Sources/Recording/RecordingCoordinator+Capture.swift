@@ -109,7 +109,7 @@ extension RecordingCoordinator {
 
         // First segment writes directly to the final URL (if no pauses, it stays)
         let segmentURL = makeSegmentURL()
-        segmentURLs.append(segmentURL)
+        segments.append(RecordingSegment(url: segmentURL, index: segmentIndex, duration: 0))
 
         // Create compositor if camera is enabled
         let activeCompositor: WebcamCompositor?

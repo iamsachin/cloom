@@ -18,7 +18,15 @@ actor SegmentStitcher {
         }
     }
 
-    func stitch(segments: [URL], to outputURL: URL, progress: @escaping @Sendable (Double) -> Void) async throws {
+    /// Stitch multiple segments into a single output file.
+    /// Normalizes each segment to a temp file first (handles format differences),
+    /// then concatenates via AVMutableComposition with passthrough export.
+    func stitch(
+        segments: [URL],
+        effectiveDurations: [TimeInterval?] = [],
+        to outputURL: URL,
+        progress: @escaping @Sendable (Double) -> Void
+    ) async throws {
         guard !segments.isEmpty else { throw StitchError.noSegments }
 
         // Always clean up temp segment files, even on failure
@@ -29,69 +37,136 @@ actor SegmentStitcher {
         }
 
         if segments.count == 1 {
-            // Single segment — mixdown audio for web player compatibility
             try await mixdownAudio(inputURL: segments[0], to: outputURL)
             progress(1.0)
             return
         }
 
-        let composition = AVMutableComposition()
+        // Step 1: Normalize each segment to a consistent format (mixdown audio)
+        var normalizedURLs: [URL] = []
+        for (index, url) in segments.enumerated() {
+            let effectiveDur = (index < effectiveDurations.count) ? effectiveDurations[index] : nil
+            let normalizedURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("cloom_norm_\(index)_\(UUID().uuidString).mp4")
 
-        guard let videoTrack = composition.addMutableTrack(
-            withMediaType: .video,
-            preferredTrackID: kCMPersistentTrackID_Invalid
-        ) else { throw StitchError.noVideoTrack }
-
-        var compAudioTracks: [AVMutableCompositionTrack] = []
-        var insertTime = CMTime.zero
-        let trackProgress = 0.7 // 70% for track insertion
-
-        // Load all segment metadata in parallel
-        let metadata = try await loadSegmentMetadata(segments: segments)
-
-        // Insert tracks sequentially (insertTime is cumulative)
-        for (index, meta) in metadata.enumerated() {
-            let timeRange = CMTimeRange(start: .zero, duration: meta.duration)
-
-            // Insert video track
-            if let sourceVideoTrack = meta.videoTrack {
-                do {
-                    try videoTrack.insertTimeRange(timeRange, of: sourceVideoTrack, at: insertTime)
-                } catch {
-                    logger.error("Failed to insert video track for segment \(index): \(error)")
-                }
+            if let dur = effectiveDur {
+                // Trim segment to effective duration first, then normalize
+                try await normalizeSegment(
+                    inputURL: url, to: normalizedURL,
+                    timeRange: CMTimeRange(start: .zero, duration: CMTime(seconds: dur, preferredTimescale: 600))
+                )
+            } else {
+                try await normalizeSegment(inputURL: url, to: normalizedURL, timeRange: nil)
             }
 
-            // Insert all audio tracks (grow composition tracks as needed)
-            for (i, sourceAudioTrack) in meta.audioTracks.enumerated() {
-                while i >= compAudioTracks.count {
-                    if let t = composition.addMutableTrack(
-                        withMediaType: .audio,
-                        preferredTrackID: kCMPersistentTrackID_Invalid
-                    ) {
-                        compAudioTracks.append(t)
-                    }
-                }
-                if i < compAudioTracks.count {
-                    do {
-                        try compAudioTracks[i].insertTimeRange(timeRange, of: sourceAudioTrack, at: insertTime)
-                    } catch {
-                        logger.error("Failed to insert audio track \(i) for segment \(index): \(error)")
-                    }
-                }
-            }
-
-            insertTime = CMTimeAdd(insertTime, meta.duration)
-            progress(trackProgress * Double(index + 1) / Double(segments.count))
+            normalizedURLs.append(normalizedURL)
+            progress(0.4 * Double(index + 1) / Double(segments.count))
         }
 
-        // Export with video passthrough + optional audio mix (no video re-encode)
-        let audioMix: AVMutableAudioMix? = compAudioTracks.count > 1
-            ? .stereoMix(from: compAudioTracks) : nil
+        // Step 2: Concatenate normalized segments via AVMutableComposition
+        defer {
+            for url in normalizedURLs {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
 
-        try await passthroughExport(asset: composition, audioMix: audioMix, to: outputURL)
+        let composition = AVMutableComposition()
+        guard let videoTrack = composition.addMutableTrack(
+            withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid
+        ) else { throw StitchError.noVideoTrack }
+
+        var audioTrack: AVMutableCompositionTrack?
+        var insertTime = CMTime.zero
+
+        for (index, url) in normalizedURLs.enumerated() {
+            let asset = AVURLAsset(url: url)
+            let duration = try await asset.load(.duration)
+            let timeRange = CMTimeRange(start: .zero, duration: duration)
+
+            let videoTracks = try await asset.loadTracks(withMediaType: .video)
+            if let srcVideo = videoTracks.first {
+                try videoTrack.insertTimeRange(timeRange, of: srcVideo, at: insertTime)
+            }
+
+            let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+            if let srcAudio = audioTracks.first {
+                if audioTrack == nil {
+                    audioTrack = composition.addMutableTrack(
+                        withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid
+                    )
+                }
+                try audioTrack?.insertTimeRange(timeRange, of: srcAudio, at: insertTime)
+            }
+
+            insertTime = CMTimeAdd(insertTime, duration)
+            progress(0.4 + 0.3 * Double(index + 1) / Double(normalizedURLs.count))
+        }
+
+        // Step 3: Export with passthrough
+        let metadata = try await loadSegmentMetadata(segments: normalizedURLs)
+        let videoFmtHint = metadata.first?.videoFormatHint
+        try await passthroughExport(asset: composition, audioMix: nil, to: outputURL, videoFormatHint: videoFmtHint)
         progress(1.0)
         logger.info("Stitched \(segments.count) segments → \(outputURL.lastPathComponent)")
+    }
+
+    /// Normalize a segment: mixdown all audio tracks to single stereo AAC, keep video passthrough.
+    /// This ensures all segments have compatible formats for composition.
+    private func normalizeSegment(inputURL: URL, to outputURL: URL, timeRange: CMTimeRange?) async throws {
+        let asset = AVURLAsset(url: inputURL)
+        let reader = try AVAssetReader(asset: asset)
+        if let timeRange { reader.timeRange = timeRange }
+        let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mp4)
+
+        var trackPairs: [TrackPair] = []
+
+        // Video: passthrough
+        let videoTracks = try await asset.loadTracks(withMediaType: .video)
+        if let videoTrack = videoTracks.first {
+            let formatHint = try await videoTrack.load(.formatDescriptions).first
+            let readerOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: nil)
+            readerOutput.alwaysCopiesSampleData = false
+            reader.add(readerOutput)
+            let writerInput = AVAssetWriterInput(
+                mediaType: .video, outputSettings: nil, sourceFormatHint: formatHint
+            )
+            writerInput.expectsMediaDataInRealTime = false
+            writer.add(writerInput)
+            trackPairs.append(TrackPair(output: readerOutput, input: writerInput))
+        }
+
+        // Audio: mix all tracks down to single stereo AAC
+        let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+        if !audioTracks.isEmpty {
+            let mixOutput = AVAssetReaderAudioMixOutput(audioTracks: audioTracks, audioSettings: nil)
+            mixOutput.alwaysCopiesSampleData = false
+            reader.add(mixOutput)
+            let writerInput = AVAssetWriterInput(mediaType: .audio, outputSettings: [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVSampleRateKey: 48000,
+                AVNumberOfChannelsKey: 2,
+                AVEncoderBitRateKey: 128_000,
+            ])
+            writerInput.expectsMediaDataInRealTime = false
+            writer.add(writerInput)
+            trackPairs.append(TrackPair(output: mixOutput, input: writerInput))
+        }
+
+        guard reader.startReading() else {
+            throw StitchError.exportFailed(reader.error?.localizedDescription ?? "Reader failed")
+        }
+        guard writer.startWriting() else {
+            throw StitchError.exportFailed(writer.error?.localizedDescription ?? "Writer failed")
+        }
+        writer.startSession(atSourceTime: .zero)
+
+        // Feed video + audio concurrently (avoids AVAssetWriter deadlock)
+        await Self.copyTracksConcurrently(trackPairs)
+
+        await writer.finishWriting()
+        if let error = writer.error {
+            throw StitchError.exportFailed(error.localizedDescription)
+        }
     }
 
     /// Mix down multiple audio tracks into a single stereo output for web player compatibility.
@@ -128,7 +203,8 @@ actor SegmentStitcher {
     private func passthroughExport(
         asset: AVAsset,
         audioMix: AVAudioMix?,
-        to outputURL: URL
+        to outputURL: URL,
+        videoFormatHint: CMFormatDescription? = nil
     ) async throws {
         let reader = try AVAssetReader(asset: asset)
         let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mp4)
@@ -138,7 +214,9 @@ actor SegmentStitcher {
         // Video: passthrough (copy compressed bytes, no decode/re-encode)
         let videoTracks = try await asset.loadTracks(withMediaType: .video)
         if let videoTrack = videoTracks.first {
-            let formatHint = try await videoTrack.load(.formatDescriptions).first
+            // Composition tracks may not expose formatDescriptions — use provided hint
+            let loadedHint = try await videoTrack.load(.formatDescriptions).first
+            let formatHint = videoFormatHint ?? loadedHint
             let readerOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: nil)
             readerOutput.alwaysCopiesSampleData = false
             reader.add(readerOutput)
@@ -243,6 +321,7 @@ actor SegmentStitcher {
         let duration: CMTime
         let videoTrack: AVAssetTrack?
         let audioTracks: [AVAssetTrack]
+        let videoFormatHint: CMFormatDescription?
     }
 
     private func loadSegmentMetadata(segments: [URL]) async throws -> [SegmentMetadata] {
@@ -253,9 +332,11 @@ actor SegmentStitcher {
                     let duration = try await asset.load(.duration)
                     let video = try await asset.loadTracks(withMediaType: .video)
                     let audio = try await asset.loadTracks(withMediaType: .audio)
+                    let formatHint = try await video.first?.load(.formatDescriptions).first
                     return SegmentMetadata(
                         index: index, duration: duration,
-                        videoTrack: video.first, audioTracks: audio
+                        videoTrack: video.first, audioTracks: audio,
+                        videoFormatHint: formatHint
                     )
                 }
             }

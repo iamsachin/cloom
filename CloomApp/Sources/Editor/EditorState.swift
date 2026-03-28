@@ -42,6 +42,9 @@ final class EditorState {
     // Persisted silence ranges from AI pipeline
     private(set) var silenceRanges: [SilenceRange] = []
 
+    // Punch-in re-record markers
+    private(set) var punchInMarkers: [PunchInMarker] = []
+
     // Transcript polling
     private(set) var isTranscribing: Bool = false
     @ObservationIgnored private var transcriptPollingTask: Task<Void, Never>?
@@ -103,6 +106,7 @@ final class EditorState {
         )
 
         self.silenceRanges = videoRecord.silenceRanges
+        self.punchInMarkers = videoRecord.punchInMarkers
 
         setupTimeObserver()
         setupEndObserver()

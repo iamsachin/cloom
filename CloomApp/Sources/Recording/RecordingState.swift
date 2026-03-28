@@ -7,6 +7,7 @@ enum RecordingState: Equatable {
     case countdown(Int)
     case recording(startedAt: Date)
     case paused(startedAt: Date, pausedAt: Date)
+    case rewinding(startedAt: Date, pausedAt: Date)
     case stopping
 
     var isRecording: Bool {
@@ -19,8 +20,13 @@ enum RecordingState: Equatable {
         return false
     }
 
+    var isRewinding: Bool {
+        if case .rewinding = self { return true }
+        return false
+    }
+
     var isActiveOrPaused: Bool {
-        isRecording || isPaused
+        isRecording || isPaused || isRewinding
     }
 
     var isIdle: Bool {

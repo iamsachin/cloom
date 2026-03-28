@@ -13,7 +13,8 @@ final class BubbleControlPill {
         onStop: @escaping () -> Void,
         onPause: @escaping () -> Void,
         onResume: @escaping () -> Void,
-        onDiscard: @escaping () -> Void
+        onDiscard: @escaping () -> Void,
+        onRewind: @escaping () -> Void = {}
     ) {
         if panel == nil {
             createPanel()
@@ -28,7 +29,8 @@ final class BubbleControlPill {
                 onStop: onStop,
                 onPause: onPause,
                 onResume: onResume,
-                onDiscard: onDiscard
+                onDiscard: onDiscard,
+                onRewind: onRewind
             )
         )
         let fittingSize = hostingView.fittingSize
@@ -91,6 +93,7 @@ private struct BubbleControlPillContentView: View {
     let onPause: () -> Void
     let onResume: () -> Void
     let onDiscard: () -> Void
+    let onRewind: () -> Void
 
     init(
         startedAt: Date,
@@ -99,7 +102,8 @@ private struct BubbleControlPillContentView: View {
         onStop: @escaping () -> Void,
         onPause: @escaping () -> Void,
         onResume: @escaping () -> Void,
-        onDiscard: @escaping () -> Void
+        onDiscard: @escaping () -> Void,
+        onRewind: @escaping () -> Void = {}
     ) {
         self.startedAt = startedAt
         self.initialPausedDuration = initialPausedDuration
@@ -108,6 +112,7 @@ private struct BubbleControlPillContentView: View {
         self.onPause = onPause
         self.onResume = onResume
         self.onDiscard = onDiscard
+        self.onRewind = onRewind
     }
 
     var body: some View {
@@ -156,6 +161,19 @@ private struct BubbleControlPillContentView: View {
             .buttonStyle(.plain)
             .help(isPaused ? "Resume" : "Pause")
             .accessibilityLabel(isPaused ? "Resume recording" : "Pause recording")
+
+            // Rewind (only when paused)
+            if isPaused {
+                Button(action: onRewind) {
+                    Image(systemName: "backward.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.yellow)
+                        .frame(width: 20, height: 20)
+                }
+                .buttonStyle(.plain)
+                .help("Rewind and re-record")
+                .accessibilityLabel("Rewind and re-record")
+            }
 
             // Discard
             Button(action: onDiscard) {

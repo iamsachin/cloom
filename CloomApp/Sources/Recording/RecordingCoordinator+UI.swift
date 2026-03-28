@@ -41,7 +41,31 @@ extension RecordingCoordinator {
             onToggleCursorSpotlight: { [weak self] in self?.toggleCursorSpotlight() },
             onToggleZoom: { [weak self] in self?.toggleZoom() },
             onToggleSystemAudio: { [weak self] in self?.toggleSystemAudio() },
-            onDiscard: { [weak self] in self?.discardRecording() }
+            onDiscard: { [weak self] in self?.discardRecording() },
+            onRewind: { [weak self] in self?.beginRewind() }
+        )
+    }
+
+    func showPausedToolbar(startedAt: Date) {
+        recordingToolbar.show(
+            startedAt: startedAt,
+            pausedDuration: pausedDuration,
+            isPaused: true,
+            micEnabled: micEnabled,
+            cameraEnabled: cameraEnabled,
+            systemAudioEnabled: systemAudioEnabled,
+            onStop: { [weak self] in self?.stopRecording() },
+            onToggleMic: { [weak self] in self?.toggleMic() },
+            onToggleCamera: { [weak self] in self?.toggleCamera() },
+            onPause: { [weak self] in self?.pauseRecording() },
+            onResume: { [weak self] in self?.resumeRecording() },
+            onToggleAnnotations: { [weak self] in self?.toggleAnnotations() },
+            onToggleClickEmphasis: { [weak self] in self?.toggleClickEmphasis() },
+            onToggleCursorSpotlight: { [weak self] in self?.toggleCursorSpotlight() },
+            onToggleZoom: { [weak self] in self?.toggleZoom() },
+            onToggleSystemAudio: { [weak self] in self?.toggleSystemAudio() },
+            onDiscard: { [weak self] in self?.discardRecording() },
+            onRewind: { [weak self] in self?.beginRewind() }
         )
     }
 
@@ -65,7 +89,7 @@ extension RecordingCoordinator {
                 }
             }
 
-            for url in segmentURLs {
+            for url in segments.map(\.url) {
                 try? FileManager.default.removeItem(at: url)
             }
             if let outputURL = currentOutputURL {

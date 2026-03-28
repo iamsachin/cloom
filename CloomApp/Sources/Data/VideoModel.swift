@@ -30,6 +30,7 @@ final class VideoRecord {
     var hasTranscript: Bool
     var summary: String?
     var silenceRangesJSON: String?  // JSON array of {startMs, endMs}
+    var punchInMarkersJSON: String?  // JSON array of PunchInMarker
 
     // Recording settings
     var recordingQuality: String?  // VideoQuality rawValue ("low" | "medium" | "high")
@@ -84,6 +85,18 @@ struct SilenceRange: Codable, Equatable, Sendable {
 }
 
 extension VideoRecord {
+    var punchInMarkers: [PunchInMarker] {
+        get {
+            guard let json = punchInMarkersJSON,
+                  let data = json.data(using: .utf8) else { return [] }
+            return (try? JSONDecoder().decode([PunchInMarker].self, from: data)) ?? []
+        }
+        set {
+            let data = (try? JSONEncoder().encode(newValue)) ?? Data()
+            punchInMarkersJSON = String(data: data, encoding: .utf8)
+        }
+    }
+
     var silenceRanges: [SilenceRange] {
         get {
             guard let json = silenceRangesJSON,

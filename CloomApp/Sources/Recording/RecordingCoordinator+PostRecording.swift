@@ -68,6 +68,9 @@ extension RecordingCoordinator {
             webcamFilePath: nil
         )
         record.recordingQuality = recordingQuality.rawValue
+        if !punchInMarkers.isEmpty {
+            record.punchInMarkers = punchInMarkers
+        }
         context.insert(record)
         do {
             try context.save()

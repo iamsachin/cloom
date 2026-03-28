@@ -22,6 +22,7 @@ struct RecordingToolbarContentView: View {
     let onToggleZoom: () -> Void
     let onToggleSystemAudio: () -> Void
     let onDiscard: () -> Void
+    let onRewind: () -> Void
 
     init(
         startedAt: Date,
@@ -40,7 +41,8 @@ struct RecordingToolbarContentView: View {
         onToggleCursorSpotlight: @escaping () -> Void,
         onToggleZoom: @escaping () -> Void,
         onToggleSystemAudio: @escaping () -> Void = {},
-        onDiscard: @escaping () -> Void
+        onDiscard: @escaping () -> Void,
+        onRewind: @escaping () -> Void = {}
     ) {
         self.startedAt = startedAt
         self.initialPausedDuration = initialPausedDuration
@@ -59,6 +61,7 @@ struct RecordingToolbarContentView: View {
         self.onToggleZoom = onToggleZoom
         self.onToggleSystemAudio = onToggleSystemAudio
         self.onDiscard = onDiscard
+        self.onRewind = onRewind
     }
 
     var body: some View {
@@ -88,6 +91,17 @@ struct RecordingToolbarContentView: View {
             ) {
                 isPaused.toggle()
                 isPaused ? onPause() : onResume()
+            }
+
+            if isPaused {
+                ToolbarToggleButton(
+                    icon: "backward.fill",
+                    isActive: false,
+                    activeColor: .yellow,
+                    help: "Rewind and re-record"
+                ) {
+                    onRewind()
+                }
             }
 
             Divider().frame(height: 20)
