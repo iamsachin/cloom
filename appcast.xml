@@ -6,6 +6,17 @@
         <description>Cloom app updates</description>
         <language>en</language>
         <item>
+            <title>Version 0.6.0</title>
+            <pubDate>Sat, 28 Mar 2026 20:09:44 +0000</pubDate>
+            <sparkle:version>0.6.0</sparkle:version>
+            <sparkle:shortVersionString>0.6.0</sparkle:shortVersionString>
+            <enclosure
+                url="https://github.com/iamsachin/cloom/releases/download/v0.6.0/Cloom-0.6.0.dmg"
+                sparkle:edSignature="MzFWbbazapYfAlC5pWtkvSEzoe0AbNebGClVgjlVUSTMgTJVFiUYOsfuIlV8WY70pWZ/mPymXJtBaxUxtuJxDQ=="
+                length="7581431"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 0.5.0</title>
             <pubDate>Sat, 28 Mar 2026 14:15:39 +0000</pubDate>
             <sparkle:version>0.5.0</sparkle:version>
