@@ -5,6 +5,15 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-03-29
+
+### Added
+- **Teleprompter overlay** — floating transparent script display visible to the presenter but invisible in recordings (`sharingType = .none`). Paste text or import `.txt`/`.md` files.
+- **Auto-scroll** with configurable speed, play/pause button, and manual scroll wheel support. Global hotkey: `Cmd+Shift+T`.
+- **Teleprompter settings** — font size, scroll speed, background opacity, position (top/bottom), and mirror mode for physical beamsplitter teleprompters.
+- **Resizable teleprompter window** — drag edges/corners to resize (min 300x150).
+- **Liquid Glass UI** — adopted macOS 26 Liquid Glass styling across toolbars, buttons, and panels.
+
 ## [0.5.0] - 2026-03-28
 
 ### Added
