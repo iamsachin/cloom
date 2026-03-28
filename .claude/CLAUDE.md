@@ -45,7 +45,9 @@
   tccutil reset Camera com.cloom.app
   tccutil reset Microphone com.cloom.app
   tccutil reset ScreenCapture com.cloom.app
+  tccutil reset Accessibility com.cloom.app
   ```
+- **Accessibility** must be re-granted manually after each rebuild (System Settings → Privacy & Security → Accessibility → re-add Cloom from DerivedData build output). Required for keystroke visualization and click emphasis in other apps.
 
 ## Local Logging
 - When starting work on a task, run `/logs on` skill to stream app logs to `/tmp/cloom-logs/cloom.log`.

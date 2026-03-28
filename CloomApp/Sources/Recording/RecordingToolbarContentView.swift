@@ -11,6 +11,7 @@ struct RecordingToolbarContentView: View {
     @State var clickEmphasisEnabled: Bool = false
     @State var spotlightEnabled: Bool = false
     @State var zoomEnabled: Bool = false
+    @State var keystrokeEnabled: Bool = false
     let onStop: () -> Void
     let onToggleMic: () -> Void
     let onToggleCamera: () -> Void
@@ -20,6 +21,7 @@ struct RecordingToolbarContentView: View {
     let onToggleClickEmphasis: () -> Void
     let onToggleCursorSpotlight: () -> Void
     let onToggleZoom: () -> Void
+    let onToggleKeystroke: () -> Void
     let onToggleSystemAudio: () -> Void
     let onDiscard: () -> Void
     let onRewind: () -> Void
@@ -40,6 +42,7 @@ struct RecordingToolbarContentView: View {
         onToggleClickEmphasis: @escaping () -> Void,
         onToggleCursorSpotlight: @escaping () -> Void,
         onToggleZoom: @escaping () -> Void,
+        onToggleKeystroke: @escaping () -> Void = {},
         onToggleSystemAudio: @escaping () -> Void = {},
         onDiscard: @escaping () -> Void,
         onRewind: @escaping () -> Void = {}
@@ -59,6 +62,7 @@ struct RecordingToolbarContentView: View {
         self.onToggleClickEmphasis = onToggleClickEmphasis
         self.onToggleCursorSpotlight = onToggleCursorSpotlight
         self.onToggleZoom = onToggleZoom
+        self.onToggleKeystroke = onToggleKeystroke
         self.onToggleSystemAudio = onToggleSystemAudio
         self.onDiscard = onDiscard
         self.onRewind = onRewind
@@ -129,6 +133,9 @@ struct RecordingToolbarContentView: View {
             }
             ToolbarToggleButton(icon: "plus.magnifyingglass", isActive: zoomEnabled, activeColor: .blue, help: zoomEnabled ? "Disable zoom" : "Enable zoom") {
                 zoomEnabled.toggle(); onToggleZoom()
+            }
+            ToolbarToggleButton(icon: "keyboard", isActive: keystrokeEnabled, activeColor: .blue, help: keystrokeEnabled ? "Hide keystrokes" : "Show keystrokes") {
+                keystrokeEnabled.toggle(); onToggleKeystroke()
             }
 
             Divider().frame(height: 20)

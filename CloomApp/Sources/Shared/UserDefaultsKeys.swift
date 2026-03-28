@@ -22,6 +22,11 @@ enum UserDefaultsKeys {
     static let silenceThresholdDb = "silenceThresholdDb"
     static let silenceMinDurationMs = "silenceMinDurationMs"
 
+    // MARK: - Keystroke Visualization
+    static let keystrokeEnabled = "keystrokeEnabled"
+    static let keystrokePosition = "keystrokePosition"
+    static let keystrokeDisplayMode = "keystrokeDisplayMode"
+
     // MARK: - Webcam
     static let webcamShape = "webcamShape"
     static let webcamFrame = "webcamFrame"

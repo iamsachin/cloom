@@ -28,7 +28,9 @@ cloom/
 │   │   │   ├── AnnotationToolbarContentView.swift  # SwiftUI toolbar content
 │   │   │   ├── AnnotationToolbarPanel.swift   # NSPanel for tool/color/width controls
 │   │   │   ├── ClickEmphasisMonitor.swift     # CGEvent tap for click ripple effects
-│   │   │   └── CursorSpotlightMonitor.swift   # Cursor position tracking for spotlight
+│   │   │   ├── CursorSpotlightMonitor.swift   # Cursor position tracking for spotlight
+│   │   │   ├── KeystrokeMonitor.swift         # NSEvent monitors for keystroke visualization
+│   │   │   └── KeystrokeOverlayWindow.swift   # Floating NSPanel showing recent keystrokes
 │   │   ├── App/
 │   │   │   ├── CloomApp.swift                 # @main, MenuBarExtra, single Window scene
 │   │   │   ├── AppState.swift                 # @MainActor global state, cleanup, disk monitoring

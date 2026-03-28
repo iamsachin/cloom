@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import os.log
 
@@ -108,6 +109,48 @@ extension RecordingCoordinator {
         } else {
             zoomClickMonitor?.stop()
             annotationStore?.setZoomEnabled(false)
+        }
+    }
+
+    func toggleKeystroke() {
+        keystrokeEnabled.toggle()
+        if keystrokeEnabled {
+            // Create annotation store eagerly if it doesn't exist yet (e.g. in ready state)
+            let store: AnnotationStore
+            if let existing = annotationStore {
+                store = existing
+            } else {
+                store = AnnotationStore()
+                self.annotationStore = store
+                self.annotationRenderer = AnnotationRenderer(store: store)
+            }
+
+            if keystrokeMonitor == nil {
+                keystrokeMonitor = KeystrokeMonitor(store: store)
+            }
+            store.setKeystrokeEnabled(true)
+
+            // Apply saved settings
+            let posRaw = UserDefaults.standard.string(forKey: UserDefaultsKeys.keystrokePosition) ?? KeystrokePosition.bottomLeft.rawValue
+            let position = KeystrokePosition(rawValue: posRaw) ?? .bottomLeft
+            store.setKeystrokePosition(position)
+
+            let modeRaw = UserDefaults.standard.string(forKey: UserDefaultsKeys.keystrokeDisplayMode) ?? KeystrokeDisplayMode.allKeys.rawValue
+            let displayMode = KeystrokeDisplayMode(rawValue: modeRaw) ?? .allKeys
+            store.setKeystrokeDisplayMode(displayMode)
+
+            keystrokeMonitor?.start()
+
+            // Show on-screen overlay
+            if keystrokeOverlay == nil {
+                keystrokeOverlay = KeystrokeOverlayWindow()
+            }
+            let screenFrame = NSScreen.main?.frame ?? .zero
+            keystrokeOverlay?.show(store: store, screenFrame: screenFrame)
+        } else {
+            keystrokeMonitor?.stop()
+            annotationStore?.setKeystrokeEnabled(false)
+            keystrokeOverlay?.dismiss()
         }
     }
 }

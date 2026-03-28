@@ -488,6 +488,25 @@ UI tests were removed — MenuBarExtra apps aren't hittable by XCUIApplication, 
 
 ---
 
+## Phase 36: Keystroke Visualization Overlay — Complete
+
+**Goal:** Floating overlay showing pressed keys on screen during recording for tutorials and demos.
+
+| # | Task | Module | Description |
+|---|------|--------|-------------|
+| 208 | Key event monitor | Annotations/ | `KeystrokeMonitor`: NSEvent global+local monitors for keyDown/flagsChanged, `KeystrokeEvent` model, `AnnotationStore` keystroke state |
+| 209 | Keystroke overlay window | Annotations/ | `KeystrokeOverlayWindow`: floating NSPanel (sharingType=.none), SwiftUI pill views with fade-out animation |
+| 210 | Burn-in rendering | Annotations/ | `AnnotationRenderer` extended with CoreText/CGContext keystroke pill rendering into video frames |
+| 211 | Settings & toolbar | Settings/, Recording/ | Toolbar toggle (keyboard icon), position (4 corners), display mode (all keys vs modifier combos only), `RecordingSettingsTab` section |
+| 212 | Tests | Tests/ | 14 new tests: opacity, enums, store methods. Build verified |
+
+**New files:** `KeystrokeMonitor.swift`, `KeystrokeOverlayWindow.swift`
+**Tests:** 14 new Swift tests. Total: **250 Swift tests**, 50 Rust tests.
+
+**Milestone:** Keystroke overlay visible during recording and burned into exported video. Configurable position (4 corners) and display mode (all keys vs modifier combos only). Toggle via keyboard icon in toolbar.
+
+---
+
 ## Deferred Features
 
 | Feature | Original Phase | Reason |

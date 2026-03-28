@@ -55,7 +55,7 @@ Status indicators: **Done** = implemented, **Deferred** = planned for later phas
 
 ---
 
-## D: Drawing & Annotations — Done
+## D: Drawing & Annotations — Done (incl. Keystroke Visualization)
 
 | Code | Feature | Description | Status |
 |------|---------|-------------|--------|
@@ -70,6 +70,7 @@ Status indicators: **Done** = implemented, **Deferred** = planned for later phas
 | D9 | Mouse click emphasis | Expanding ripple effect via ClickEmphasisMonitor + CIRadialGradient | Done |
 | D10 | Cursor spotlight | Radial gradient dim overlay via CursorSpotlightMonitor | Done |
 | D11 | Real-time burn-in | AnnotationRenderer composites strokes/ripples/spotlight as CIImage into recorded frames | Done |
+| D12 | Keystroke visualization | Floating overlay showing pressed keys with fade-out, burned into video, configurable position/mode | Done |
 
 ---
 

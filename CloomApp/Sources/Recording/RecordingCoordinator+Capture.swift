@@ -127,10 +127,10 @@ extension RecordingCoordinator {
             activeCompositor = nil
         }
 
-        // Create annotation store and renderer
-        let store = AnnotationStore()
+        // Reuse existing annotation store (created early by keystroke toggle) or create new
+        let store = self.annotationStore ?? AnnotationStore()
         self.annotationStore = store
-        let renderer = AnnotationRenderer(store: store)
+        let renderer = self.annotationRenderer ?? AnnotationRenderer(store: store)
         self.annotationRenderer = renderer
 
         // Create recording metrics and wire to capture service

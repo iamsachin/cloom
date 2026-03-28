@@ -32,8 +32,9 @@ final class AnnotationRenderer: @unchecked Sendable {
         let hasStrokes = !snap.strokes.isEmpty
         let hasRipples = !snap.ripples.isEmpty
         let hasSpotlight = snap.spotlight.isEnabled
+        let hasKeystrokes = snap.keystroke.isEnabled && !snap.keystroke.events.isEmpty
 
-        guard hasStrokes || hasRipples || hasSpotlight else {
+        guard hasStrokes || hasRipples || hasSpotlight || hasKeystrokes else {
             cachedStrokeImage = nil
             cachedStrokeCount = -1
             return nil
@@ -75,6 +76,14 @@ final class AnnotationRenderer: @unchecked Sendable {
         if hasSpotlight {
             if let spotlightImage = renderSpotlight(snap.spotlight, width: w, height: h) {
                 overlay = overlay.map { $0.composited(over: spotlightImage) } ?? spotlightImage
+            }
+        }
+
+        // 4. Render keystrokes
+        if hasKeystrokes {
+            store.pruneExpiredKeystrokes(currentTime: currentTime)
+            if let keystrokeImage = renderKeystrokes(snap.keystroke, width: screenWidth, height: screenHeight, currentTime: currentTime) {
+                overlay = overlay.map { keystrokeImage.composited(over: $0) } ?? keystrokeImage
             }
         }
 
@@ -324,6 +333,91 @@ final class AnnotationRenderer: @unchecked Sendable {
             .transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
 
         return scaled
+    }
+
+    // MARK: - Keystroke Rendering
+
+    private func renderKeystrokes(_ keystroke: KeystrokeState, width: Int, height: Int, currentTime: TimeInterval) -> CIImage? {
+        let events = keystroke.events.filter { $0.opacity(at: currentTime) > 0 }
+        guard !events.isEmpty else { return nil }
+
+        let colorSpace = sRGBColorSpace
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return nil
+        }
+
+        let scale: CGFloat = 2.0 // Retina
+        let fontSize: CGFloat = 18.0 * scale
+        let paddingH: CGFloat = 14.0 * scale
+        let paddingV: CGFloat = 8.0 * scale
+        let cornerRadius: CGFloat = 10.0 * scale
+        let spacing: CGFloat = 6.0 * scale
+        let edgePadding: CGFloat = 40.0 * scale
+
+        let font = CTFontCreateWithName("SFPro-Medium" as CFString, fontSize, nil)
+
+        // Measure all pills first
+        var pills: [(label: String, opacity: CGFloat, size: CGSize)] = []
+        for event in events {
+            let opacity = event.opacity(at: currentTime)
+            let attrs: [CFString: Any] = [kCTFontAttributeName: font]
+            let attrStr = CFAttributedStringCreate(nil, event.label as CFString, attrs as CFDictionary)!
+            let line = CTLineCreateWithAttributedString(attrStr)
+            let textBounds = CTLineGetBoundsWithOptions(line, .useOpticalBounds)
+            let pillW = textBounds.width + paddingH * 2
+            let pillH = fontSize + paddingV * 2
+            pills.append((event.label, opacity, CGSize(width: pillW, height: pillH)))
+        }
+
+        // Stack pills from the position corner
+        let isBottom = keystroke.position == .bottomLeft || keystroke.position == .bottomRight
+        let isLeft = keystroke.position == .bottomLeft || keystroke.position == .topLeft
+
+        let totalHeight = pills.reduce(0) { $0 + $1.size.height } + CGFloat(max(0, pills.count - 1)) * spacing
+        var y: CGFloat = isBottom ? edgePadding : (CGFloat(height) - edgePadding - totalHeight)
+
+        for pill in pills {
+            let x: CGFloat = isLeft ? edgePadding : (CGFloat(width) - edgePadding - pill.size.width)
+            let pillRect = CGRect(x: x, y: y, width: pill.size.width, height: pill.size.height)
+
+            // Background pill
+            context.saveGState()
+            context.setAlpha(pill.opacity * 0.7)
+            let path = CGPath(roundedRect: pillRect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
+            context.setFillColor(CGColor(gray: 0, alpha: 1))
+            context.addPath(path)
+            context.fillPath()
+            context.restoreGState()
+
+            // Text
+            context.saveGState()
+            context.setAlpha(pill.opacity)
+            let textAttrs: [CFString: Any] = [
+                kCTFontAttributeName: font,
+                kCTForegroundColorAttributeName: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1)
+            ]
+            let textStr = CFAttributedStringCreate(nil, pill.label as CFString, textAttrs as CFDictionary)!
+            let ctLine = CTLineCreateWithAttributedString(textStr)
+            let textBounds = CTLineGetBoundsWithOptions(ctLine, .useOpticalBounds)
+            let textX = pillRect.midX - textBounds.width / 2
+            let textY = pillRect.midY - fontSize * 0.35
+            context.textPosition = CGPoint(x: textX, y: textY)
+            CTLineDraw(ctLine, context)
+            context.restoreGState()
+
+            y += pill.size.height + spacing
+        }
+
+        guard let cgImage = context.makeImage() else { return nil }
+        return CIImage(cgImage: cgImage)
     }
 
     // MARK: - Spotlight Rendering

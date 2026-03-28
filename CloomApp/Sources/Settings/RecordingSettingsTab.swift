@@ -13,10 +13,26 @@ struct RecordingSettingsTab: View {
     @AppStorage(UserDefaultsKeys.defaultSaveLocation) private var defaultSaveLocation: String = ""
     @AppStorage(UserDefaultsKeys.silenceThresholdDb) private var silenceThresholdDb: Double = -40.0
     @AppStorage(UserDefaultsKeys.silenceMinDurationMs) private var silenceMinDurationMs: Int = 500
+    @AppStorage(UserDefaultsKeys.keystrokePosition) private var keystrokePositionRaw: String = KeystrokePosition.bottomLeft.rawValue
+    @AppStorage(UserDefaultsKeys.keystrokeDisplayMode) private var keystrokeDisplayModeRaw: String = KeystrokeDisplayMode.allKeys.rawValue
 
     @State private var microphones: [AVCaptureDevice] = []
     @State private var cameras: [AVCaptureDevice] = []
     @StateObject private var micMonitor = MicLevelMonitor()
+
+    private var keystrokePosition: Binding<KeystrokePosition> {
+        Binding(
+            get: { KeystrokePosition(rawValue: keystrokePositionRaw) ?? .bottomLeft },
+            set: { keystrokePositionRaw = $0.rawValue }
+        )
+    }
+
+    private var keystrokeDisplayMode: Binding<KeystrokeDisplayMode> {
+        Binding(
+            get: { KeystrokeDisplayMode(rawValue: keystrokeDisplayModeRaw) ?? .allKeys },
+            set: { keystrokeDisplayModeRaw = $0.rawValue }
+        )
+    }
 
     private var quality: Binding<VideoQuality> {
         Binding(
@@ -117,6 +133,22 @@ struct RecordingSettingsTab: View {
                     }
                 }
                 .help("Where recordings are saved — defaults to Desktop")
+            }
+
+            Section("Keystroke Visualization") {
+                Picker("Position", selection: keystrokePosition) {
+                    ForEach(KeystrokePosition.allCases, id: \.rawValue) { pos in
+                        Text(pos.rawValue).tag(pos)
+                    }
+                }
+                .help("Where the keystroke overlay appears on screen")
+
+                Picker("Display", selection: keystrokeDisplayMode) {
+                    ForEach(KeystrokeDisplayMode.allCases, id: \.rawValue) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                .help("Show all keys or only modifier combos (⌘S, ⌃C, etc.)")
             }
 
             Section("Silence Detection") {

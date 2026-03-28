@@ -981,15 +981,15 @@ Pause recording, rewind to a point, re-record a segment, and continue — withou
 ---
 
 ## Phase 36: Keystroke Visualization Overlay
-**Status:** Not Started
+**Status:** DONE ✅ (2026-03-28)
 
 Floating overlay showing pressed keys on screen during recording. Highly requested by developers and educators for tutorials.
 
-- [ ] Task 208 — Key event monitor: CGEvent tap or NSEvent.addGlobalMonitorForEvents to capture keystrokes
-- [ ] Task 209 — Keystroke overlay window: floating NSPanel showing recent key combos with fade-out animation
-- [ ] Task 210 — Burn-in rendering: composite keystroke overlay into recorded video frames
-- [ ] Task 211 — Settings: toggle keystroke display on/off, position (corner), style, modifier-only vs all keys
-- [ ] Task 212 — Tests + build verification
+- [x] Task 208 — Key event monitor: NSEvent global+local monitors for keyDown/flagsChanged, KeystrokeEvent model, AnnotationStore keystroke state
+- [x] Task 209 — Keystroke overlay window: floating NSPanel (sharingType=.none) with SwiftUI pill views, fade-out animation, 30Hz refresh timer
+- [x] Task 210 — Burn-in rendering: CoreText/CGContext keystroke pills composited into video frames via AnnotationRenderer
+- [x] Task 211 — Settings: toolbar toggle (keyboard icon), position picker (4 corners), display mode (all keys vs modifier combos only), UserDefaults persistence, RecordingSettingsTab section
+- [x] Task 212 — Tests (14 new): KeystrokeEvent opacity, position/mode enums, AnnotationStore add/prune/enable/position/mode. Build verified (0 errors)
 
 ---
 

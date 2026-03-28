@@ -59,6 +59,11 @@ extension RecordingCoordinator {
         clickEmphasisEnabled = false
         cursorSpotlightEnabled = false
         zoomEnabled = false
+        keystrokeEnabled = false
+        keystrokeMonitor?.stop()
+        keystrokeMonitor = nil
+        keystrokeOverlay?.dismiss()
+        keystrokeOverlay = nil
         annotationCanvas?.dismiss()
         annotationCanvas = nil
         annotationToolbar?.dismiss()
