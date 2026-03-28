@@ -11,6 +11,7 @@ struct EditorToolbarView: View {
     @Binding var showExportSheet: Bool
     @Binding var showInfoPanel: Bool
     @Binding var showBookmarksPanel: Bool
+    @Binding var showCommentsPanel: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -122,6 +123,16 @@ struct EditorToolbarView: View {
         .buttonStyle(.hover)
         .help("Bookmarks")
         .accessibilityLabel(showBookmarksPanel ? "Hide bookmarks" : "Show bookmarks")
+
+        Button {
+            showCommentsPanel.toggle()
+        } label: {
+            Image(systemName: showCommentsPanel ? "text.bubble.fill" : "text.bubble")
+                .foregroundStyle(.blue)
+        }
+        .buttonStyle(.hover)
+        .help("Comments")
+        .accessibilityLabel(showCommentsPanel ? "Hide comments" : "Show comments")
 
         SpeedControlView(editorState: state)
 

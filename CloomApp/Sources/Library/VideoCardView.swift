@@ -1,12 +1,16 @@
 import SwiftUI
 import SwiftData
 import AppKit
+import CoreGraphics
 
 struct VideoCardView: View {
     let video: VideoRecord
 
     @State private var isHovered = false
     @State private var hasAppeared = false
+    @State private var previewFrames: [CGImage]?
+    @State private var previewIndex = 0
+    @State private var previewTask: Task<Void, Never>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -14,6 +18,14 @@ struct VideoCardView: View {
             ZStack {
                 AsyncThumbnailImage(thumbnailPath: video.thumbnailPath)
                     .aspectRatio(16 / 9, contentMode: .fit)
+
+                // Hover preview overlay
+                if isHovered, let frames = previewFrames, !frames.isEmpty {
+                    Image(decorative: frames[previewIndex], scale: 1.0)
+                        .resizable()
+                        .aspectRatio(16 / 9, contentMode: .fill)
+                        .transition(.opacity)
+                }
 
                 // Top-right: transcript status badge
                 VStack {
@@ -41,8 +53,11 @@ struct VideoCardView: View {
                         }
                     }
                     Spacer()
-                    // Bottom-right: duration badge
+                    // Bottom: progress dots + duration badge
                     HStack {
+                        if isHovered, let frames = previewFrames, !frames.isEmpty {
+                            previewDots(count: frames.count, current: previewIndex)
+                        }
                         Spacer()
                         Text(video.durationMs.formattedDuration)
                             .font(.system(size: 11, weight: .medium).monospacedDigit())
@@ -97,6 +112,13 @@ struct VideoCardView: View {
         .animation(.easeOut(duration: 0.15), value: isHovered)
         .onHover { hovering in
             isHovered = hovering
+        }
+        .onChange(of: isHovered) { _, hovering in
+            if hovering {
+                startPreview()
+            } else {
+                stopPreview()
+            }
         }
         .opacity(hasAppeared ? 1 : 0)
         .offset(y: hasAppeared ? 0 : 12)
@@ -171,5 +193,50 @@ struct VideoCardView: View {
         if hours < 24 { return "\(hours) hr" }
         let days = hours / 24
         return "\(days) day\(days == 1 ? "" : "s")"
+    }
+
+    // MARK: - Hover Preview
+
+    private func startPreview() {
+        previewTask = Task {
+            // Debounce: wait 300ms before loading
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+
+            do {
+                let frames = try await HoverPreviewGenerator.shared.previewFrames(for: video.filePath)
+                guard !Task.isCancelled, !frames.isEmpty else { return }
+                previewFrames = frames
+                previewIndex = 0
+
+                // Cycle through frames
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(400))
+                    guard !Task.isCancelled else { break }
+                    previewIndex = (previewIndex + 1) % frames.count
+                }
+            } catch {
+                // Silently fail — just show static thumbnail
+            }
+        }
+    }
+
+    private func stopPreview() {
+        previewTask?.cancel()
+        previewTask = nil
+        previewIndex = 0
+    }
+
+    @ViewBuilder
+    private func previewDots(count: Int, current: Int) -> some View {
+        HStack(spacing: 3) {
+            ForEach(0..<count, id: \.self) { index in
+                Circle()
+                    .fill(index == current ? Color.white : Color.white.opacity(0.4))
+                    .frame(width: 4, height: 4)
+            }
+        }
+        .padding(.leading, 8)
+        .padding(.bottom, 8)
     }
 }

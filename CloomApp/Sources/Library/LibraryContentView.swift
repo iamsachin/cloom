@@ -24,6 +24,8 @@ struct LibraryContentView: View {
     @State private var searchDebounceTask: Task<Void, Never>?
     @State var sortOrder: LibrarySortOrder = .newestFirst
     @State var transcriptFilter: TranscriptFilter = .all
+    @State var dateRangeFilter: DateRangeFilter = .all
+    @State var durationRangeFilter: DurationRangeFilter = .all
 
     // Move to folder
     @State var showMoveToFolderPicker = false
@@ -58,6 +60,16 @@ struct LibraryContentView: View {
             result = result.filter { !$0.hasTranscript }
         }
 
+        // Filter by date range
+        if dateRangeFilter != .all {
+            result = result.filter { dateRangeFilter.matches($0.createdAt) }
+        }
+
+        // Filter by duration range
+        if durationRangeFilter != .all {
+            result = result.filter { durationRangeFilter.matches($0.durationMs) }
+        }
+
         // Filter by search text
         if !debouncedSearchText.isEmpty {
             let query = debouncedSearchText.lowercased()
@@ -72,6 +84,10 @@ struct LibraryContentView: View {
         result.sort(by: sortOrder.comparator)
 
         return result
+    }
+
+    private var hasActiveFilters: Bool {
+        transcriptFilter != .all || dateRangeFilter != .all || durationRangeFilter != .all
     }
 
     var navigationTitle: String {
@@ -194,6 +210,7 @@ struct LibraryContentView: View {
                             }
                         }
                     )
+                    .draggable(video.id)
                     .contextMenu { videoContextMenu(video) }
                 }
             }
@@ -266,13 +283,31 @@ struct LibraryContentView: View {
 
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Picker("Filter", selection: $transcriptFilter) {
-                        ForEach(TranscriptFilter.allCases) { filter in
-                            Text(filter.rawValue).tag(filter)
+                    Section("Transcript") {
+                        Picker("Transcript", selection: $transcriptFilter) {
+                            ForEach(TranscriptFilter.allCases) { filter in
+                                Text(filter.rawValue).tag(filter)
+                            }
+                        }
+                    }
+                    Section("Date") {
+                        Picker("Date", selection: $dateRangeFilter) {
+                            ForEach(DateRangeFilter.allCases) { filter in
+                                Text(filter.rawValue).tag(filter)
+                            }
+                        }
+                    }
+                    Section("Duration") {
+                        Picker("Duration", selection: $durationRangeFilter) {
+                            ForEach(DurationRangeFilter.allCases) { filter in
+                                Text(filter.rawValue).tag(filter)
+                            }
                         }
                     }
                 } label: {
-                    Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                    Label("Filter", systemImage: hasActiveFilters
+                        ? "line.3.horizontal.decrease.circle.fill"
+                        : "line.3.horizontal.decrease.circle")
                 }
                 .menuIndicator(.hidden)
             }
