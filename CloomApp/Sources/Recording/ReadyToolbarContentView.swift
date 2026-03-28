@@ -85,12 +85,11 @@ struct ReadyToolbarContentView: View {
             Divider().frame(height: 20)
 
             Button(action: onRecord) {
-                ZStack {
-                    Circle().fill(.red).frame(width: 24, height: 24)
-                    Circle().fill(.white).frame(width: 8, height: 8)
-                }
+                Image(systemName: "record.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.white)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glass(.regular.tint(.red)))
             .help("Start recording")
             .accessibilityLabel("Start recording")
 
@@ -105,7 +104,7 @@ struct ReadyToolbarContentView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: Capsule())
+        .glassEffect(in: .capsule)
         .accessibilityValue("Ready to record")
     }
 }

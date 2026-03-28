@@ -225,7 +225,7 @@ struct EditorExportView: View {
             )
             Button("Export") { startExport() }
                 .disabled(isExporting || isUploading)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
         }
     }
 

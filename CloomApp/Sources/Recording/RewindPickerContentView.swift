@@ -73,7 +73,7 @@ struct RewindPickerContentView: View {
             Button("Confirm Rewind") {
                 onConfirm(model.rewindSeconds)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .tint(.orange)
             .disabled(model.rewindSeconds <= 0)
             .keyboardShortcut(.defaultAction)

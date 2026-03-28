@@ -507,6 +507,42 @@ UI tests were removed — MenuBarExtra apps aren't hittable by XCUIApplication, 
 
 ---
 
+## Phase 37: Liquid Glass UI — Complete
+
+**Goal:** Adopt macOS 26's Liquid Glass styling across the app's chrome for a native Tahoe look.
+
+| # | Task | Module | Description |
+|---|------|--------|-------------|
+| 213 | Toolbar glass effect | Recording/, Annotations/ | Replace `.ultraThinMaterial` with `.glassEffect(in: .capsule)` on RecordingToolbarContentView, ReadyToolbarContentView, AnnotationToolbarContentView, BubbleControlPill |
+| 214 | Webcam bubble & keystroke pills | Capture/, Annotations/ | Glass-style double border on webcam bubble (inner highlight + outer glow), `.glassEffect()` on keystroke pills |
+| 215 | Glass button style | Editor/, App/, Library/, Recording/ | Replace `.borderedProminent` with `.glassProminent` across 9 files; red-tinted `.glass(.regular.tint(.red))` for stop/record buttons |
+| 216 | Window chrome | Recording/, Compositing/ | Remove `.hudWindow` from 4 NSPanel styleMasks (RecordingToolbar, AnnotationToolbar, RewindPicker, ExportProgress) to let system Liquid Glass apply |
+| 217 | Build verification | — | Build succeeds (0 errors, 1 pre-existing warning). 16 XCTest + 44 Rust tests pass |
+
+**Modified files (16):**
+- `RecordingToolbarContentView.swift` — `.glassEffect(in: .capsule)` + glass stop button
+- `ReadyToolbarContentView.swift` — `.glassEffect(in: .capsule)` + glass record button
+- `AnnotationToolbarContentView.swift` — `.glassEffect(in: .capsule)`
+- `BubbleControlPill.swift` — `.glassEffect(in: .capsule)`
+- `RecordingToolbarPanel.swift` — removed `.hudWindow`
+- `AnnotationToolbarPanel.swift` — removed `.hudWindow`
+- `RewindPickerPanel.swift` — removed `.hudWindow`
+- `ExportProgressWindow.swift` — removed `.hudWindow`
+- `BubbleLayerBuilder.swift` — glass-style double border (highlight + glow)
+- `KeystrokeOverlayWindow.swift` — `.glassEffect()` on keystroke pills
+- `EditorToolbarView.swift` — `.glassProminent`
+- `EditorExportView.swift` — `.glassProminent`
+- `StitchPanelView.swift` — `.glassProminent`
+- `ThumbnailPickerView.swift` — `.glassProminent`
+- `AutoCutToolbarView.swift` — `.glassProminent`
+- `OnboardingView.swift` — `.glassProminent` (2 buttons)
+- `RewindPickerContentView.swift` — `.glassProminent`
+- `TagEditorView.swift` — `.glassProminent`
+
+**Milestone:** All floating toolbar panels use Liquid Glass capsule effect. Primary action buttons use `.glassProminent`. Titled panels get system glass chrome. Webcam bubble has glass-style border. Keystroke pills use glass material.
+
+---
+
 ## Deferred Features
 
 | Feature | Original Phase | Reason |

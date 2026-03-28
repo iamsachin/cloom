@@ -108,7 +108,7 @@ final class RecordingToolbarPanel {
     private func createPanel() {
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 520, height: 44),
-            styleMask: [.borderless, .nonactivatingPanel, .hudWindow],
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )

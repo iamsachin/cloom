@@ -188,7 +188,7 @@ private struct BubbleControlPillContentView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(.ultraThinMaterial, in: Capsule())
+        .glassEffect(in: .capsule)
     }
 
     private func formatElapsed(_ seconds: TimeInterval) -> String {

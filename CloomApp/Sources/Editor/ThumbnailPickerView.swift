@@ -76,7 +76,7 @@ struct ThumbnailPickerView: View {
                 Button("Apply") {
                     applyThumbnail()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
             }
         }
         .padding(24)

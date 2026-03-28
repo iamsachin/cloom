@@ -27,7 +27,7 @@ struct AutoCutToolbarView: View {
             Button("Apply") {
                 state.applyPreviewedCuts()
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .tint(.orange)
             .controlSize(.small)
 

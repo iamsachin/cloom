@@ -13,7 +13,7 @@ final class ExportProgressWindow {
         if panel == nil {
             let panel = NSPanel(
                 contentRect: NSRect(x: 0, y: 0, width: 300, height: 100),
-                styleMask: [.titled, .nonactivatingPanel, .hudWindow],
+                styleMask: [.titled, .nonactivatingPanel],
                 backing: .buffered,
                 defer: false
             )
