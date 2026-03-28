@@ -44,31 +44,41 @@ enum TranscriptExportService {
             title: title, transcript: transcript, chapters: chapters
         )
 
-        // A4: 595.28 x 841.89 points, with 60pt margins
+        // A4 dimensions in points
         let a4Width: CGFloat = 595.28
+        let a4Height: CGFloat = 841.89
         let margin: CGFloat = 60
-        let textWidth = a4Width - margin * 2  // ~475pt
+        let textWidth = a4Width - margin * 2
+        let textHeight = a4Height - margin * 2
 
-        let textStorage = NSTextStorage(attributedString: attributedString)
-        let layoutManager = NSLayoutManager()
-        textStorage.addLayoutManager(layoutManager)
-
-        let textContainer = NSTextContainer(size: NSSize(width: textWidth, height: .greatestFiniteMagnitude))
-        textContainer.lineFragmentPadding = 0
-        layoutManager.addTextContainer(textContainer)
-        layoutManager.ensureLayout(for: textContainer)
-        let textHeight = layoutManager.usedRect(for: textContainer).height
-
+        // Create a text view sized to A4 text area — NSPrintOperation handles pagination
         let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: textWidth, height: textHeight))
         textView.textStorage?.setAttributedString(attributedString)
         textView.textContainer?.lineFragmentPadding = 0
-        textView.textContainer?.size = NSSize(width: textWidth, height: textHeight)
+        textView.textContainer?.containerSize = NSSize(width: textWidth, height: .greatestFiniteMagnitude)
         textView.isEditable = false
         textView.backgroundColor = .white
         textView.layoutManager?.ensureLayout(for: textView.textContainer!)
 
-        let pdfData = textView.dataWithPDF(inside: textView.bounds)
-        try pdfData.write(to: destURL, options: .atomic)
+        // Configure print info for A4 with margins
+        let printInfo = NSPrintInfo()
+        printInfo.paperSize = NSSize(width: a4Width, height: a4Height)
+        printInfo.topMargin = margin
+        printInfo.bottomMargin = margin
+        printInfo.leftMargin = margin
+        printInfo.rightMargin = margin
+        printInfo.horizontalPagination = .fit
+        printInfo.verticalPagination = .automatic
+        printInfo.isHorizontallyCentered = false
+        printInfo.isVerticallyCentered = false
+        printInfo.jobDisposition = .save
+        printInfo.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = destURL
+
+        let printOp = NSPrintOperation(view: textView, printInfo: printInfo)
+        printOp.showsPrintPanel = false
+        printOp.showsProgressPanel = false
+        printOp.run()
+
         logger.info("Exported transcript as PDF → \(destURL.lastPathComponent)")
     }
 
