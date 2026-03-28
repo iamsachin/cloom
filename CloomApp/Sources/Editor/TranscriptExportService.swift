@@ -33,6 +33,7 @@ enum TranscriptExportService {
 
     // MARK: - PDF
 
+    @MainActor
     static func exportAsPDF(
         title: String,
         transcript: TranscriptRecord,
@@ -41,65 +42,30 @@ enum TranscriptExportService {
     ) throws {
         let attributedString = buildAttributedString(title: title, transcript: transcript, chapters: chapters)
 
-        let printInfo = NSPrintInfo()
-        printInfo.paperSize = NSSize(width: 612, height: 792) // US Letter
-        printInfo.topMargin = 72
-        printInfo.bottomMargin = 72
-        printInfo.leftMargin = 72
-        printInfo.rightMargin = 72
-
-        let pageWidth = printInfo.paperSize.width - printInfo.leftMargin - printInfo.rightMargin
-        let pageHeight = printInfo.paperSize.height - printInfo.topMargin - printInfo.bottomMargin
-
+        // US Letter with 1-inch margins
+        let pageWidth: CGFloat = 612 - 144  // 468pt text width
         let textStorage = NSTextStorage(attributedString: attributedString)
         let layoutManager = NSLayoutManager()
         textStorage.addLayoutManager(layoutManager)
 
         let textContainer = NSTextContainer(size: NSSize(width: pageWidth, height: .greatestFiniteMagnitude))
+        textContainer.lineFragmentPadding = 0
         layoutManager.addTextContainer(textContainer)
 
-        // Force layout
+        // Force full layout
         layoutManager.ensureLayout(for: textContainer)
         let textHeight = layoutManager.usedRect(for: textContainer).height
 
-        let pageCount = max(1, Int(ceil(textHeight / pageHeight)))
-        let totalHeight = CGFloat(pageCount) * printInfo.paperSize.height
-
+        // Create an NSTextView sized to fit all content
         let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: pageWidth, height: textHeight))
         textView.textStorage?.setAttributedString(attributedString)
+        textView.textContainer?.lineFragmentPadding = 0
+        textView.textContainer?.size = NSSize(width: pageWidth, height: textHeight)
         textView.isEditable = false
+        textView.backgroundColor = .white
+        textView.layoutManager?.ensureLayout(for: textView.textContainer!)
 
-        let pdfData = NSMutableData()
-        let consumer = CGDataConsumer(data: pdfData as CFMutableData)!
-        var mediaBox = CGRect(x: 0, y: 0, width: printInfo.paperSize.width, height: printInfo.paperSize.height)
-
-        guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
-            throw NSError(domain: "TranscriptExport", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "Failed to create PDF context"])
-        }
-
-        var yOffset: CGFloat = 0
-        for page in 0..<pageCount {
-            context.beginPDFPage(nil)
-            context.saveGState()
-            context.translateBy(x: printInfo.leftMargin, y: printInfo.bottomMargin)
-
-            let visibleRect = NSRect(x: 0, y: yOffset, width: pageWidth, height: pageHeight)
-            context.translateBy(x: 0, y: pageHeight)
-            context.scaleBy(x: 1, y: -1)
-            context.translateBy(x: 0, y: -yOffset)
-
-            let range = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
-            layoutManager.drawBackground(forGlyphRange: range, at: NSPoint(x: 0, y: 0))
-            layoutManager.drawGlyphs(forGlyphRange: range, at: NSPoint(x: 0, y: 0))
-
-            context.restoreGState()
-            context.endPDFPage()
-
-            yOffset += pageHeight
-        }
-
-        context.closePDF()
+        let pdfData = textView.dataWithPDF(inside: textView.bounds)
         try pdfData.write(to: destURL, options: .atomic)
         logger.info("Exported transcript as PDF → \(destURL.lastPathComponent)")
     }
