@@ -37,22 +37,22 @@ final class ScreenCaptureService: NSObject {
     private let outputQueue = DispatchQueue(label: "com.cloom.capture.output", qos: .userInteractive)
     private let audioQueue = DispatchQueue(label: "com.cloom.capture.audio", qos: .userInteractive)
 
-    func startCapture(outputURL: URL, mode: CaptureMode, micEnabled: Bool, settings: RecordingSettings, compositor: WebcamCompositor?, annotationRenderer: AnnotationRenderer? = nil) async throws {
+    func startCapture(outputURL: URL, mode: CaptureMode, micEnabled: Bool, settings: RecordingSettings, compositor: WebcamCompositor?, annotationRenderer: AnnotationRenderer? = nil, systemAudioEnabled: Bool = true) async throws {
         let content = try await SCShareableContent.current
         let filter = try buildFilter(mode: mode, content: content)
         let config = SCStreamConfiguration()
         configureStream(config, mode: mode, content: content)
-        configureCommon(config, settings: settings, micEnabled: micEnabled)
+        configureCommon(config, settings: settings, micEnabled: micEnabled, systemAudioEnabled: systemAudioEnabled)
         try await startStream(filter: filter, config: config, outputURL: outputURL, settings: settings, compositor: compositor, annotationRenderer: annotationRenderer)
         logger.info("Capture started → \(outputURL.lastPathComponent) mode=\(String(describing: mode))")
     }
 
-    func startCapture(outputURL: URL, filter: SCContentFilter, micEnabled: Bool, settings: RecordingSettings, compositor: WebcamCompositor?, annotationRenderer: AnnotationRenderer? = nil) async throws {
+    func startCapture(outputURL: URL, filter: SCContentFilter, micEnabled: Bool, settings: RecordingSettings, compositor: WebcamCompositor?, annotationRenderer: AnnotationRenderer? = nil, systemAudioEnabled: Bool = true) async throws {
         let config = SCStreamConfiguration()
         let scale = Int(filter.pointPixelScale)
         config.width = Int(filter.contentRect.width) * scale
         config.height = Int(filter.contentRect.height) * scale
-        configureCommon(config, settings: settings, micEnabled: micEnabled)
+        configureCommon(config, settings: settings, micEnabled: micEnabled, systemAudioEnabled: systemAudioEnabled)
         try await startStream(filter: filter, config: config, outputURL: outputURL, settings: settings, compositor: compositor, annotationRenderer: annotationRenderer)
         logger.info("Capture started (picker filter) → \(outputURL.lastPathComponent)")
     }
@@ -131,6 +131,24 @@ final class ScreenCaptureService: NSObject {
         config.destinationRect = base.destinationRect
         config.captureMicrophone = micEnabled
         if micEnabled, let defaultMic = AVCaptureDevice.default(for: .audio) {
+            config.microphoneCaptureDeviceID = defaultMic.uniqueID
+        }
+        try await stream.updateConfiguration(config)
+        currentConfig = config
+    }
+
+    func updateConfiguration(systemAudioEnabled: Bool) async throws {
+        guard let stream, let base = currentConfig else { return }
+        let config = SCStreamConfiguration()
+        config.width = base.width
+        config.height = base.height
+        config.minimumFrameInterval = base.minimumFrameInterval
+        config.showsCursor = base.showsCursor
+        config.capturesAudio = systemAudioEnabled
+        config.sourceRect = base.sourceRect
+        config.destinationRect = base.destinationRect
+        config.captureMicrophone = base.captureMicrophone
+        if base.captureMicrophone, let defaultMic = AVCaptureDevice.default(for: .audio) {
             config.microphoneCaptureDeviceID = defaultMic.uniqueID
         }
         try await stream.updateConfiguration(config)

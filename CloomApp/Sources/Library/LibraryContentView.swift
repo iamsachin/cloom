@@ -34,6 +34,10 @@ struct LibraryContentView: View {
     // Bulk tag
     @State var showBulkTagPicker = false
 
+    // Batch export
+    @State var isBatchExporting = false
+    @State var batchExportProgress: (current: Int, total: Int) = (0, 0)
+
     // MARK: - Filtered & Sorted Videos
 
     var filteredVideos: [VideoRecord] {
@@ -177,8 +181,8 @@ struct LibraryContentView: View {
     private var gridContent: some View {
         ScrollView {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 280), spacing: 20)],
-                spacing: 20
+                columns: [GridItem(.adaptive(minimum: 220), spacing: 16)],
+                spacing: 16
             ) {
                 if let info = PostRecordingTracker.shared.activeRecording {
                     ProcessingCardView(info: info)
@@ -242,6 +246,17 @@ struct LibraryContentView: View {
                     showBulkTagPicker = true
                 }
                 .disabled(selectedIDs.isEmpty)
+
+                Button {
+                    batchExportSelected()
+                } label: {
+                    if isBatchExporting {
+                        Label("Exporting \(batchExportProgress.current)/\(batchExportProgress.total)...", systemImage: "arrow.down.circle")
+                    } else {
+                        Label("Export", systemImage: "square.and.arrow.up")
+                    }
+                }
+                .disabled(selectedIDs.isEmpty || isBatchExporting)
 
                 Button(role: .destructive) {
                     showDeleteConfirmation = true
@@ -340,5 +355,50 @@ struct LibraryContentView: View {
 
     private func moveVideosToFolder(videoIDs: Set<String>, folder: FolderRecord?) {
         VideoLibraryService.moveVideos(ids: videoIDs, toFolder: folder, from: videos, context: modelContext)
+    }
+
+    private func batchExportSelected() {
+        let selected = videos.filter { selectedIDs.contains($0.id) }
+        guard !selected.isEmpty else { return }
+
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.prompt = "Export Here"
+        panel.message = "Choose a folder to export \(selected.count) video\(selected.count == 1 ? "" : "s") to"
+
+        guard panel.runModal() == .OK, let destDir = panel.url else { return }
+
+        isBatchExporting = true
+        batchExportProgress = (0, selected.count)
+
+        Task {
+            for (index, video) in selected.enumerated() {
+                let sourceURL = URL(fileURLWithPath: video.filePath)
+                guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+                    batchExportProgress.current = index + 1
+                    continue
+                }
+
+                let safeName = video.title.replacingOccurrences(of: "/", with: "-")
+                var destURL = destDir.appendingPathComponent(safeName + ".mp4")
+
+                // Avoid overwriting
+                var counter = 1
+                while FileManager.default.fileExists(atPath: destURL.path) {
+                    destURL = destDir.appendingPathComponent("\(safeName) (\(counter)).mp4")
+                    counter += 1
+                }
+
+                do {
+                    try FileManager.default.copyItem(at: sourceURL, to: destURL)
+                } catch {
+                    logger.error("Batch export failed for \(video.title): \(error)")
+                }
+                batchExportProgress.current = index + 1
+            }
+            isBatchExporting = false
+        }
     }
 }

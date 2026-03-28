@@ -16,6 +16,11 @@ enum UserDefaultsKeys {
     static let recordingMicDeviceID = "recordingMicDeviceID"
     static let recordingCameraDeviceID = "recordingCameraDeviceID"
     static let micSensitivity = "micSensitivity"
+    static let systemAudioEnabled = "systemAudioEnabled"
+    static let countdownDuration = "countdownDuration"
+    static let defaultSaveLocation = "defaultSaveLocation"
+    static let silenceThresholdDb = "silenceThresholdDb"
+    static let silenceMinDurationMs = "silenceMinDurationMs"
 
     // MARK: - Webcam
     static let webcamShape = "webcamShape"
@@ -27,4 +32,5 @@ enum UserDefaultsKeys {
     static let webcamShadows = "webcamShadows"
     static let webcamTemperature = "webcamTemperature"
     static let webcamTint = "webcamTint"
+    static let webcamMirrorEnabled = "webcamMirrorEnabled"
 }

@@ -6,6 +6,7 @@ struct RecordingToolbarContentView: View {
     @State var isPaused: Bool
     @State var micEnabled: Bool
     @State var cameraEnabled: Bool
+    @State var systemAudioEnabled: Bool
     @State var annotationsEnabled: Bool = false
     @State var clickEmphasisEnabled: Bool = false
     @State var spotlightEnabled: Bool = false
@@ -19,6 +20,7 @@ struct RecordingToolbarContentView: View {
     let onToggleClickEmphasis: () -> Void
     let onToggleCursorSpotlight: () -> Void
     let onToggleZoom: () -> Void
+    let onToggleSystemAudio: () -> Void
     let onDiscard: () -> Void
 
     init(
@@ -27,6 +29,7 @@ struct RecordingToolbarContentView: View {
         initialIsPaused: Bool,
         initialMicEnabled: Bool,
         initialCameraEnabled: Bool,
+        initialSystemAudioEnabled: Bool = true,
         onStop: @escaping () -> Void,
         onToggleMic: @escaping () -> Void,
         onToggleCamera: @escaping () -> Void,
@@ -36,6 +39,7 @@ struct RecordingToolbarContentView: View {
         onToggleClickEmphasis: @escaping () -> Void,
         onToggleCursorSpotlight: @escaping () -> Void,
         onToggleZoom: @escaping () -> Void,
+        onToggleSystemAudio: @escaping () -> Void = {},
         onDiscard: @escaping () -> Void
     ) {
         self.startedAt = startedAt
@@ -43,6 +47,7 @@ struct RecordingToolbarContentView: View {
         self._isPaused = State(initialValue: initialIsPaused)
         self._micEnabled = State(initialValue: initialMicEnabled)
         self._cameraEnabled = State(initialValue: initialCameraEnabled)
+        self._systemAudioEnabled = State(initialValue: initialSystemAudioEnabled)
         self.onStop = onStop
         self.onToggleMic = onToggleMic
         self.onToggleCamera = onToggleCamera
@@ -52,6 +57,7 @@ struct RecordingToolbarContentView: View {
         self.onToggleClickEmphasis = onToggleClickEmphasis
         self.onToggleCursorSpotlight = onToggleCursorSpotlight
         self.onToggleZoom = onToggleZoom
+        self.onToggleSystemAudio = onToggleSystemAudio
         self.onDiscard = onDiscard
     }
 
@@ -88,6 +94,9 @@ struct RecordingToolbarContentView: View {
 
             ToolbarToggleButton(icon: "mic.fill", offIcon: "mic.slash.fill", isActive: micEnabled, activeColor: .white, offColor: .red, help: micEnabled ? "Mute microphone" : "Unmute microphone") {
                 micEnabled.toggle(); onToggleMic()
+            }
+            ToolbarToggleButton(icon: "speaker.wave.2.fill", offIcon: "speaker.slash.fill", isActive: systemAudioEnabled, activeColor: .white, offColor: .secondary, help: systemAudioEnabled ? "Mute system audio" : "Unmute system audio") {
+                systemAudioEnabled.toggle(); onToggleSystemAudio()
             }
             ToolbarToggleButton(icon: "video.fill", offIcon: "video.slash.fill", isActive: cameraEnabled, activeColor: .white, offColor: .secondary, help: cameraEnabled ? "Turn off camera" : "Turn on camera") {
                 cameraEnabled.toggle(); onToggleCamera()

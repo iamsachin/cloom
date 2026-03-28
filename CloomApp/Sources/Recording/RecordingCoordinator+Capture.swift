@@ -88,11 +88,18 @@ extension RecordingCoordinator {
 
         let filename = "Cloom Recording \(Self.recordingTimestamp()).mp4"
 
-        guard let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first else {
-            logger.error("Failed to locate desktop directory")
-            return
+        let customPath = UserDefaults.standard.string(forKey: UserDefaultsKeys.defaultSaveLocation) ?? ""
+        let saveDir: URL
+        if !customPath.isEmpty, FileManager.default.isWritableFile(atPath: customPath) {
+            saveDir = URL(fileURLWithPath: customPath)
+        } else {
+            guard let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first else {
+                logger.error("Failed to locate desktop directory")
+                return
+            }
+            saveDir = desktopURL
         }
-        let outputURL = desktopURL.appendingPathComponent(filename)
+        let outputURL = saveDir.appendingPathComponent(filename)
         let settings = RecordingSettings.fromDefaults()
 
         // Reset segment tracking and set up for new recording
@@ -173,7 +180,8 @@ extension RecordingCoordinator {
                 micEnabled: micEnabled,
                 settings: settings,
                 compositor: compositor,
-                annotationRenderer: annotationRenderer
+                annotationRenderer: annotationRenderer,
+                systemAudioEnabled: systemAudioEnabled
             )
         } else {
             try await captureService.startCapture(
@@ -182,7 +190,8 @@ extension RecordingCoordinator {
                 micEnabled: micEnabled,
                 settings: settings,
                 compositor: compositor,
-                annotationRenderer: annotationRenderer
+                annotationRenderer: annotationRenderer,
+                systemAudioEnabled: systemAudioEnabled
             )
         }
     }

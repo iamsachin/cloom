@@ -13,6 +13,9 @@ final class RecordingCoordinator: ObservableObject {
     @Published var selectedMode: CaptureMode = .default
     @Published var micEnabled: Bool = false
     @Published var cameraEnabled: Bool = false
+    @Published var systemAudioEnabled: Bool = UserDefaults.standard.object(forKey: UserDefaultsKeys.systemAudioEnabled) == nil
+        ? true
+        : UserDefaults.standard.bool(forKey: UserDefaultsKeys.systemAudioEnabled)
     @Published var blurEnabled: Bool = false
     @Published var annotationsEnabled: Bool = false
     @Published var clickEmphasisEnabled: Bool = false
@@ -132,9 +135,15 @@ final class RecordingCoordinator: ObservableObject {
     func confirmRecording() {
         guard state.isReady else { return }
         recordingToolbar.dismiss()
-        state = .countdown(3)
-        showCountdownOverlay(count: 3)
-        startCountdownTimer()
+        let countdown = UserDefaults.standard.integer(forKey: UserDefaultsKeys.countdownDuration)
+        let duration = countdown > 0 ? countdown : (UserDefaults.standard.object(forKey: UserDefaultsKeys.countdownDuration) == nil ? 3 : 0)
+        if duration > 0 {
+            state = .countdown(duration)
+            showCountdownOverlay(count: duration)
+            startCountdownTimer()
+        } else {
+            beginCapture()
+        }
     }
 
     func cancelReadyState() {

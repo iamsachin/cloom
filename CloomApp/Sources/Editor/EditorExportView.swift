@@ -203,11 +203,19 @@ struct EditorExportView: View {
 
     private var actionButtons: some View {
         HStack {
+            Button {
+                shareViaSystemSheet()
+            } label: {
+                Label("Share...", systemImage: "square.and.arrow.up")
+            }
+            .disabled(isExporting || isUploading)
+            .help("Share via AirDrop, Messages, Mail, and more")
+
             Spacer()
             Button {
                 startUploadToDrive()
             } label: {
-                Label("Upload to Drive", systemImage: "square.and.arrow.up")
+                Label("Upload to Drive", systemImage: "icloud.and.arrow.up")
             }
             .disabled(!authService.isSignedIn || isExporting || isUploading)
             .help(
@@ -238,6 +246,21 @@ struct EditorExportView: View {
             isDeletingFromDrive = false
             uploadShareUrl = nil
         }
+    }
+
+    private func shareViaSystemSheet() {
+        let fileURL = URL(fileURLWithPath: editorState.videoRecord.filePath)
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            exportError = "Video file not found on disk"
+            return
+        }
+
+        let picker = NSSharingServicePicker(items: [fileURL])
+        // Present from the key window's content view
+        guard let window = NSApp.keyWindow,
+              let contentView = window.contentView else { return }
+        let rect = CGRect(x: contentView.bounds.midX - 1, y: contentView.bounds.midY, width: 2, height: 2)
+        picker.show(relativeTo: rect, of: contentView, preferredEdge: .minY)
     }
 
     private func startExport() {

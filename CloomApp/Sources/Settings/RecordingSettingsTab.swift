@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import AppKit
 
 struct RecordingSettingsTab: View {
     @AppStorage(UserDefaultsKeys.recordingFPS) private var fps: Int = 30
@@ -7,6 +8,11 @@ struct RecordingSettingsTab: View {
     @AppStorage(UserDefaultsKeys.recordingMicDeviceID) private var micDeviceID: String = ""
     @AppStorage(UserDefaultsKeys.recordingCameraDeviceID) private var cameraDeviceID: String = ""
     @AppStorage(UserDefaultsKeys.micSensitivity) private var micSensitivity: Int = 100
+    @AppStorage(UserDefaultsKeys.systemAudioEnabled) private var systemAudioEnabled: Bool = true
+    @AppStorage(UserDefaultsKeys.countdownDuration) private var countdownDuration: Int = 3
+    @AppStorage(UserDefaultsKeys.defaultSaveLocation) private var defaultSaveLocation: String = ""
+    @AppStorage(UserDefaultsKeys.silenceThresholdDb) private var silenceThresholdDb: Double = -40.0
+    @AppStorage(UserDefaultsKeys.silenceMinDurationMs) private var silenceMinDurationMs: Int = 500
 
     @State private var microphones: [AVCaptureDevice] = []
     @State private var cameras: [AVCaptureDevice] = []
@@ -34,6 +40,11 @@ struct RecordingSettingsTab: View {
                     }
                 }
                 .pickerStyle(.segmented)
+            }
+
+            Section("Audio") {
+                Toggle("Capture System Audio", isOn: $systemAudioEnabled)
+                    .help("Include system audio (app sounds, music) in recordings")
             }
 
             Section("Microphone") {
@@ -72,6 +83,68 @@ struct RecordingSettingsTab: View {
                     }
                 }
             }
+
+            Section("Countdown") {
+                Picker("Duration", selection: $countdownDuration) {
+                    Text("No Countdown").tag(0)
+                    Text("1 second").tag(1)
+                    Text("3 seconds").tag(3)
+                    Text("5 seconds").tag(5)
+                    Text("10 seconds").tag(10)
+                }
+            }
+
+            Section("Save Location") {
+                HStack {
+                    Text(defaultSaveLocation.isEmpty ? "Desktop (default)" : abbreviatePath(defaultSaveLocation))
+                        .foregroundStyle(defaultSaveLocation.isEmpty ? .secondary : .primary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer()
+                    Button("Choose...") {
+                        let panel = NSOpenPanel()
+                        panel.canChooseFiles = false
+                        panel.canChooseDirectories = true
+                        panel.canCreateDirectories = true
+                        panel.prompt = "Select"
+                        if panel.runModal() == .OK, let url = panel.url {
+                            defaultSaveLocation = url.path
+                        }
+                    }
+                    if !defaultSaveLocation.isEmpty {
+                        Button("Reset") { defaultSaveLocation = "" }
+                            .controlSize(.small)
+                    }
+                }
+                .help("Where recordings are saved — defaults to Desktop")
+            }
+
+            Section("Silence Detection") {
+                HStack {
+                    Text("Threshold")
+                    Slider(value: $silenceThresholdDb, in: -60...(-20), step: 1)
+                    Text("\(Int(silenceThresholdDb)) dB")
+                        .monospacedDigit()
+                        .frame(width: 50, alignment: .trailing)
+                        .foregroundStyle(silenceThresholdDb != -40 ? Color.accentColor : .secondary)
+                        .onTapGesture { silenceThresholdDb = -40 }
+                }
+                .help("Audio level below which is considered silence (-40 dB default)")
+
+                HStack {
+                    Text("Min Duration")
+                    Slider(value: Binding(
+                        get: { Double(silenceMinDurationMs) },
+                        set: { silenceMinDurationMs = Int($0) }
+                    ), in: 100...2000, step: 100)
+                    Text("\(silenceMinDurationMs) ms")
+                        .monospacedDigit()
+                        .frame(width: 60, alignment: .trailing)
+                        .foregroundStyle(silenceMinDurationMs != 500 ? Color.accentColor : .secondary)
+                        .onTapGesture { silenceMinDurationMs = 500 }
+                }
+                .help("Minimum silence duration to detect (500 ms default)")
+            }
         }
         .formStyle(.grouped)
         .onAppear {
@@ -84,6 +157,13 @@ struct RecordingSettingsTab: View {
         .onChange(of: micDeviceID) {
             micMonitor.start(deviceID: micDeviceID.isEmpty ? nil : micDeviceID, sensitivity: micSensitivity)
         }
+    }
+
+    private func abbreviatePath(_ path: String) -> String {
+        if let home = FileManager.default.homeDirectoryForCurrentUser.path as String? {
+            return path.replacingOccurrences(of: home, with: "~")
+        }
+        return path
     }
 
     private func refreshDevices() {

@@ -1,3 +1,4 @@
+import Foundation
 import os.log
 
 private let logger = Logger(subsystem: "com.cloom.app", category: "RecordingCoordinator")
@@ -5,6 +6,19 @@ private let logger = Logger(subsystem: "com.cloom.app", category: "RecordingCoor
 // MARK: - Toggle Controls
 
 extension RecordingCoordinator {
+
+    func toggleSystemAudio() {
+        systemAudioEnabled.toggle()
+        UserDefaults.standard.set(systemAudioEnabled, forKey: UserDefaultsKeys.systemAudioEnabled)
+        guard state.isActiveOrPaused else { return }
+        Task {
+            do {
+                try await captureService.updateConfiguration(systemAudioEnabled: systemAudioEnabled)
+            } catch {
+                logger.error("Failed to toggle system audio: \(error)")
+            }
+        }
+    }
 
     func toggleMic() {
         micEnabled.toggle()
