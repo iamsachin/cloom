@@ -230,26 +230,26 @@ enum TranscriptExportService {
 
         // Title style
         let titleStyle = NSMutableParagraphStyle()
-        titleStyle.paragraphSpacing = 4
+        titleStyle.paragraphSpacing = 2
 
         // Subtitle / meta style
         let metaStyle = NSMutableParagraphStyle()
-        metaStyle.paragraphSpacing = 16
+        metaStyle.paragraphSpacing = 8
 
         // Heading style
         let headingStyle = NSMutableParagraphStyle()
-        headingStyle.paragraphSpacingBefore = 8
-        headingStyle.paragraphSpacing = 8
+        headingStyle.paragraphSpacingBefore = 4
+        headingStyle.paragraphSpacing = 4
 
         // Body style
         let bodyStyle = NSMutableParagraphStyle()
-        bodyStyle.lineSpacing = 5
-        bodyStyle.paragraphSpacing = 14
+        bodyStyle.lineSpacing = 3
+        bodyStyle.paragraphSpacing = 8
 
         // Chapter line style
         let chapterStyle = NSMutableParagraphStyle()
-        chapterStyle.lineSpacing = 3
-        chapterStyle.paragraphSpacing = 6
+        chapterStyle.lineSpacing = 2
+        chapterStyle.paragraphSpacing = 3
         chapterStyle.headIndent = 44
         chapterStyle.firstLineHeadIndent = 0
 
@@ -274,8 +274,8 @@ enum TranscriptExportService {
         // Summary / description
         if let summary, !summary.isEmpty {
             let summaryLabelStyle = NSMutableParagraphStyle()
-            summaryLabelStyle.paragraphSpacingBefore = 4
-            summaryLabelStyle.paragraphSpacing = 4
+            summaryLabelStyle.paragraphSpacingBefore = 2
+            summaryLabelStyle.paragraphSpacing = 3
             result.append(NSAttributedString(
                 string: "SUMMARY\n",
                 attributes: [
@@ -284,8 +284,8 @@ enum TranscriptExportService {
                 ]
             ))
             let summaryStyle = NSMutableParagraphStyle()
-            summaryStyle.lineSpacing = 3
-            summaryStyle.paragraphSpacing = 12
+            summaryStyle.lineSpacing = 2
+            summaryStyle.paragraphSpacing = 6
             let italicFont = NSFontManager.shared.convert(
                 NSFont.systemFont(ofSize: 11), toHaveTrait: .italicFontMask
             )
@@ -301,7 +301,7 @@ enum TranscriptExportService {
 
         // Divider
         let dividerStyle = NSMutableParagraphStyle()
-        dividerStyle.paragraphSpacing = 16
+        dividerStyle.paragraphSpacing = 8
         result.append(NSAttributedString(
             string: String(repeating: "\u{2500}", count: 80) + "\n",
             attributes: [.font: NSFont.systemFont(ofSize: 5), .foregroundColor: dividerColor, .paragraphStyle: dividerStyle]
@@ -332,8 +332,8 @@ enum TranscriptExportService {
 
             // Divider
             let chapterDividerStyle = NSMutableParagraphStyle()
-            chapterDividerStyle.paragraphSpacingBefore = 10
-            chapterDividerStyle.paragraphSpacing = 16
+            chapterDividerStyle.paragraphSpacingBefore = 5
+            chapterDividerStyle.paragraphSpacing = 8
             result.append(NSAttributedString(
                 string: String(repeating: "\u{2500}", count: 80) + "\n",
                 attributes: [.font: NSFont.systemFont(ofSize: 5), .foregroundColor: dividerColor, .paragraphStyle: chapterDividerStyle]
