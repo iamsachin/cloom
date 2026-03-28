@@ -121,7 +121,7 @@ struct AnnotationToolbarContentView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: Capsule())
+        .glassEffect(in: .capsule)
     }
 
     private var colorPickerPopover: some View {

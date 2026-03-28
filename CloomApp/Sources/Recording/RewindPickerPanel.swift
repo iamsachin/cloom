@@ -17,7 +17,7 @@ final class RewindPickerPanel {
         if panel == nil {
             let panel = NSPanel(
                 contentRect: NSRect(x: 0, y: 0, width: 340, height: 240),
-                styleMask: [.titled, .nonactivatingPanel, .hudWindow],
+                styleMask: [.titled, .nonactivatingPanel],
                 backing: .buffered,
                 defer: false
             )

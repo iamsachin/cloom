@@ -152,16 +152,14 @@ struct RecordingToolbarContentView: View {
             Button(action: onStop) {
                 Image(systemName: "stop.fill")
                     .foregroundStyle(.white)
-                    .padding(6)
-                    .background(.red, in: RoundedRectangle(cornerRadius: 6))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glass(.regular.tint(.red)))
             .help("Stop recording")
             .accessibilityLabel("Stop recording")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: Capsule())
+        .glassEffect(in: .capsule)
         .accessibilityValue(isPaused ? "Recording paused" : "Recording in progress")
     }
 

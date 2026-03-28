@@ -62,7 +62,7 @@ struct TagEditorView: View {
             HStack {
                 Button("Cancel", role: .cancel) { dismiss() }
                 Button(isEditing ? "Save" : "Create") { save() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }

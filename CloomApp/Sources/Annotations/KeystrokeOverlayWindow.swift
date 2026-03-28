@@ -180,9 +180,6 @@ struct KeystrokePillView: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(.black.opacity(0.7))
-            )
+            .glassEffect(in: .rect(cornerRadius: 10))
     }
 }

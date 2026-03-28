@@ -102,7 +102,7 @@ struct OnboardingView: View {
                         .font(.headline)
                         .frame(maxWidth: 280)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .controlSize(.large)
                 .disabled(!permissionChecker.requiredGranted)
                 .tint(permissionChecker.requiredGranted ? .accentColor : .gray)
@@ -176,7 +176,7 @@ struct OnboardingView: View {
                 Button("Grant") {
                     permissionChecker.requestPermission(kind)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .controlSize(.small)
                 .padding(.top, 2)
             }

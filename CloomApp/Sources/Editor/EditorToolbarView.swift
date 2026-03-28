@@ -192,7 +192,7 @@ struct EditorToolbarView: View {
 
         // Share CTA
         Button("Share") { showExportSheet = true }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .help("Share or export video")
             .accessibilityLabel("Share or export video")
     }

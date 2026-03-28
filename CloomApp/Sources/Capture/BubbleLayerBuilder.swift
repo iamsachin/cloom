@@ -73,13 +73,21 @@ extension WebcamBubbleWindow {
         imgLayer.contentsGravity = .resizeAspectFill
         clipLayer.addSublayer(imgLayer)
 
-        // Subtle inner border — thin ring for definition
+        // Glass-style inner border — double ring for Liquid Glass definition
         let borderLayer = CALayer()
         borderLayer.frame = NSRect(x: 0, y: 0, width: width, height: height)
         borderLayer.cornerRadius = cornerRadius
-        borderLayer.borderWidth = 1
-        borderLayer.borderColor = NSColor.white.withAlphaComponent(0.15).cgColor
+        borderLayer.borderWidth = 1.5
+        borderLayer.borderColor = NSColor.white.withAlphaComponent(0.3).cgColor
         clipLayer.addSublayer(borderLayer)
+
+        // Outer glow ring for glass depth
+        let glowLayer = CALayer()
+        glowLayer.frame = NSRect(x: -1, y: -1, width: width + 2, height: height + 2)
+        glowLayer.cornerRadius = cornerRadius + 1
+        glowLayer.borderWidth = 1
+        glowLayer.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        clipLayer.addSublayer(glowLayer)
 
         // Emoji frame stickers (above the video clip layer)
         if currentDecoration != .none {
