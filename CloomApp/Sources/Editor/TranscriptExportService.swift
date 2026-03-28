@@ -150,6 +150,10 @@ enum TranscriptExportService {
         let textWidth = pageWidth - margin * 2
         let footerY: CGFloat = 36
 
+        // Reset to unflipped coordinate system for footer
+        ctx.saveGState()
+        ctx.textMatrix = .identity
+
         // Thin line above footer
         ctx.setStrokeColor(NSColor(white: 0.88, alpha: 1.0).cgColor)
         ctx.setLineWidth(0.5)
@@ -176,6 +180,8 @@ enum TranscriptExportService {
         let rightWidth = CTLineGetTypographicBounds(rightLine, nil, nil, nil)
         ctx.textPosition = CGPoint(x: margin + textWidth - rightWidth, y: footerY)
         CTLineDraw(rightLine, ctx)
+
+        ctx.restoreGState()
     }
 
     // MARK: - Helpers
@@ -213,7 +219,7 @@ enum TranscriptExportService {
 
         let accentColor = NSColor(red: 0.2, green: 0.4, blue: 0.9, alpha: 1.0)
         let darkGray = NSColor(white: 0.2, alpha: 1.0)
-        let mediumGray = NSColor(white: 0.45, alpha: 1.0)
+        let mediumGray = NSColor(white: 0.3, alpha: 1.0)
         let lightGray = NSColor(white: 0.65, alpha: 1.0)
         let dividerColor = NSColor(white: 0.85, alpha: 1.0)
 
