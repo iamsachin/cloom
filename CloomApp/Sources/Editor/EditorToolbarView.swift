@@ -273,6 +273,7 @@ struct EditorToolbarView: View {
     private func exportTranscript(format: TranscriptFormat, transcript: TranscriptRecord) {
         let panel = NSSavePanel()
         let title = video?.title ?? "Transcript"
+        let summary = video?.summary
         let chapters = video?.chapters ?? []
 
         switch format {
@@ -290,11 +291,11 @@ struct EditorToolbarView: View {
             switch format {
             case .markdown:
                 try TranscriptExportService.exportAsMarkdown(
-                    title: title, transcript: transcript, chapters: chapters, destURL: destURL
+                    title: title, summary: summary, transcript: transcript, chapters: chapters, destURL: destURL
                 )
             case .pdf:
                 try TranscriptExportService.exportAsPDF(
-                    title: title, transcript: transcript, chapters: chapters, destURL: destURL
+                    title: title, summary: summary, transcript: transcript, chapters: chapters, destURL: destURL
                 )
             }
         } catch {

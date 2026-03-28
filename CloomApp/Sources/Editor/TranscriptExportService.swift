@@ -9,11 +9,16 @@ enum TranscriptExportService {
 
     static func exportAsMarkdown(
         title: String,
+        summary: String?,
         transcript: TranscriptRecord,
         chapters: [ChapterRecord],
         destURL: URL
     ) throws {
         var md = "# \(title)\n\n"
+
+        if let summary, !summary.isEmpty {
+            md += "> \(summary)\n\n"
+        }
 
         if !chapters.isEmpty {
             md += "## Chapters\n\n"
@@ -36,12 +41,13 @@ enum TranscriptExportService {
     @MainActor
     static func exportAsPDF(
         title: String,
+        summary: String?,
         transcript: TranscriptRecord,
         chapters: [ChapterRecord],
         destURL: URL
     ) throws {
         let attributedString = buildStyledAttributedString(
-            title: title, transcript: transcript, chapters: chapters
+            title: title, summary: summary, transcript: transcript, chapters: chapters
         )
 
         // A4 dimensions in points
@@ -108,6 +114,7 @@ enum TranscriptExportService {
 
     private static func buildStyledAttributedString(
         title: String,
+        summary: String?,
         transcript: TranscriptRecord,
         chapters: [ChapterRecord]
     ) -> NSAttributedString {
@@ -163,7 +170,22 @@ enum TranscriptExportService {
             attributes: [.font: captionFont, .foregroundColor: lightGray, .paragraphStyle: metaStyle]
         ))
 
-        // Divider (thin line made of underscores styled as a colored line)
+        // Summary / description
+        if let summary, !summary.isEmpty {
+            let summaryStyle = NSMutableParagraphStyle()
+            summaryStyle.lineSpacing = 3
+            summaryStyle.paragraphSpacing = 12
+            result.append(NSAttributedString(
+                string: summary + "\n",
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: 11, weight: .regular),
+                    .foregroundColor: mediumGray,
+                    .paragraphStyle: summaryStyle
+                ]
+            ))
+        }
+
+        // Divider
         let dividerStyle = NSMutableParagraphStyle()
         dividerStyle.paragraphSpacing = 16
         result.append(NSAttributedString(
