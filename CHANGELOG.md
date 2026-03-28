@@ -5,6 +5,29 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-03-28
+
+### Added
+- **System share sheet** — share videos via AirDrop, Messages, Mail, and more from the editor export sheet and library context menu (NSSharingServicePicker).
+- **Batch export** — multi-select videos in the library and export them all to a chosen folder at once.
+- **Transcript export as Markdown** — export transcript with chapters and summary as a `.md` file from the editor toolbar.
+- **Transcript export as PDF** — professionally styled A4 PDF with title, summary, chapters, transcript, and page footers.
+- **Background upload resume** — Google Drive uploads now persist resumable session URIs so interrupted uploads resume automatically on app relaunch.
+- **System audio toggle** — mute/unmute system audio capture from the ready toolbar, recording toolbar, and Settings > Recording.
+- **Configurable countdown** — choose 0 (skip), 1, 3, 5, or 10 seconds countdown before recording starts.
+- **Custom save location** — choose a default folder for recordings in Settings > Recording (defaults to Desktop).
+- **Silence detection thresholds** — adjust threshold dB and minimum duration in Settings > Recording for fine-tuned auto-cut.
+- **Webcam mirroring toggle** — enable/disable horizontal flip in Settings > Webcam.
+- **Video card metadata chips** — library cards now show resolution, file size, quality, and recording type directly on the card.
+
+### Changed
+- Library grid cards use smaller minimum width (220px) for better density.
+- Removed hover zoom effect on library cards to prevent overlap.
+- Hover preview images are now properly clipped within card bounds.
+
+### Fixed
+- Deprecated `AVAsset(url:)` replaced with `AVURLAsset(url:)`.
+
 ## [0.3.0] - 2026-03-28
 
 ### Added
