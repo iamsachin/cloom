@@ -5,6 +5,15 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-03-28
+
+### Added
+- **Hover video preview** — hovering over a video card in the library shows an animated filmstrip preview cycling through 8 frames, with progress dots at the bottom.
+- **Drag-and-drop into folders** — drag video cards from the grid or list view directly onto sidebar folders to organize. Drop on "All Videos" to remove from a folder. Drop target highlights blue.
+- **Date range filter** — filter library by Today, This Week, This Month, or Last 3 Months. Filter icon fills when any filter is active.
+- **Duration range filter** — filter library by Under 30s, 30s-2m, 2m-10m, or Over 10m. Combines with date and transcript filters.
+- **Timestamped comments** — add comments to videos in the editor sidebar. Optionally stamp the current playback time. Click a timestamp to seek. Comments near the playhead highlight blue.
+
 ## [0.2.0] - 2026-03-28
 
 ### Added
