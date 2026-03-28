@@ -54,7 +54,7 @@ enum ExportService {
 
         // Unmodified + different quality → re-encode from source asset
         if unmodified {
-            let asset = AVAsset(url: sourceURL)
+            let asset = AVURLAsset(url: sourceURL)
             if subtitlePhrases.isEmpty {
                 guard let session = AVAssetExportSession(
                     asset: asset,

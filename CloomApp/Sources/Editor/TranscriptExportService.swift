@@ -38,7 +38,6 @@ enum TranscriptExportService {
 
     // MARK: - PDF
 
-    @MainActor
     static func exportAsPDF(
         title: String,
         summary: String?,
@@ -56,38 +55,127 @@ enum TranscriptExportService {
         let a4Width: CGFloat = 595.28
         let a4Height: CGFloat = 841.89
         let margin: CGFloat = 60
-        let footerHeight: CGFloat = 24
+        let footerSpace: CGFloat = 30
         let textWidth = a4Width - margin * 2
-        let bottomMargin = margin + footerHeight
+        let textAreaHeight = a4Height - margin * 2 - footerSpace
 
-        // Create a paginated text view with footer
-        let pdfView = PaginatedPDFView(
-            attributedString: attributedString,
-            pageSize: NSSize(width: a4Width, height: a4Height),
-            margins: NSEdgeInsets(top: margin, left: margin, bottom: bottomMargin, right: margin),
-            title: title
+        // Layout the text to compute pages
+        let textStorage = NSTextStorage(attributedString: attributedString)
+        let layoutManager = NSLayoutManager()
+        textStorage.addLayoutManager(layoutManager)
+
+        let textContainer = NSTextContainer(
+            size: NSSize(width: textWidth, height: textAreaHeight)
         )
+        textContainer.lineFragmentPadding = 0
+        layoutManager.addTextContainer(textContainer)
 
-        // Configure print info for A4
-        let printInfo = NSPrintInfo()
-        printInfo.paperSize = NSSize(width: a4Width, height: a4Height)
-        printInfo.topMargin = margin
-        printInfo.bottomMargin = bottomMargin
-        printInfo.leftMargin = margin
-        printInfo.rightMargin = margin
-        printInfo.horizontalPagination = .fit
-        printInfo.verticalPagination = .automatic
-        printInfo.isHorizontallyCentered = false
-        printInfo.isVerticallyCentered = false
-        printInfo.jobDisposition = .save
-        printInfo.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = destURL
+        // Add additional text containers for overflow pages
+        layoutManager.ensureLayout(for: textContainer)
+        while layoutManager.textContainer(
+            forGlyphAt: layoutManager.numberOfGlyphs - 1,
+            effectiveRange: nil
+        ) == nil || layoutManager.extraLineFragmentTextContainer != nil {
+            let extraContainer = NSTextContainer(
+                size: NSSize(width: textWidth, height: textAreaHeight)
+            )
+            extraContainer.lineFragmentPadding = 0
+            layoutManager.addTextContainer(extraContainer)
+            layoutManager.ensureLayout(for: extraContainer)
+        }
 
-        let printOp = NSPrintOperation(view: pdfView, printInfo: printInfo)
-        printOp.showsPrintPanel = false
-        printOp.showsProgressPanel = false
-        printOp.run()
+        // Ensure layout is complete for all containers
+        let containers = layoutManager.textContainers
+        for container in containers {
+            layoutManager.ensureLayout(for: container)
+        }
+        // Filter to containers that actually have glyphs
+        let usedContainers = containers.filter { container in
+            let range = layoutManager.glyphRange(for: container)
+            return range.length > 0
+        }
+        let pageCount = max(1, usedContainers.count)
 
-        logger.info("Exported transcript as PDF → \(destURL.lastPathComponent)")
+        // Create PDF
+        let pdfData = NSMutableData()
+        guard let consumer = CGDataConsumer(data: pdfData as CFMutableData) else {
+            throw NSError(domain: "TranscriptExport", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "Failed to create PDF consumer"])
+        }
+        var mediaBox = CGRect(x: 0, y: 0, width: a4Width, height: a4Height)
+        guard let ctx = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
+            throw NSError(domain: "TranscriptExport", code: -2,
+                          userInfo: [NSLocalizedDescriptionKey: "Failed to create PDF context"])
+        }
+
+        let nsCtx = NSGraphicsContext(cgContext: ctx, flipped: true)
+
+        for pageIndex in 0..<pageCount {
+            ctx.beginPDFPage(nil)
+
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = nsCtx
+
+            // Draw text for this page
+            let container = usedContainers[pageIndex]
+            let glyphRange = layoutManager.glyphRange(for: container)
+
+            // Translate to margin origin, flipped coordinate
+            ctx.saveGState()
+            ctx.translateBy(x: margin, y: a4Height - margin)
+            ctx.scaleBy(x: 1, y: -1)
+
+            layoutManager.drawBackground(forGlyphRange: glyphRange, at: .zero)
+            layoutManager.drawGlyphs(forGlyphRange: glyphRange, at: .zero)
+
+            ctx.restoreGState()
+
+            // Draw footer (in unflipped CG coordinates, origin bottom-left)
+            drawFooter(ctx: ctx, pageNumber: pageIndex + 1, totalPages: pageCount,
+                       pageWidth: a4Width, margin: margin)
+
+            NSGraphicsContext.restoreGraphicsState()
+            ctx.endPDFPage()
+        }
+
+        ctx.closePDF()
+        try pdfData.write(to: destURL, options: .atomic)
+        logger.info("Exported transcript as PDF (\(pageCount) pages) → \(destURL.lastPathComponent)")
+    }
+
+    private static func drawFooter(
+        ctx: CGContext, pageNumber: Int, totalPages: Int,
+        pageWidth: CGFloat, margin: CGFloat
+    ) {
+        let textWidth = pageWidth - margin * 2
+        let footerY: CGFloat = 36
+
+        // Thin line above footer
+        ctx.setStrokeColor(NSColor(white: 0.88, alpha: 1.0).cgColor)
+        ctx.setLineWidth(0.5)
+        ctx.move(to: CGPoint(x: margin, y: footerY + 12))
+        ctx.addLine(to: CGPoint(x: margin + textWidth, y: footerY + 12))
+        ctx.strokePath()
+
+        // Left: "Generated by Cloom"
+        let footerFont = CTFontCreateWithName("Helvetica" as CFString, 8, nil)
+        let footerColor = NSColor(white: 0.6, alpha: 1.0)
+        let leftStr = NSAttributedString(string: "Generated by Cloom", attributes: [
+            .font: footerFont, .foregroundColor: footerColor
+        ])
+        let leftLine = CTLineCreateWithAttributedString(leftStr)
+        ctx.textPosition = CGPoint(x: margin, y: footerY)
+        CTLineDraw(leftLine, ctx)
+
+        // Right: "Page X of Y"
+        let accentColor = NSColor(red: 0.2, green: 0.4, blue: 0.9, alpha: 1.0)
+        let rightStr = NSAttributedString(string: "Page \(pageNumber) of \(totalPages)", attributes: [
+            .font: footerFont, .foregroundColor: accentColor
+        ])
+        let rightLine = CTLineCreateWithAttributedString(rightStr)
+        let rightWidth = CTLineGetTypographicBounds(rightLine, nil, nil, nil)
+        ctx.textPosition = CGPoint(x: margin + textWidth - rightWidth, y: footerY)
+        CTLineDraw(rightLine, ctx)
     }
 
     // MARK: - Helpers
@@ -130,7 +218,6 @@ enum TranscriptExportService {
         let dividerColor = NSColor(white: 0.85, alpha: 1.0)
 
         let titleFont = NSFont.systemFont(ofSize: 22, weight: .bold)
-        let headingFont = NSFont.systemFont(ofSize: 14, weight: .semibold)
         let bodyFont = NSFont.systemFont(ofSize: 11)
         let timestampFont = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)
         let captionFont = NSFont.systemFont(ofSize: 9, weight: .medium)
@@ -273,76 +360,3 @@ enum TranscriptExportService {
     }
 }
 
-// MARK: - Paginated PDF View with Footer
-
-/// NSTextView subclass that draws a footer with page number and branding on each printed page.
-private final class PaginatedPDFView: NSTextView {
-    private let pdfTitle: String
-
-    init(
-        attributedString: NSAttributedString,
-        pageSize: NSSize,
-        margins: NSEdgeInsets,
-        title: String
-    ) {
-        let textWidth = pageSize.width - margins.left - margins.right
-        let textHeight = pageSize.height - margins.top - margins.bottom
-        self.pdfTitle = title
-        super.init(frame: NSRect(x: 0, y: 0, width: textWidth, height: textHeight))
-        textStorage?.setAttributedString(attributedString)
-        textContainer?.lineFragmentPadding = 0
-        textContainer?.containerSize = NSSize(width: textWidth, height: .greatestFiniteMagnitude)
-        isEditable = false
-        backgroundColor = .white
-        layoutManager?.ensureLayout(for: textContainer!)
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError() }
-
-    override func drawPageBorder(with borderSize: NSSize) {
-        super.drawPageBorder(with: borderSize)
-
-        guard let context = NSGraphicsContext.current else { return }
-        context.saveGraphicsState()
-
-        let margin: CGFloat = 60
-        let footerY: CGFloat = 30
-        let textWidth = borderSize.width - margin * 2
-        let footerFont = NSFont.systemFont(ofSize: 8, weight: .regular)
-        let footerColor = NSColor(white: 0.6, alpha: 1.0)
-        let accentColor = NSColor(red: 0.2, green: 0.4, blue: 0.9, alpha: 1.0)
-
-        // Thin line above footer
-        let lineY = footerY + 14
-        let linePath = NSBezierPath()
-        linePath.move(to: NSPoint(x: margin, y: lineY))
-        linePath.line(to: NSPoint(x: margin + textWidth, y: lineY))
-        NSColor(white: 0.88, alpha: 1.0).setStroke()
-        linePath.lineWidth = 0.5
-        linePath.stroke()
-
-        // Left: "Generated by Cloom"
-        let leftAttrs: [NSAttributedString.Key: Any] = [
-            .font: footerFont, .foregroundColor: footerColor
-        ]
-        let leftStr = NSAttributedString(string: "Generated by Cloom", attributes: leftAttrs)
-        leftStr.draw(at: NSPoint(x: margin, y: footerY))
-
-        // Right: page number
-        let currentPage = self.currentPage
-        let pageStr = NSAttributedString(
-            string: "Page \(currentPage)",
-            attributes: [.font: footerFont, .foregroundColor: accentColor]
-        )
-        let pageStrSize = pageStr.size()
-        pageStr.draw(at: NSPoint(x: margin + textWidth - pageStrSize.width, y: footerY))
-
-        context.restoreGraphicsState()
-    }
-
-    private var currentPage: Int {
-        guard let printOp = NSPrintOperation.current else { return 1 }
-        return printOp.currentPage
-    }
-}
