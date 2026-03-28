@@ -64,6 +64,8 @@ extension RecordingCoordinator {
         keystrokeMonitor = nil
         keystrokeOverlay?.dismiss()
         keystrokeOverlay = nil
+        dismissTeleprompter()
+        teleprompterOverlay = nil
         annotationCanvas?.dismiss()
         annotationCanvas = nil
         annotationToolbar?.dismiss()

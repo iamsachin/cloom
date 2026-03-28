@@ -22,6 +22,7 @@ final class RecordingCoordinator: ObservableObject {
     @Published var cursorSpotlightEnabled: Bool = false
     @Published var zoomEnabled: Bool = false
     @Published var keystrokeEnabled: Bool = false
+    @Published var teleprompterEnabled: Bool = false
 
     let modelContainer: ModelContainer
     let captureService = ScreenCaptureService()
@@ -52,6 +53,8 @@ final class RecordingCoordinator: ObservableObject {
     var zoomClickMonitor: ZoomClickMonitor?
     var keystrokeMonitor: KeystrokeMonitor?
     var keystrokeOverlay: KeystrokeOverlayWindow?
+    var teleprompterOverlay: TeleprompterOverlayWindow?
+    var teleprompterScriptPanel: TeleprompterScriptPanel?
 
     let systemPicker = SystemContentPicker()
     var pendingFilter: SCContentFilter?

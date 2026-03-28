@@ -23,6 +23,7 @@ final class RecordingToolbarPanel {
         onToggleCursorSpotlight: @escaping () -> Void = {},
         onToggleZoom: @escaping () -> Void = {},
         onToggleKeystroke: @escaping () -> Void = {},
+        onToggleTeleprompter: @escaping () -> Void = {},
         onToggleSystemAudio: @escaping () -> Void = {},
         onDiscard: @escaping () -> Void = {},
         onRewind: @escaping () -> Void = {}
@@ -49,6 +50,7 @@ final class RecordingToolbarPanel {
                 onToggleCursorSpotlight: onToggleCursorSpotlight,
                 onToggleZoom: onToggleZoom,
                 onToggleKeystroke: onToggleKeystroke,
+                onToggleTeleprompter: onToggleTeleprompter,
                 onToggleSystemAudio: onToggleSystemAudio,
                 onDiscard: onDiscard,
                 onRewind: onRewind
@@ -70,6 +72,7 @@ final class RecordingToolbarPanel {
         onToggleClickEmphasis: @escaping () -> Void = {},
         onToggleCursorSpotlight: @escaping () -> Void = {},
         onToggleKeystroke: @escaping () -> Void = {},
+        onToggleTeleprompter: @escaping () -> Void = {},
         onRecord: @escaping () -> Void,
         onCancel: @escaping () -> Void
     ) {
@@ -88,6 +91,7 @@ final class RecordingToolbarPanel {
                 onToggleClickEmphasis: onToggleClickEmphasis,
                 onToggleCursorSpotlight: onToggleCursorSpotlight,
                 onToggleKeystroke: onToggleKeystroke,
+                onToggleTeleprompter: onToggleTeleprompter,
                 onRecord: onRecord,
                 onCancel: onCancel
             )

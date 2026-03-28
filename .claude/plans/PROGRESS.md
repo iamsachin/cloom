@@ -1008,15 +1008,15 @@ Adopt macOS 26's Liquid Glass styling across the app's chrome — toolbar, float
 ---
 
 ## Phase 38: Teleprompter Overlay
-**Status:** Not Started
+**Status:** Complete
 
 Floating transparent text overlay visible to the presenter but not captured in the recording. For scripted content — educators, content creators, sales demos.
 
-- [ ] Task 218 — Teleprompter window: transparent NSPanel (excluded from capture via `sharingType: .none`) with scrolling text
-- [ ] Task 219 — Script input: paste or type script text, import from .txt/.md file
-- [ ] Task 220 — Auto-scroll: configurable scroll speed, pause/resume with keyboard shortcut
-- [ ] Task 221 — Controls: font size, opacity, position (top/bottom), mirror mode for external teleprompter
-- [ ] Task 222 — Tests + build verification
+- [x] Task 218 — Teleprompter window: transparent NSPanel (excluded from capture via `sharingType: .none`) with scrolling text
+- [x] Task 219 — Script input: paste or type script text, import from .txt/.md file
+- [x] Task 220 — Auto-scroll: configurable scroll speed, pause/resume with keyboard shortcut
+- [x] Task 221 — Controls: font size, opacity, position (top/bottom), mirror mode for external teleprompter
+- [x] Task 222 — Tests + build verification
 
 ---
 

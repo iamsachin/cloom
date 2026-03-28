@@ -19,6 +19,7 @@ extension RecordingCoordinator {
             onToggleClickEmphasis: { [weak self] in self?.toggleClickEmphasis() },
             onToggleCursorSpotlight: { [weak self] in self?.toggleCursorSpotlight() },
             onToggleKeystroke: { [weak self] in self?.toggleKeystroke() },
+            onToggleTeleprompter: { [weak self] in self?.toggleTeleprompter() },
             onRecord: { [weak self] in self?.confirmRecording() },
             onCancel: { [weak self] in self?.cancelReadyState() }
         )
@@ -42,6 +43,7 @@ extension RecordingCoordinator {
             onToggleCursorSpotlight: { [weak self] in self?.toggleCursorSpotlight() },
             onToggleZoom: { [weak self] in self?.toggleZoom() },
             onToggleKeystroke: { [weak self] in self?.toggleKeystroke() },
+            onToggleTeleprompter: { [weak self] in self?.toggleTeleprompter() },
             onToggleSystemAudio: { [weak self] in self?.toggleSystemAudio() },
             onDiscard: { [weak self] in self?.discardRecording() },
             onRewind: { [weak self] in self?.beginRewind() }
@@ -66,6 +68,7 @@ extension RecordingCoordinator {
             onToggleCursorSpotlight: { [weak self] in self?.toggleCursorSpotlight() },
             onToggleZoom: { [weak self] in self?.toggleZoom() },
             onToggleKeystroke: { [weak self] in self?.toggleKeystroke() },
+            onToggleTeleprompter: { [weak self] in self?.toggleTeleprompter() },
             onToggleSystemAudio: { [weak self] in self?.toggleSystemAudio() },
             onDiscard: { [weak self] in self?.discardRecording() },
             onRewind: { [weak self] in self?.beginRewind() }
