@@ -5,6 +5,11 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-03-30
+
+### Added
+- **In-app features directory** — browsable grid of all 42 app features organized by category (Recording, Editing, Export, AI, Library) with SF Symbol icons and keyboard shortcut badges. Accessible from the "Features" menu item in the menu bar.
+
 ## [0.7.0] - 2026-03-29
 
 ### Added
