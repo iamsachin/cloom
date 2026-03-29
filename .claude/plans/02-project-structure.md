@@ -106,6 +106,9 @@ cloom/
 │   │   │   ├── ExportWriter.swift             # AVAssetReader/Writer + tx3g subtitle embedding (remux + re-encode)
 │   │   │   ├── ExportService.swift              # MP4 export logic (extracted from EditorExportView)
 │   │   │   ├── ExportWriter+Subtitles.swift    # tx3g subtitle track embedding extension
+│   │   │   ├── SocialAspectRatio.swift        # Aspect ratio presets (16:9, 9:16, 1:1, 4:5), BackgroundFillStyle, ReframeConfig, cropRect math
+│   │   │   ├── ReframeCompositor.swift        # Per-frame CIImage reframe via AVMutableVideoComposition + preview rendering
+│   │   │   ├── ReframePresetPicker.swift      # SwiftUI preset picker + live preview + draggable focus point
 │   │   │   ├── SpeedControlView.swift         # 0.25x–4x popover
 │   │   │   ├── StitchPanelView.swift          # Multi-clip drag-to-reorder
 │   │   │   ├── SubtitleExportService.swift    # EDL-aware subtitle phrase building + timing

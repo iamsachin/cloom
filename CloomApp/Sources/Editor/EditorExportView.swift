@@ -21,35 +21,58 @@ struct EditorExportView: View {
     @State private var editableTitle: String = ""
     @State private var isDeletingFromDrive = false
 
+    // Reframe state
+    @State private var selectedReframePreset: SocialAspectRatio?
+    @State private var backgroundFill: BackgroundFillStyle = .defaultBlur
+    @State private var reframeFocusX: Double = 0.5
+    @State private var reframeFocusY: Double = 0.5
+
     private var authService: GoogleAuthService { GoogleAuthService.shared }
     private var uploadManager: DriveUploadManager { DriveUploadManager.shared }
 
     private var exportFileName: String {
         var name = editableTitle
         name += "-\(selectedQuality.rawValue)"
+        if let preset = selectedReframePreset {
+            name += "-\(preset.rawValue.replacingOccurrences(of: ":", with: "x"))"
+        }
         if includeSubtitles {
             name += "-sub"
         }
         return name + ".mp4"
     }
 
+    private var reframeConfig: ReframeConfig? {
+        guard let preset = selectedReframePreset else { return nil }
+        return ReframeConfig(
+            aspectRatio: preset,
+            backgroundFill: backgroundFill,
+            focusX: reframeFocusX,
+            focusY: reframeFocusY
+        )
+    }
+
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             headerSection
             TextField("Title", text: $editableTitle)
                 .textFieldStyle(.roundedBorder)
                 .disabled(isExporting || isUploading)
             existingUploadSection
-            qualitySection
-            subtitlesToggle
-            editsIndicator
+            reframePresetButtons
+            if selectedReframePreset != nil {
+                twoColumnLayout
+            } else {
+                rightColumnControls
+            }
             progressSection
             uploadResultSection
             errorSection
             actionButtons
         }
         .padding(24)
-        .frame(width: 400)
+        .frame(width: selectedReframePreset != nil ? 600 : 400)
+        .animation(.easeInOut(duration: 0.2), value: selectedReframePreset)
         .onAppear {
             editableTitle = editorState.videoRecord.title
             if let raw = editorState.videoRecord.recordingQuality,
@@ -115,6 +138,45 @@ struct EditorExportView: View {
                 }
             }
             Divider()
+        }
+    }
+
+    // MARK: - Reframe
+
+    private var reframePresetButtons: some View {
+        ReframePresetButtons(
+            selectedPreset: $selectedReframePreset
+        )
+        .disabled(isExporting || isUploading)
+    }
+
+    private var twoColumnLayout: some View {
+        HStack(alignment: .top, spacing: 16) {
+            // Left: preview + background fill
+            ReframePreviewColumn(
+                videoFilePath: editorState.videoRecord.filePath,
+                selectedPreset: selectedReframePreset,
+                backgroundFill: $backgroundFill,
+                focusX: $reframeFocusX,
+                focusY: $reframeFocusY
+            )
+            .disabled(isExporting || isUploading)
+
+            Divider()
+
+            // Right: quality, subtitles, edits
+            VStack(spacing: 16) {
+                rightColumnControls
+            }
+            .frame(width: 200)
+        }
+    }
+
+    private var rightColumnControls: some View {
+        Group {
+            qualitySection
+            subtitlesToggle
+            editsIndicator
         }
     }
 
@@ -289,6 +351,7 @@ struct EditorExportView: View {
                     quality: selectedQuality,
                     recordingQuality: recQuality,
                     includeSubtitles: includeSubtitles,
+                    reframeConfig: reframeConfig,
                     destURL: destURL
                 ) { p in exportProgress = p }
                 exportProgress = 1.0
@@ -326,6 +389,7 @@ struct EditorExportView: View {
                     quality: selectedQuality,
                     recordingQuality: recQuality,
                     includeSubtitles: includeSubtitles,
+                    reframeConfig: reframeConfig,
                     destURL: tempURL
                 ) { p in exportProgress = p }
 

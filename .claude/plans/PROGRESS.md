@@ -1021,15 +1021,15 @@ Floating transparent text overlay visible to the presenter but not captured in t
 ---
 
 ## Phase 39: Social Media Export Presets
-**Status:** Not Started
+**Status:** Done ✅
 
 One-click reformat to 9:16 (Shorts/Reels), 1:1 (Instagram), 4:5 (LinkedIn) with smart crop/zoom from landscape recordings.
 
-- [ ] Task 223 — Aspect ratio presets: enum with 16:9, 9:16, 1:1, 4:5 + custom
-- [ ] Task 224 — Smart recomposition: auto-crop with focus detection (cursor/webcam position) to keep important content centered
-- [ ] Task 225 — Background fill: configurable gradient/blur/color for letterboxing when content doesn't fill frame
-- [ ] Task 226 — Export UI: preset picker in EditorExportView with live preview of framing
-- [ ] Task 227 — Tests + build verification
+- [x] Task 223 — Aspect ratio presets: SocialAspectRatio enum (16:9, 9:16, 1:1, 4:5), BackgroundFillStyle enum, ReframeConfig, cropRect math
+- [x] Task 224 — ReframeCompositor: per-frame CIImage crop+scale+background via AVMutableVideoComposition(applyingCIFiltersWithHandler:), draggable focus point (center default + manual adjust)
+- [x] Task 225 — ExportService integration: reframeConfig parameter, exportWithReframe helper, passthrough disabled when reframing
+- [x] Task 226 — Export UI: ReframePresetPicker with preset buttons, live CIImage preview, draggable crosshair focus, blur/solid/gradient background picker
+- [x] Task 227 — Tests (22 new tests): SocialAspectRatio, cropRect math, BackgroundFillStyle, ReframeConfig, cropAndScale, makeBackground, renderPreview. Build verified, 260 total tests pass.
 
 ---
 
