@@ -1033,77 +1033,52 @@ One-click reformat to 9:16 (Shorts/Reels), 1:1 (Instagram), 4:5 (LinkedIn) with 
 
 ---
 
-## Phase 40: Subtitle Style Customization
-**Status:** Not Started
-
-Let users customize burned-in caption appearance — font, size, color, background, position — before export. Currently hardcoded.
-
-- [ ] Task 228 — SubtitleStyle model: font family, size, text color, background color/opacity, position (top/center/bottom), outline
-- [ ] Task 229 — Style UI: subtitle style picker in export view with live preview
-- [ ] Task 230 — Rendering update: apply SubtitleStyle in SubtitleExportService and ExportWriter
-- [ ] Task 231 — Presets: 3-4 built-in styles (Classic, Modern, Minimal, Bold) + custom
-- [ ] Task 232 — Tests + build verification
-
----
-
-## Phase 41: Live Activity in Menu Bar
-**Status:** Not Started
-
-macOS 26 Live Activity showing recording duration, waveform level indicator, and stop button in the system menu bar.
-
-- [ ] Task 233 — WidgetKit Live Activity definition: recording duration, elapsed time, audio level
-- [ ] Task 234 — Activity lifecycle: start on recording begin, update on timer/audio, end on stop
-- [ ] Task 235 — Interactive controls: stop button, pause/resume in the Live Activity
-- [ ] Task 236 — Tests + build verification
-
----
-
-## Phase 42: Tag-Based Sidebar Navigation
-**Status:** Not Started
+## Phase 40: Tag-Based Sidebar Navigation
+**Status:** Complete ✅
 
 Click a tag in the library sidebar to filter videos by that tag. Model and tagging UI already exist — this adds sidebar entries and click-to-filter.
 
-- [ ] Task 237 — Sidebar tag section: list all tags below folders in LibrarySidebarView
-- [ ] Task 238 — Click-to-filter: selecting a tag filters the library grid/list to videos with that tag
-- [ ] Task 239 — Tag pills clickable: clicking a tag on a video card also filters to that tag
-- [ ] Task 240 — Tests + build verification
+- [x] Task 228 — Sidebar tag section: list all tags below folders in LibrarySidebarView (already implemented in Phase 8)
+- [x] Task 229 — Click-to-filter: selecting a tag filters the library grid/list to videos with that tag (already implemented in Phase 8)
+- [x] Task 230 — Tag pills clickable: clicking a tag on a video card also filters to that tag (onTagTap closure in VideoCardView + LibraryListRowView, wired through LibraryContentView)
+- [x] Task 231 — Tests + build verification (15 new tests in TagSidebarTests.swift: SidebarSelection equality/hashing, tag filtering logic, Color hex parsing. 275 total tests pass.)
 
 ---
 
-## Phase 43: Filler Word Configuration
+## Phase 41: Filler Word Configuration
 **Status:** Not Started
 
 Settings UI to customize which words count as fillers and adjust detection sensitivity. Currently hardcoded in Rust.
 
-- [ ] Task 241 — FFI extension: pass custom filler word list from Swift to Rust via UniFFI
-- [ ] Task 242 — Settings UI: editable filler word list in Settings > AI, add/remove words, reset to defaults
-- [ ] Task 243 — Sensitivity slider: adjustable threshold for filler detection confidence
-- [ ] Task 244 — Persist settings: @AppStorage for custom word list and sensitivity
-- [ ] Task 245 — Tests + build verification
+- [ ] Task 232 — FFI extension: pass custom filler word list from Swift to Rust via UniFFI
+- [ ] Task 233 — Settings UI: editable filler word list in Settings > AI, add/remove words, reset to defaults
+- [ ] Task 234 — Sensitivity slider: adjustable threshold for filler detection confidence
+- [ ] Task 235 — Persist settings: @AppStorage for custom word list and sensitivity
+- [ ] Task 236 — Tests + build verification
 
 ---
 
-## Phase 44: PII Redaction / Blur Regions
+## Phase 42: PII Redaction / Blur Regions
 **Status:** Not Started
 
 Post-recording blur/pixelate tool to redact sensitive areas (passwords, emails, dashboards) in the editor before export.
 
-- [ ] Task 246 — Blur region model: time range + rect + blur style (Gaussian, pixelate, black box) in EDL
-- [ ] Task 247 — Editor UI: draw blur rectangles on video preview, resize/move handles, per-region time range
-- [ ] Task 248 — Export rendering: apply blur CIFilters to specified regions during re-encode
-- [ ] Task 249 — Undo/redo integration: blur regions participate in EDLUndoManager stack
-- [ ] Task 250 — Tests + build verification
+- [ ] Task 237 — Blur region model: time range + rect + blur style (Gaussian, pixelate, black box) in EDL
+- [ ] Task 238 — Editor UI: draw blur rectangles on video preview, resize/move handles, per-region time range
+- [ ] Task 239 — Export rendering: apply blur CIFilters to specified regions during re-encode
+- [ ] Task 240 — Undo/redo integration: blur regions participate in EDLUndoManager stack
+- [ ] Task 241 — Tests + build verification
 
 ---
 
-## Phase 45: Multi-Language Caption Translation
+## Phase 43: Multi-Language Caption Translation
 **Status:** Not Started
 
 Auto-translate transcript/captions to selected languages before export for international audiences.
 
-- [ ] Task 251 — Translation service: LLM-based or Apple Translation API for transcript text
-- [ ] Task 252 — Language picker: select target language(s) in export view
-- [ ] Task 253 — Multi-language subtitle tracks: embed translated captions as additional tx3g tracks
-- [ ] Task 254 — Transcript export: Markdown/PDF export with translated text
-- [ ] Task 255 — Tests + build verification
+- [ ] Task 242 — Translation service: LLM-based or Apple Translation API for transcript text
+- [ ] Task 243 — Language picker: select target language(s) in export view
+- [ ] Task 244 — Multi-language subtitle tracks: embed translated captions as additional tx3g tracks
+- [ ] Task 245 — Transcript export: Markdown/PDF export with translated text
+- [ ] Task 246 — Tests + build verification
 
