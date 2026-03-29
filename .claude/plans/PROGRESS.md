@@ -1046,15 +1046,15 @@ Click a tag in the library sidebar to filter videos by that tag. Model and taggi
 ---
 
 ## Phase 41: Filler Word Configuration
-**Status:** Not Started
+**Status:** Complete
 
-Settings UI to customize which words count as fillers and adjust detection sensitivity. Currently hardcoded in Rust.
+Settings UI to customize which words count as fillers and adjust detection sensitivity. Previously hardcoded in Rust.
 
-- [ ] Task 232 — FFI extension: pass custom filler word list from Swift to Rust via UniFFI
-- [ ] Task 233 — Settings UI: editable filler word list in Settings > AI, add/remove words, reset to defaults
-- [ ] Task 234 — Sensitivity slider: adjustable threshold for filler detection confidence
-- [ ] Task 235 — Persist settings: @AppStorage for custom word list and sensitivity
-- [ ] Task 236 — Tests + build verification
+- [x] Task 232 — FFI extension: `identify_filler_words_custom()` accepts custom single/phrase lists + `min_confidence` threshold; `default_filler_words()` and `default_filler_phrases()` return built-in defaults; backward-compatible `identify_filler_words()` preserved
+- [x] Task 233 — Settings UI: editable filler word & phrase lists in Settings > AI with add/remove and "Reset to Defaults" buttons
+- [x] Task 234 — Sensitivity slider: min confidence slider (0–90%) in AI settings — words below threshold skipped before filler matching
+- [x] Task 235 — Persist settings: `UserDefaultsKeys.fillerWordsSingle`, `.fillerWordsPhrases`, `.fillerMinConfidence`; `AIOrchestrator` reads custom settings during pipeline
+- [x] Task 236 — Tests + build: 8 new Rust tests (20 total filler tests, 52 Rust total), 8 new Swift tests in `FillerWordConfigTests.swift`, all pass
 
 ---
 

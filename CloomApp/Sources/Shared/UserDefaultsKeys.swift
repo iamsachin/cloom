@@ -9,6 +9,9 @@ enum UserDefaultsKeys {
 
     // MARK: - AI
     static let aiAutoTranscribe = "aiAutoTranscribe"
+    static let fillerWordsSingle = "fillerWordsSingle"
+    static let fillerWordsPhrases = "fillerWordsPhrases"
+    static let fillerMinConfidence = "fillerMinConfidence"
 
     // MARK: - Recording
     static let recordingFPS = "recordingFPS"
