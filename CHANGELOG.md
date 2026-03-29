@@ -5,6 +5,17 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-03-29
+
+### Added
+- **Multi-language caption translation** — translate subtitles and transcript exports to 14 languages (Spanish, French, German, Japanese, Korean, Chinese, Hindi, Arabic, Italian, Dutch, Russian, Turkish, Portuguese) via gpt-4.1-mini at export time.
+- **Language picker** in export view (when subtitles enabled) and transcript export menu (Markdown/PDF).
+- **Transcript punctuation restoration** — LLM now restores missing periods, commas, and capitalization in transcripts.
+
+### Changed
+- All LLM calls upgraded from gpt-4o-mini to gpt-4.1-mini (better quality, lower cost).
+- `BlurRegionCompositor` and `ReframeCompositor` migrated from deprecated `AVMutableVideoComposition` to `AVVideoComposition.Configuration`.
+
 ## [0.6.0] - 2026-03-29
 
 ### Added
