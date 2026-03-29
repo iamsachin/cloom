@@ -5,6 +5,7 @@ import CoreGraphics
 
 struct VideoCardView: View {
     let video: VideoRecord
+    var onTagTap: ((String) -> Void)?
 
     @State private var isHovered = false
     @State private var hasAppeared = false
@@ -157,17 +158,7 @@ struct VideoCardView: View {
 
         HStack(spacing: 4) {
             ForEach(displayTags, id: \.id) { tag in
-                HStack(spacing: 3) {
-                    Circle()
-                        .fill(Color(hex: tag.color))
-                        .frame(width: 5, height: 5)
-                    Text(tag.name)
-                        .font(.system(size: 9))
-                        .lineLimit(1)
-                }
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1.5)
-                .background(Color(hex: tag.color).opacity(0.12), in: Capsule())
+                tagPillButton(tag)
             }
             if remaining > 0 {
                 Text("+\(remaining)")
@@ -177,6 +168,33 @@ struct VideoCardView: View {
                     .padding(.vertical, 1.5)
                     .background(.quaternary, in: Capsule())
             }
+        }
+    }
+
+    @ViewBuilder
+    private func tagPillButton(_ tag: TagRecord) -> some View {
+        let pill = HStack(spacing: 3) {
+            Circle()
+                .fill(Color(hex: tag.color))
+                .frame(width: 5, height: 5)
+            Text(tag.name)
+                .font(.system(size: 9))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 5)
+        .padding(.vertical, 1.5)
+        .background(Color(hex: tag.color).opacity(0.12), in: Capsule())
+
+        if let onTagTap {
+            Button {
+                onTagTap(tag.id)
+            } label: {
+                pill
+            }
+            .buttonStyle(.plain)
+            .help("Filter by \(tag.name)")
+        } else {
+            pill
         }
     }
 

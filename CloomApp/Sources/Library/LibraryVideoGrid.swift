@@ -18,7 +18,9 @@ extension LibraryContentView {
                 navigationState.openEditor(videoID: video.id)
             }
         } label: {
-            VideoCardView(video: video)
+            VideoCardView(video: video, onTagTap: { tagID in
+                    sidebarSelection = .tag(tagID)
+                })
                 .overlay(alignment: .topLeading) {
                     if isSelecting {
                         selectionBadge(isSelected: selectedIDs.contains(video.id))

@@ -7,6 +7,7 @@ struct LibraryListRowView: View {
     let isSelecting: Bool
     let isSelected: Bool
     let onTap: () -> Void
+    var onTagTap: ((String) -> Void)?
 
     @State private var isHovered = false
 
@@ -42,9 +43,22 @@ struct LibraryListRowView: View {
                 if !video.tags.isEmpty {
                     HStack(spacing: 4) {
                         ForEach(video.tags.prefix(2), id: \.id) { tag in
-                            Circle()
-                                .fill(Color(hex: tag.color))
-                                .frame(width: 8, height: 8)
+                            if let onTagTap {
+                                Button {
+                                    onTagTap(tag.id)
+                                } label: {
+                                    Circle()
+                                        .fill(Color(hex: tag.color))
+                                        .frame(width: 8, height: 8)
+                                }
+                                .buttonStyle(.plain)
+                                .help("Filter by \(tag.name)")
+                            } else {
+                                Circle()
+                                    .fill(Color(hex: tag.color))
+                                    .frame(width: 8, height: 8)
+                                    .help(tag.name)
+                            }
                         }
                         if video.tags.count > 2 {
                             Text("+\(video.tags.count - 2)")

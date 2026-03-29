@@ -212,6 +212,9 @@ struct LibraryContentView: View {
                             } else {
                                 navigationState.openEditor(videoID: video.id)
                             }
+                        },
+                        onTagTap: { tagID in
+                            sidebarSelection = .tag(tagID)
                         }
                     )
                     .draggable(video.id)
