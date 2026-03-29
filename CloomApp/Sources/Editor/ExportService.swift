@@ -35,6 +35,7 @@ enum ExportService {
         )
         let qualityMatchesRecording = quality == (recordingQuality ?? quality)
         let hasReframe = reframeConfig != nil
+        let hasBlurRegions = !snapshot.blurRegions.isEmpty
 
         // Unmodified + quality matches recording + no subtitles + no reframe → passthrough copy
         if unmodified && qualityMatchesRecording && subtitlePhrases.isEmpty && !hasReframe {
@@ -138,9 +139,10 @@ enum ExportService {
 
         // Edited + no subtitles → AVAssetExportSession
         if subtitlePhrases.isEmpty {
+            let preset = hasBlurRegions ? AVAssetExportPresetHighestQuality : presetForQuality(quality)
             guard let session = AVAssetExportSession(
                 asset: result.composition,
-                presetName: presetForQuality(quality)
+                presetName: preset
             ) else {
                 throw NSError(
                     domain: "ExportService", code: -1,
@@ -150,7 +152,16 @@ enum ExportService {
             if let audioMix = result.audioMix {
                 session.audioMix = audioMix
             }
-            try await session.export(to: destURL, as: .mp4)
+            let sourceSize = await resolveVideoSize(for: result.composition)
+            try await applyBlurIfNeeded(
+                to: session, asset: result.composition,
+                blurRegions: snapshot.blurRegions, sourceSize: sourceSize
+            )
+            if hasBlurRegions {
+                try await exportWithProgress(session: session, destURL: destURL, progress: progress)
+            } else {
+                try await session.export(to: destURL, as: .mp4)
+            }
             return
         }
 
@@ -159,9 +170,10 @@ enum ExportService {
             .appendingPathComponent(UUID().uuidString + ".mp4")
         defer { try? FileManager.default.removeItem(at: tempURL) }
 
+        let preset = hasBlurRegions ? AVAssetExportPresetHighestQuality : presetForQuality(quality)
         guard let session = AVAssetExportSession(
             asset: result.composition,
-            presetName: presetForQuality(quality)
+            presetName: preset
         ) else {
             throw NSError(
                 domain: "ExportService", code: -1,
@@ -171,7 +183,16 @@ enum ExportService {
         if let audioMix = result.audioMix {
             session.audioMix = audioMix
         }
-        try await session.export(to: tempURL, as: .mp4)
+        let sourceSize = await resolveVideoSize(for: result.composition)
+        try await applyBlurIfNeeded(
+            to: session, asset: result.composition,
+            blurRegions: snapshot.blurRegions, sourceSize: sourceSize
+        )
+        if hasBlurRegions {
+            try await exportWithProgress(session: session, destURL: tempURL, progress: progress)
+        } else {
+            try await session.export(to: tempURL, as: .mp4)
+        }
 
         let compositionDurationMs = Int64(result.composition.duration.seconds * 1000)
         try await ExportWriter.injectSubtitles(
@@ -240,6 +261,55 @@ enum ExportService {
         }
     }
 
+    /// Exports with progress polling — needed because `session.export(to:as:)` doesn't report progress.
+    private static func exportWithProgress(
+        session: AVAssetExportSession,
+        destURL: URL,
+        progress: @escaping @MainActor (Double) -> Void
+    ) async throws {
+        session.outputURL = destURL
+        session.outputFileType = .mp4
+
+        // Poll progress on a background task
+        nonisolated(unsafe) let sessionRef = session
+        let pollingTask = Task { @MainActor in
+            while !Task.isCancelled {
+                progress(Double(sessionRef.progress))
+                try? await Task.sleep(for: .milliseconds(200))
+            }
+        }
+        defer { pollingTask.cancel() }
+
+        try await session.export(to: destURL, as: .mp4)
+    }
+
+    /// Attaches a blur region video composition to an export session if blur regions exist.
+    /// Must use HighestQuality preset when applying video compositions.
+    private static func applyBlurIfNeeded(
+        to session: AVAssetExportSession,
+        asset: AVAsset,
+        blurRegions: [BlurRegion],
+        sourceSize: CGSize
+    ) async throws {
+        guard !blurRegions.isEmpty else { return }
+        let videoComposition = try await BlurRegionCompositor.buildVideoComposition(
+            for: asset,
+            regions: blurRegions,
+            sourceSize: sourceSize
+        )
+        session.videoComposition = videoComposition
+    }
+
+    /// Resolves the natural size of the video asset's first video track.
+    private static func resolveVideoSize(for asset: AVAsset) async -> CGSize {
+        guard let track = try? await asset.loadTracks(withMediaType: .video).first,
+              let size = try? await track.load(.naturalSize),
+              size.width > 0 && size.height > 0 else {
+            return CGSize(width: 1920, height: 1080)
+        }
+        return size
+    }
+
     static func isExportUnmodified(
         snapshot: EDLSnapshot, durationMs: Int64
     ) -> Bool {
@@ -248,5 +318,6 @@ enum ExportService {
         && snapshot.cuts.isEmpty
         && snapshot.speedMultiplier == 1.0
         && snapshot.stitchVideoIDs.isEmpty
+        && snapshot.blurRegions.isEmpty
     }
 }

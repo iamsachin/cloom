@@ -420,6 +420,34 @@ final class EditorState {
         save()
     }
 
+    // MARK: - Blur Regions
+
+    func addBlurRegion(_ region: BlurRegion) {
+        undoManager.recordState(edl)
+        var regions = edl.blurRegions
+        regions.append(region)
+        edl.blurRegions = regions
+        save()
+    }
+
+    func removeBlurRegion(id: String) {
+        undoManager.recordState(edl)
+        var regions = edl.blurRegions
+        regions.removeAll { $0.id == id }
+        edl.blurRegions = regions
+        save()
+    }
+
+    func updateBlurRegion(_ updated: BlurRegion) {
+        undoManager.recordState(edl)
+        var regions = edl.blurRegions
+        if let index = regions.firstIndex(where: { $0.id == updated.id }) {
+            regions[index] = updated
+        }
+        edl.blurRegions = regions
+        save()
+    }
+
     // MARK: - Undo / Redo
 
     func undo() {

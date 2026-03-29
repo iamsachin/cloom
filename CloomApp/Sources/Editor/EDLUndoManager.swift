@@ -10,6 +10,7 @@ struct EDLState: Equatable {
     let trimEndMs: Int64
     let cutsJSON: String
     let stitchVideoIDsJSON: String
+    let blurRegionsJSON: String
     let speedMultiplier: Double
     let thumbnailTimeMs: Int64
 
@@ -18,6 +19,7 @@ struct EDLState: Equatable {
         self.trimEndMs = edl.trimEndMs
         self.cutsJSON = edl.cutsJSON
         self.stitchVideoIDsJSON = edl.stitchVideoIDsJSON
+        self.blurRegionsJSON = edl.blurRegionsJSON
         self.speedMultiplier = edl.speedMultiplier
         self.thumbnailTimeMs = edl.thumbnailTimeMs
     }
@@ -27,6 +29,7 @@ struct EDLState: Equatable {
         edl.trimEndMs = trimEndMs
         edl.cutsJSON = cutsJSON
         edl.stitchVideoIDsJSON = stitchVideoIDsJSON
+        edl.blurRegionsJSON = blurRegionsJSON
         edl.speedMultiplier = speedMultiplier
         edl.thumbnailTimeMs = thumbnailTimeMs
         edl.updatedAt = .now

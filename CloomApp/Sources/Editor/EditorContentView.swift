@@ -18,6 +18,9 @@ struct EditorContentView: View {
     @State private var showInfoPanel = false
     @State private var showBookmarksPanel = false
     @State private var showCommentsPanel = false
+    @State private var showBlurPanel = false
+    @State private var isDrawingBlur = false
+    @State private var selectedBlurRegionID: String?
 
     init(videoID: String) {
         self.videoID = videoID
@@ -64,10 +67,16 @@ struct EditorContentView: View {
                 ZStack(alignment: .bottom) {
                     VideoPreviewView(
                         player: state.player,
-                        onTap: { state.togglePlayPause() },
+                        onTap: { if !isDrawingBlur { state.togglePlayPause() } },
                         onPiPControllerReady: { controller in
                             state.pipController = controller
                         }
+                    )
+
+                    BlurRegionOverlayView(
+                        editorState: state,
+                        isDrawing: isDrawingBlur,
+                        selectedRegionID: $selectedBlurRegionID
                     )
 
                     CaptionOverlayView(
@@ -75,6 +84,7 @@ struct EditorContentView: View {
                         currentTimeMs: state.currentTimeMs,
                         isEnabled: state.captionsEnabled
                     )
+                    .allowsHitTesting(false)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -96,7 +106,8 @@ struct EditorContentView: View {
                     showExportSheet: $showExportSheet,
                     showInfoPanel: $showInfoPanel,
                     showBookmarksPanel: $showBookmarksPanel,
-                    showCommentsPanel: $showCommentsPanel
+                    showCommentsPanel: $showCommentsPanel,
+                    showBlurPanel: $showBlurPanel
                 )
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
@@ -129,11 +140,22 @@ struct EditorContentView: View {
                 CommentsPanelView(editorState: state)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
+
+            if showBlurPanel {
+                Divider()
+                BlurRegionControlsView(
+                    editorState: state,
+                    isDrawing: $isDrawingBlur,
+                    selectedRegionID: $selectedBlurRegionID
+                )
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
         }
         .animation(.easeInOut(duration: 0.25), value: state.showTranscript)
         .animation(.easeInOut(duration: 0.25), value: showInfoPanel)
         .animation(.easeInOut(duration: 0.25), value: showBookmarksPanel)
         .animation(.easeInOut(duration: 0.25), value: showCommentsPanel)
+        .animation(.easeInOut(duration: 0.25), value: showBlurPanel)
         .editorKeyboardShortcuts(state: state, cutMarkInMs: $cutMarkInMs)
         .navigationTitle(state.videoRecord.title)
         .toolbar {
