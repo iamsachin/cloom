@@ -16,6 +16,7 @@ struct EditorExportView: View {
     @State private var exportProgress: Double = 0
     @State private var exportError: String?
     @State private var includeSubtitles: Bool = false
+    @State private var subtitleLanguage: TranslationLanguage = .original
     @State private var isUploading = false
     @State private var uploadShareUrl: String?
     @State private var editableTitle: String = ""
@@ -37,7 +38,11 @@ struct EditorExportView: View {
             name += "-\(preset.rawValue.replacingOccurrences(of: ":", with: "x"))"
         }
         if includeSubtitles {
-            name += "-sub"
+            if subtitleLanguage != .original {
+                name += "-sub-\(subtitleLanguage.rawValue.lowercased())"
+            } else {
+                name += "-sub"
+            }
         }
         return name + ".mp4"
     }
@@ -197,6 +202,14 @@ struct EditorExportView: View {
         if editorState.videoRecord.hasTranscript {
             Toggle("Include Subtitles", isOn: $includeSubtitles)
                 .disabled(isExporting)
+            if includeSubtitles {
+                Picker("Subtitle Language", selection: $subtitleLanguage) {
+                    ForEach(TranslationLanguage.allCases) { lang in
+                        Text(lang.rawValue).tag(lang)
+                    }
+                }
+                .disabled(isExporting)
+            }
         }
     }
 
@@ -351,6 +364,7 @@ struct EditorExportView: View {
                     quality: selectedQuality,
                     recordingQuality: recQuality,
                     includeSubtitles: includeSubtitles,
+                    subtitleLanguage: subtitleLanguage,
                     reframeConfig: reframeConfig,
                     destURL: destURL
                 ) { p in exportProgress = p }
@@ -389,6 +403,7 @@ struct EditorExportView: View {
                     quality: selectedQuality,
                     recordingQuality: recQuality,
                     includeSubtitles: includeSubtitles,
+                    subtitleLanguage: subtitleLanguage,
                     reframeConfig: reframeConfig,
                     destURL: tempURL
                 ) { p in exportProgress = p }

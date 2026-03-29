@@ -1072,13 +1072,13 @@ Post-recording blur/pixelate tool to redact sensitive areas (passwords, emails, 
 ---
 
 ## Phase 43: Multi-Language Caption Translation
-**Status:** Not Started
+**Status:** Complete
 
-Auto-translate transcript/captions to selected languages before export for international audiences.
+Auto-translate transcript/captions to selected languages before export for international audiences. Also fixed missing punctuation in transcripts and upgraded all LLM calls from gpt-4o-mini to gpt-4.1-mini.
 
-- [ ] Task 242 — Translation service: LLM-based or Apple Translation API for transcript text
-- [ ] Task 243 — Language picker: select target language(s) in export view
-- [ ] Task 244 — Multi-language subtitle tracks: embed translated captions as additional tx3g tracks
-- [ ] Task 245 — Transcript export: Markdown/PDF export with translated text
-- [ ] Task 246 — Tests + build verification
+- [x] Task 242 — Translation service: `translate_text()` UniFFI-exported Rust function using gpt-4.1-mini via OpenAI API; reuses existing `chat_completion` infrastructure
+- [x] Task 243 — Language picker: `TranslationLanguage` enum (15 languages), picker in `EditorExportView` when subtitles enabled, submenu language picker for transcript export in `EditorToolbarView`
+- [x] Task 244 — Multi-language subtitle tracks: batch-translate subtitle phrases (join with newline, single API call, split back) in `ExportService.translatePhrases()` before tx3g injection
+- [x] Task 245 — Transcript export: `TranscriptExportService.exportAsMarkdown/exportAsPDF` accept `translationLanguage` param; translate full paragraph text via `translateIfNeeded()` helper; adds "Translated to X" header note
+- [x] Task 246 — Tests + build: 2 new Rust tests (54 total), 6 new Swift tests in `TranslationLanguageTests.swift`, all pass. Also: punctuation fix in `format_paragraphs` prompt, model upgrade gpt-4o-mini → gpt-4.1-mini
 

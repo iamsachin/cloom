@@ -12,9 +12,14 @@ enum TranscriptExportService {
         summary: String?,
         transcript: TranscriptRecord,
         chapters: [ChapterRecord],
+        translationLanguage: TranslationLanguage = .original,
         destURL: URL
     ) throws {
         var md = "# \(title)\n\n"
+
+        if translationLanguage != .original {
+            md += "*Translated to \(translationLanguage.rawValue)*\n\n"
+        }
 
         if let summary, !summary.isEmpty {
             md += "> \(summary)\n\n"
@@ -29,7 +34,7 @@ enum TranscriptExportService {
         }
 
         md += "## Transcript\n\n"
-        md += buildParagraphs(from: transcript)
+        md += translateIfNeeded(buildParagraphs(from: transcript), language: translationLanguage)
         md += "\n"
 
         try md.write(to: destURL, atomically: true, encoding: .utf8)
@@ -44,11 +49,13 @@ enum TranscriptExportService {
         transcript: TranscriptRecord,
         chapters: [ChapterRecord],
         durationMs: Int64 = 0,
+        translationLanguage: TranslationLanguage = .original,
         destURL: URL
     ) throws {
         let attributedString = buildStyledAttributedString(
             title: title, summary: summary, transcript: transcript,
-            chapters: chapters, durationMs: durationMs
+            chapters: chapters, durationMs: durationMs,
+            translationLanguage: translationLanguage
         )
 
         // A4 dimensions in points
@@ -213,7 +220,8 @@ enum TranscriptExportService {
         summary: String?,
         transcript: TranscriptRecord,
         chapters: [ChapterRecord],
-        durationMs: Int64 = 0
+        durationMs: Int64 = 0,
+        translationLanguage: TranslationLanguage = .original
     ) -> NSAttributedString {
         let result = NSMutableAttributedString()
 
@@ -349,7 +357,15 @@ enum TranscriptExportService {
             ]
         ))
 
-        let paragraphs = buildParagraphs(from: transcript)
+        if translationLanguage != .original {
+            let translatedNote = "Translated to \(translationLanguage.rawValue)\n"
+            result.append(NSAttributedString(
+                string: translatedNote,
+                attributes: [.font: captionFont, .foregroundColor: lightGray, .paragraphStyle: metaStyle]
+            ))
+        }
+
+        let paragraphs = translateIfNeeded(buildParagraphs(from: transcript), language: translationLanguage)
         result.append(NSAttributedString(
             string: paragraphs,
             attributes: [.font: bodyFont, .foregroundColor: mediumGray, .paragraphStyle: bodyStyle]
@@ -363,6 +379,25 @@ enum TranscriptExportService {
         let minutes = totalSeconds / 60
         let seconds = totalSeconds % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    /// Translate text using the Rust FFI if a non-original language is selected.
+    private static func translateIfNeeded(_ text: String, language: TranslationLanguage) -> String {
+        guard language != .original,
+              let apiKey = KeychainService.loadAPIKey(), !apiKey.isEmpty else {
+            return text
+        }
+        do {
+            return try translateText(
+                text: text,
+                targetLanguage: language.rawValue,
+                apiKey: apiKey,
+                provider: .openAi
+            )
+        } catch {
+            logger.error("Translation failed: \(error.localizedDescription)")
+            return text
+        }
     }
 }
 

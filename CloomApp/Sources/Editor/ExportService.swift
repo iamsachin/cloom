@@ -13,6 +13,7 @@ enum ExportService {
         quality: VideoQuality,
         recordingQuality: VideoQuality?,
         includeSubtitles: Bool,
+        subtitleLanguage: TranslationLanguage = .original,
         reframeConfig: ReframeConfig? = nil,
         destURL: URL,
         progress: @escaping @MainActor (Double) -> Void
@@ -28,6 +29,10 @@ enum ExportService {
                 edl: snapshot,
                 totalDurationMs: durationMs
             )
+
+            if subtitleLanguage != .original {
+                subtitlePhrases = translatePhrases(subtitlePhrases, to: subtitleLanguage)
+            }
         }
 
         let unmodified = isExportUnmodified(
@@ -319,5 +324,58 @@ enum ExportService {
         && snapshot.speedMultiplier == 1.0
         && snapshot.stitchVideoIDs.isEmpty
         && snapshot.blurRegions.isEmpty
+    }
+
+    // MARK: - Translation
+
+    /// Batch-translate subtitle phrases by joining texts with newlines,
+    /// sending one LLM call, then splitting back into individual phrases.
+    private static func translatePhrases(
+        _ phrases: [SubtitlePhrase],
+        to language: TranslationLanguage
+    ) -> [SubtitlePhrase] {
+        guard let apiKey = KeychainService.loadAPIKey(), !apiKey.isEmpty else {
+            logger.warning("No API key available for translation — using original text")
+            return phrases
+        }
+
+        let nonEmptyPhrases = phrases.filter { !$0.text.isEmpty }
+        guard !nonEmptyPhrases.isEmpty else { return phrases }
+
+        let batchText = nonEmptyPhrases.map(\.text).joined(separator: "\n")
+
+        do {
+            let translated = try translateText(
+                text: batchText,
+                targetLanguage: language.rawValue,
+                apiKey: apiKey,
+                provider: .openAi
+            )
+
+            let lines = translated.components(separatedBy: "\n")
+
+            // If line count matches, map translations back onto non-empty phrases
+            if lines.count == nonEmptyPhrases.count {
+                var translatedMap: [String: String] = [:]
+                for (i, phrase) in nonEmptyPhrases.enumerated() {
+                    translatedMap[phrase.text] = lines[i]
+                }
+                return phrases.map { phrase in
+                    if phrase.text.isEmpty { return phrase }
+                    return SubtitlePhrase(
+                        text: translatedMap[phrase.text] ?? phrase.text,
+                        startMs: phrase.startMs,
+                        endMs: phrase.endMs
+                    )
+                }
+            } else {
+                // Fallback: use full translated text as single replacement if count mismatch
+                logger.warning("Translation line count mismatch (\(lines.count) vs \(nonEmptyPhrases.count)) — using original text")
+                return phrases
+            }
+        } catch {
+            logger.error("Translation failed: \(error.localizedDescription)")
+            return phrases
+        }
     }
 }

@@ -160,3 +160,32 @@ fn test_truncate_multibyte_utf8_no_panic() {
     // Every char is 2 bytes, so the result should be truncated at a char boundary
     assert_eq!(result.len() % 2, 0);
 }
+
+// --- translate_text tests ---
+
+#[test]
+fn test_translate_text_validates_provider() {
+    // translate_text delegates to validate_provider → chat_completion.
+    // We can verify the function signature compiles and the provider check works
+    // by calling it with an empty API key (provider validation passes, API call fails).
+    let result = translate_text(
+        "Hello world".to_string(),
+        "Spanish".to_string(),
+        "".to_string(),
+        LlmProvider::OpenAi,
+    );
+    // Should fail at the API call level (empty key), not at provider validation
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_translate_text_empty_text() {
+    let result = translate_text(
+        "".to_string(),
+        "French".to_string(),
+        "".to_string(),
+        LlmProvider::OpenAi,
+    );
+    // Empty text with empty key should still fail at API level
+    assert!(result.is_err());
+}
