@@ -7,7 +7,10 @@ pub use ai::llm::{generate_chapters, generate_summary, generate_title, format_pa
 pub use ai::transcribe::{transcribe_audio, transcribe_audio_chunked, Transcript, TranscriptWord, TranscriptionProvider};
 
 mod audio;
-pub use audio::filler::{identify_filler_words, FillerWord};
+pub use audio::filler::{
+    default_filler_phrases, default_filler_words, identify_filler_words,
+    identify_filler_words_custom, FillerWord,
+};
 pub use audio::silence::{detect_silence, TimeRange};
 
 use thiserror::Error;

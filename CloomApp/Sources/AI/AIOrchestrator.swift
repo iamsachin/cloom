@@ -85,7 +85,7 @@ actor AIOrchestrator {
         let trimmedText = transcript.fullText.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasEnoughText = trimmedText.count >= 10
 
-        // Step 2: Filler word detection
+        // Step 2: Filler word detection (with user-configured word lists & sensitivity)
         let fillerWords: [FillerWord]
         do {
             let transcriptWords = transcript.words.map { w in
@@ -96,7 +96,16 @@ actor AIOrchestrator {
                     confidence: w.confidence
                 )
             }
-            fillerWords = identifyFillerWords(words: transcriptWords)
+            let defaults = UserDefaults.standard
+            let customSingles = defaults.stringArray(forKey: UserDefaultsKeys.fillerWordsSingle) ?? []
+            let customPhrases = defaults.stringArray(forKey: UserDefaultsKeys.fillerWordsPhrases) ?? []
+            let minConf = Float(defaults.double(forKey: UserDefaultsKeys.fillerMinConfidence))
+            fillerWords = identifyFillerWordsCustom(
+                words: transcriptWords,
+                customSingles: customSingles,
+                customPhrases: customPhrases,
+                minConfidence: minConf
+            )
             logger.info("Found \(fillerWords.count) filler words")
         }
 

@@ -17,6 +17,18 @@ const SINGLE_FILLERS: &[&str] = &[
 /// Multi-word fillers (matched via sliding window).
 const MULTI_FILLERS: &[&str] = &["you know", "i mean", "sort of", "kind of"];
 
+/// Returns the default single-word filler list.
+#[uniffi::export]
+pub fn default_filler_words() -> Vec<String> {
+    SINGLE_FILLERS.iter().map(|s| s.to_string()).collect()
+}
+
+/// Returns the default multi-word filler phrases.
+#[uniffi::export]
+pub fn default_filler_phrases() -> Vec<String> {
+    MULTI_FILLERS.iter().map(|s| s.to_string()).collect()
+}
+
 /// Identify filler words in a transcript word list.
 ///
 /// Returns one `FillerWord` entry per detected occurrence. The `count` field
@@ -24,6 +36,32 @@ const MULTI_FILLERS: &[&str] = &["you know", "i mean", "sort of", "kind of"];
 /// can be computed on the Swift side if needed.
 #[uniffi::export]
 pub fn identify_filler_words(words: Vec<TranscriptWord>) -> Vec<FillerWord> {
+    identify_filler_words_custom(words, vec![], vec![], 0.0)
+}
+
+/// Identify filler words with custom word lists and a confidence threshold.
+///
+/// - `custom_singles`: overrides the default single-word filler list (empty = use defaults).
+/// - `custom_phrases`: overrides the default multi-word filler list (empty = use defaults).
+/// - `min_confidence`: skip words whose `confidence` is below this value (0.0 = no filtering).
+#[uniffi::export]
+pub fn identify_filler_words_custom(
+    words: Vec<TranscriptWord>,
+    custom_singles: Vec<String>,
+    custom_phrases: Vec<String>,
+    min_confidence: f32,
+) -> Vec<FillerWord> {
+    let singles: Vec<&str> = if custom_singles.is_empty() {
+        SINGLE_FILLERS.to_vec()
+    } else {
+        custom_singles.iter().map(|s| s.as_str()).collect()
+    };
+    let phrases: Vec<&str> = if custom_phrases.is_empty() {
+        MULTI_FILLERS.to_vec()
+    } else {
+        custom_phrases.iter().map(|s| s.as_str()).collect()
+    };
+
     let mut results = Vec::with_capacity(words.len() / 5);
 
     // Pre-compute cleaned/lowercased words once to avoid redundant allocations
@@ -34,7 +72,10 @@ pub fn identify_filler_words(words: Vec<TranscriptWord>) -> Vec<FillerWord> {
 
     // Single-word fillers
     for (i, lower) in cleaned.iter().enumerate() {
-        if SINGLE_FILLERS.contains(&lower.as_str()) {
+        if min_confidence > 0.0 && words[i].confidence < min_confidence {
+            continue;
+        }
+        if singles.contains(&lower.as_str()) {
             results.push(FillerWord {
                 word: lower.clone(),
                 start_ms: words[i].start_ms,
@@ -50,9 +91,17 @@ pub fn identify_filler_words(words: Vec<TranscriptWord>) -> Vec<FillerWord> {
             continue;
         }
         for i in 0..=(cleaned.len() - window_size) {
+            // Skip if any word in the window is below confidence threshold
+            if min_confidence > 0.0
+                && words[i..i + window_size]
+                    .iter()
+                    .any(|w| w.confidence < min_confidence)
+            {
+                continue;
+            }
             let phrase: String = cleaned[i..i + window_size].join(" ");
 
-            if MULTI_FILLERS.contains(&phrase.as_str()) {
+            if phrases.contains(&phrase.as_str()) {
                 results.push(FillerWord {
                     word: phrase,
                     start_ms: words[i].start_ms,
@@ -232,5 +281,119 @@ mod tests {
         for f in &fillers {
             assert_eq!(f.count, 1);
         }
+    }
+
+    // --- Tests for identify_filler_words_custom ---
+
+    fn make_word_conf(word: &str, start_ms: i64, end_ms: i64, confidence: f32) -> TranscriptWord {
+        TranscriptWord {
+            word: word.to_string(),
+            start_ms,
+            end_ms,
+            confidence,
+        }
+    }
+
+    #[test]
+    fn test_custom_singles_override() {
+        let words = vec![
+            make_word("um", 0, 300),
+            make_word("well", 300, 600),
+            make_word("like", 600, 900),
+        ];
+        // Custom list: only "well" is a filler
+        let fillers = identify_filler_words_custom(
+            words,
+            vec!["well".to_string()],
+            vec![],
+            0.0,
+        );
+        assert_eq!(fillers.len(), 1);
+        assert_eq!(fillers[0].word, "well");
+    }
+
+    #[test]
+    fn test_custom_phrases_override() {
+        let words = vec![
+            make_word("you", 0, 200),
+            make_word("know", 200, 400),
+            make_word("at", 500, 600),
+            make_word("the", 600, 700),
+            make_word("end", 700, 800),
+            make_word("of", 800, 900),
+            make_word("the", 900, 1000),
+            make_word("day", 1000, 1100),
+        ];
+        let fillers = identify_filler_words_custom(
+            words,
+            vec![],
+            vec!["at the end".to_string()],
+            0.0,
+        );
+        // "you know" should NOT match (custom phrases override defaults)
+        // "at the end" should match (3-word window)
+        assert_eq!(fillers.len(), 1);
+        assert_eq!(fillers[0].word, "at the end");
+    }
+
+    #[test]
+    fn test_confidence_filters_low_confidence_singles() {
+        let words = vec![
+            make_word_conf("um", 0, 300, 0.9),
+            make_word_conf("uh", 300, 600, 0.3),
+            make_word_conf("like", 600, 900, 0.8),
+        ];
+        let fillers = identify_filler_words_custom(words, vec![], vec![], 0.5);
+        assert_eq!(fillers.len(), 2);
+        assert_eq!(fillers[0].word, "um");
+        assert_eq!(fillers[1].word, "like");
+    }
+
+    #[test]
+    fn test_confidence_filters_low_confidence_phrases() {
+        let words = vec![
+            make_word_conf("you", 0, 200, 0.9),
+            make_word_conf("know", 200, 400, 0.2), // low confidence
+            make_word_conf("I", 500, 600, 0.8),
+            make_word_conf("mean", 600, 800, 0.7),
+        ];
+        let fillers = identify_filler_words_custom(words, vec![], vec![], 0.5);
+        // "you know" skipped (one word below threshold), "i mean" matches
+        assert_eq!(fillers.len(), 1);
+        assert_eq!(fillers[0].word, "i mean");
+    }
+
+    #[test]
+    fn test_confidence_zero_disables_filtering() {
+        let words = vec![
+            make_word_conf("um", 0, 300, 0.1),
+            make_word_conf("uh", 300, 600, 0.01),
+        ];
+        let fillers = identify_filler_words_custom(words, vec![], vec![], 0.0);
+        assert_eq!(fillers.len(), 2);
+    }
+
+    #[test]
+    fn test_custom_empty_lists_use_defaults() {
+        let words = vec![make_word("um", 0, 300), make_word("uh", 300, 600)];
+        let fillers = identify_filler_words_custom(words.clone(), vec![], vec![], 0.0);
+        let default_fillers = identify_filler_words(words);
+        assert_eq!(fillers.len(), default_fillers.len());
+    }
+
+    #[test]
+    fn test_default_filler_words_returns_all() {
+        let defaults = default_filler_words();
+        assert_eq!(defaults.len(), 9);
+        assert!(defaults.contains(&"um".to_string()));
+        assert!(defaults.contains(&"like".to_string()));
+    }
+
+    #[test]
+    fn test_default_filler_phrases_returns_all() {
+        let defaults = default_filler_phrases();
+        assert_eq!(defaults.len(), 4);
+        assert!(defaults.contains(&"you know".to_string()));
+        assert!(defaults.contains(&"i mean".to_string()));
     }
 }
