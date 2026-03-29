@@ -3,7 +3,7 @@ uniffi::setup_scaffolding!();
 mod runtime;
 
 mod ai;
-pub use ai::llm::{generate_chapters, generate_summary, generate_title, format_paragraphs, Chapter, LlmProvider};
+pub use ai::llm::{generate_chapters, generate_summary, generate_title, format_paragraphs, translate_text, Chapter, LlmProvider};
 pub use ai::transcribe::{transcribe_audio, transcribe_audio_chunked, Transcript, TranscriptWord, TranscriptionProvider};
 
 mod audio;

@@ -22,11 +22,10 @@ enum ReframeCompositor {
     }
 
     /// Creates a video composition that applies reframing to each frame.
-    @available(macOS, deprecated: 26.0, message: "Migrate to AVVideoComposition.Configuration when API stabilizes")
     static func buildVideoComposition(
         for asset: AVAsset,
         config: ReframeConfig
-    ) async throws -> AVMutableVideoComposition {
+    ) async throws -> AVVideoComposition {
         let tracks = try await asset.loadTracks(withMediaType: .video)
         guard let videoTrack = tracks.first else { throw ReframeError.noVideoTrack }
 
@@ -47,37 +46,43 @@ enum ReframeCompositor {
             focusY: ciFocusY
         )
 
-        let videoComposition = AVMutableVideoComposition(
-            asset: asset,
-            applyingCIFiltersWithHandler: { request in
-                autoreleasepool {
-                    let source = request.sourceImage
+        let frameRate = try await videoTrack.load(.nominalFrameRate)
+        let fps = frameRate > 0 ? Int32(frameRate.rounded()) : 30
 
-                    let background = makeBackground(
-                        from: source,
-                        sourceSize: sourceSize,
-                        outputSize: outputSize,
-                        fillStyle: config.backgroundFill
-                    )
+        // Create CI filter composition (auto-derives renderSize from asset)
+        let ciComposition = try await AVVideoComposition(
+            applyingFiltersTo: asset,
+            applier: { params in
+                let source = params.sourceImage
 
-                    let foreground = cropAndScale(
-                        source,
-                        cropRect: crop,
-                        targetSize: outputSize
-                    )
+                let background = makeBackground(
+                    from: source,
+                    sourceSize: sourceSize,
+                    outputSize: outputSize,
+                    fillStyle: config.backgroundFill
+                )
 
-                    let composite = foreground.composited(over: background)
-                    let result = composite.cropped(to: CGRect(origin: .zero, size: outputSize))
+                let foreground = cropAndScale(
+                    source,
+                    cropRect: crop,
+                    targetSize: outputSize
+                )
 
-                    request.finish(with: result, context: SharedCIContext.instance)
-                }
+                let composite = foreground.composited(over: background)
+                let result = composite.cropped(to: CGRect(origin: .zero, size: outputSize))
+
+                return AVCIImageFilteringResult(resultImage: result, ciContext: SharedCIContext.instance)
             }
         )
 
-        videoComposition.renderSize = outputSize
-        let frameRate = try await videoTrack.load(.nominalFrameRate)
-        let fps = frameRate > 0 ? Int32(frameRate.rounded()) : 30
-        videoComposition.frameDuration = CMTime(value: 1, timescale: fps)
+        // Rebuild with custom renderSize for the target aspect ratio
+        let reframeConfig = AVVideoComposition.Configuration(
+            customVideoCompositorClass: ciComposition.customVideoCompositorClass,
+            frameDuration: CMTime(value: 1, timescale: fps),
+            instructions: ciComposition.instructions,
+            renderSize: outputSize
+        )
+        let videoComposition = AVVideoComposition(configuration: reframeConfig)
 
         logger.info(
             "Reframe: \(sourceSize.width)x\(sourceSize.height) → \(outputSize.width)x\(outputSize.height)"

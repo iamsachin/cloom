@@ -187,11 +187,19 @@ struct EditorToolbarView: View {
             }
             if video?.hasTranscript == true, let transcript = video?.transcript {
                 Divider()
-                Button("Export Transcript as Markdown...") {
-                    exportTranscript(format: .markdown, transcript: transcript)
+                Menu("Export Transcript as Markdown...") {
+                    ForEach(TranslationLanguage.allCases) { lang in
+                        Button(lang.rawValue) {
+                            exportTranscript(format: .markdown, transcript: transcript, language: lang)
+                        }
+                    }
                 }
-                Button("Export Transcript as PDF...") {
-                    exportTranscript(format: .pdf, transcript: transcript)
+                Menu("Export Transcript as PDF...") {
+                    ForEach(TranslationLanguage.allCases) { lang in
+                        Button(lang.rawValue) {
+                            exportTranscript(format: .pdf, transcript: transcript, language: lang)
+                        }
+                    }
                 }
             }
         } label: {
@@ -281,19 +289,24 @@ struct EditorToolbarView: View {
 
     private enum TranscriptFormat { case markdown, pdf }
 
-    private func exportTranscript(format: TranscriptFormat, transcript: TranscriptRecord) {
+    private func exportTranscript(
+        format: TranscriptFormat,
+        transcript: TranscriptRecord,
+        language: TranslationLanguage = .original
+    ) {
         let panel = NSSavePanel()
         let title = video?.title ?? "Transcript"
         let summary = video?.summary
         let chapters = video?.chapters ?? []
+        let langSuffix = language != .original ? "-\(language.rawValue.lowercased())" : ""
 
         switch format {
         case .markdown:
             panel.allowedContentTypes = [.plainText]
-            panel.nameFieldStringValue = "\(title).md"
+            panel.nameFieldStringValue = "\(title)\(langSuffix).md"
         case .pdf:
             panel.allowedContentTypes = [.pdf]
-            panel.nameFieldStringValue = "\(title).pdf"
+            panel.nameFieldStringValue = "\(title)\(langSuffix).pdf"
         }
 
         guard panel.runModal() == .OK, let destURL = panel.url else { return }
@@ -302,12 +315,13 @@ struct EditorToolbarView: View {
             switch format {
             case .markdown:
                 try TranscriptExportService.exportAsMarkdown(
-                    title: title, summary: summary, transcript: transcript, chapters: chapters, destURL: destURL
+                    title: title, summary: summary, transcript: transcript,
+                    chapters: chapters, translationLanguage: language, destURL: destURL
                 )
             case .pdf:
                 try TranscriptExportService.exportAsPDF(
                     title: title, summary: summary, transcript: transcript, chapters: chapters,
-                    durationMs: video?.durationMs ?? 0, destURL: destURL
+                    durationMs: video?.durationMs ?? 0, translationLanguage: language, destURL: destURL
                 )
             }
         } catch {

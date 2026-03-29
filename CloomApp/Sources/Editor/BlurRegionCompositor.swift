@@ -11,12 +11,11 @@ enum BlurRegionCompositor {
 
     /// Creates a video composition that blurs specified regions per frame.
     /// Regions are time-aware: only active regions for the current frame time are applied.
-    @available(macOS, deprecated: 26.0, message: "Migrate to AVVideoComposition.Configuration when API stabilizes")
     static func buildVideoComposition(
         for asset: AVAsset,
         regions: [BlurRegion],
         sourceSize: CGSize
-    ) async throws -> AVMutableVideoComposition {
+    ) async throws -> AVVideoComposition {
         let tracks = try await asset.loadTracks(withMediaType: .video)
         guard let videoTrack = tracks.first else {
             throw NSError(domain: "BlurRegionCompositor", code: -1,
@@ -26,27 +25,20 @@ enum BlurRegionCompositor {
         let naturalSize = try await videoTrack.load(.naturalSize)
         let size = naturalSize.width > 0 ? naturalSize : sourceSize
 
-        let videoComposition = AVMutableVideoComposition(
-            asset: asset,
-            applyingCIFiltersWithHandler: { request in
-                autoreleasepool {
-                    let frameTimeMs = Int64(request.compositionTime.seconds * 1000)
-                    var image = request.sourceImage
+        let videoComposition = try await AVVideoComposition(
+            applyingFiltersTo: asset,
+            applier: { params in
+                let frameTimeMs = Int64(params.compositionTime.seconds * 1000)
+                var image = params.sourceImage
 
-                    // Apply each active blur region
-                    for region in regions where frameTimeMs >= region.startMs && frameTimeMs <= region.endMs {
-                        image = applyBlur(to: image, region: region, videoSize: size)
-                    }
-
-                    request.finish(with: image, context: SharedCIContext.instance)
+                // Apply each active blur region
+                for region in regions where frameTimeMs >= region.startMs && frameTimeMs <= region.endMs {
+                    image = applyBlur(to: image, region: region, videoSize: size)
                 }
+
+                return AVCIImageFilteringResult(resultImage: image, ciContext: SharedCIContext.instance)
             }
         )
-
-        videoComposition.renderSize = size
-        let frameRate = try await videoTrack.load(.nominalFrameRate)
-        let fps = frameRate > 0 ? Int32(frameRate.rounded()) : 30
-        videoComposition.frameDuration = CMTime(value: 1, timescale: fps)
 
         logger.info("Blur composition: \(regions.count) regions on \(size.width)x\(size.height)")
 

@@ -89,9 +89,29 @@ pub fn format_paragraphs(
         &provider,
         "Add paragraph breaks to this transcript. Insert exactly \"\\n\\n\" between logical paragraphs \
          (topic changes, speaker pauses, or shifts in subject). \
-         Do NOT change, add, or remove any words or punctuation — return the original text \
-         with only paragraph breaks inserted.",
+         Do NOT change, add, or remove any words. Restore any missing punctuation \
+         (periods, commas, question marks) and fix capitalization at sentence boundaries. \
+         Return the text with paragraph breaks and corrected punctuation.",
     )
+}
+
+/// Translate text to a target language using the LLM.
+/// `target_language` is a human-readable language name (e.g., "Spanish", "Japanese").
+#[uniffi::export]
+pub fn translate_text(
+    text: String,
+    target_language: String,
+    api_key: String,
+    provider: LlmProvider,
+) -> Result<String, CloomError> {
+    validate_provider(&provider)?;
+    let truncated = truncate_transcript(&text);
+    let prompt = format!(
+        "Translate the following text to {target_language}. \
+         Return ONLY the translated text, preserving all line breaks. \
+         Do not add any commentary or notes.\n\nText:\n{truncated}"
+    );
+    chat_completion(&api_key, &prompt)
 }
 
 /// Shared preamble for all LLM-from-transcript operations:
@@ -141,7 +161,7 @@ fn chat_completion(api_key: &str, prompt: &str) -> Result<String, CloomError> {
             ChatCompletionRequestUserMessage::from(prompt).into();
 
         let request = CreateChatCompletionRequestArgs::default()
-            .model("gpt-4o-mini")
+            .model("gpt-4.1-mini")
             .messages(vec![user_msg])
             .temperature(0.3)
             .build()
