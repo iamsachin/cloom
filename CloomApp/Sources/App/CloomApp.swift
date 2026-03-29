@@ -36,6 +36,15 @@ struct CloomApp: App {
         }
         .defaultSize(width: 1100, height: 700)
 
+        Window("Cloom Features", id: "features") {
+            FeaturesView()
+        }
+        .defaultSize(
+            width: (NSScreen.main?.visibleFrame.width ?? 1200) * 0.8,
+            height: (NSScreen.main?.visibleFrame.height ?? 800) * 0.8
+        )
+        .defaultPosition(.center)
+
         Settings {
             SettingsView()
                 .environmentObject(permissionChecker)
@@ -134,6 +143,11 @@ struct MenuBarView: View {
         }
 
         Divider()
+
+        Button("Features") {
+            NSApp.activate()
+            openWindow(id: "features")
+        }
 
         Button("Check for Updates...") {
             sparkleUpdater.checkForUpdates()

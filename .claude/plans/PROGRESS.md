@@ -1079,6 +1079,18 @@ Auto-translate transcript/captions to selected languages before export for inter
 - [x] Task 242 — Translation service: `translate_text()` UniFFI-exported Rust function using gpt-4.1-mini via OpenAI API; reuses existing `chat_completion` infrastructure
 - [x] Task 243 — Language picker: `TranslationLanguage` enum (15 languages), picker in `EditorExportView` when subtitles enabled, submenu language picker for transcript export in `EditorToolbarView`
 - [x] Task 244 — Multi-language subtitle tracks: batch-translate subtitle phrases (join with newline, single API call, split back) in `ExportService.translatePhrases()` before tx3g injection
-- [x] Task 245 — Transcript export: `TranscriptExportService.exportAsMarkdown/exportAsPDF` accept `translationLanguage` param; translate full paragraph text via `translateIfNeeded()` helper; adds "Translated to X" header note
+- [x] Task 245 — Transcript export: `TranscriptExportService.exportAsMarkdown/exportAsPDF` accept `translationLanguage` param; translate full paragraph text via `translateIfNeeded()` helper.  adds "Translated to X" header note
 - [x] Task 246 — Tests + build: 2 new Rust tests (54 total), 6 new Swift tests in `TranslationLanguageTests.swift`, all pass. Also: punctuation fix in `format_paragraphs` prompt, model upgrade gpt-4o-mini → gpt-4.1-mini
+
+---
+
+## Phase 44: Features Page
+**Status:** Done
+
+In-app features directory accessible from the MenuBarExtra dropdown menu. Opens a window with a grid of feature cards, each showing the feature name, keyboard shortcut badge (if applicable), and a short description.
+
+- [x] Task 247 — Feature data model: `AppFeature` struct (id, name, description, shortcut, category) and `AppFeatureCategory` enum (Recording, Editing, Export, AI, Library, Settings). Static list of all app features with their shortcuts.
+- [x] Task 248 — Features grid view: `FeaturesView` with a `LazyVGrid` of feature cards grouped by category. Each card shows feature name, shortcut badge (styled keyboard key caps), and 1-line description. Ultra-thin material styling consistent with Phase 37.
+- [x] Task 249 — Menu item + window: Add "Features" menu item to the MenuBarExtra dropdown. Opens a dedicated `Window` scene displaying the FeaturesView.
+- [x] Task 250 — Tests + build: 11 unit tests for feature data model, category grouping, shortcuts, and build verification.
 
