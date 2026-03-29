@@ -15,6 +15,7 @@ struct EDLSnapshot: Sendable {
     let trimEndMs: Int64
     let cuts: [CutRange]
     let stitchVideoIDs: [String]
+    let blurRegions: [BlurRegion]
     let speedMultiplier: Double
 
     init(from edl: EditDecisionList) {
@@ -22,6 +23,7 @@ struct EDLSnapshot: Sendable {
         self.trimEndMs = edl.trimEndMs
         self.cuts = edl.cuts
         self.stitchVideoIDs = edl.stitchVideoIDs
+        self.blurRegions = edl.blurRegions
         self.speedMultiplier = edl.speedMultiplier
     }
 
@@ -30,12 +32,14 @@ struct EDLSnapshot: Sendable {
         trimEndMs: Int64 = 0,
         cuts: [CutRange] = [],
         stitchVideoIDs: [String] = [],
+        blurRegions: [BlurRegion] = [],
         speedMultiplier: Double = 1.0
     ) {
         self.trimStartMs = trimStartMs
         self.trimEndMs = trimEndMs
         self.cuts = cuts
         self.stitchVideoIDs = stitchVideoIDs
+        self.blurRegions = blurRegions
         self.speedMultiplier = speedMultiplier
     }
 }

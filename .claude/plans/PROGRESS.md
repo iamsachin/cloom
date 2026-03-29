@@ -1059,15 +1059,15 @@ Settings UI to customize which words count as fillers and adjust detection sensi
 ---
 
 ## Phase 42: PII Redaction / Blur Regions
-**Status:** Not Started
+**Status:** Complete
 
 Post-recording blur/pixelate tool to redact sensitive areas (passwords, emails, dashboards) in the editor before export.
 
-- [ ] Task 237 — Blur region model: time range + rect + blur style (Gaussian, pixelate, black box) in EDL
-- [ ] Task 238 — Editor UI: draw blur rectangles on video preview, resize/move handles, per-region time range
-- [ ] Task 239 — Export rendering: apply blur CIFilters to specified regions during re-encode
-- [ ] Task 240 — Undo/redo integration: blur regions participate in EDLUndoManager stack
-- [ ] Task 241 — Tests + build verification
+- [x] Task 237 — Blur region model: `BlurRegion` struct (id, time range, normalized rect, `BlurStyle` enum: gaussian/pixelate/blackBox) stored as `blurRegionsJSON` in EDL with default `"[]"` for migration compatibility
+- [x] Task 238 — Editor UI: `BlurRegionOverlayView` for drawing rectangles on video preview via click-drag, `BlurRegionControlsView` side panel with style picker, time range editor, region list; blur toggle in editor toolbar
+- [x] Task 239 — Export rendering: `BlurRegionCompositor` builds `AVMutableVideoComposition` with per-frame CIFilter blur (Gaussian, pixelate, or black box) using time-aware region activation; integrated into ExportService for edited paths
+- [x] Task 240 — Undo/redo: `blurRegionsJSON` included in `EDLState` snapshot — add/remove/update blur regions all record state via `EDLUndoManager`
+- [x] Task 241 — Tests: 10 new Swift tests in `BlurRegionTests.swift` (model, style, JSON serialization, EDLSnapshot, export unmodified check), all pass. 52 Rust tests pass.
 
 ---
 

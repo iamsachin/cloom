@@ -36,6 +36,9 @@ struct EditorTimelineView: View {
                 // Cut region overlays
                 CutRegionOverlay(editorState: editorState, timelineWidth: width)
 
+                // Blur region overlays on timeline
+                blurRegionBars(durationMs: durationMs, width: width, height: height)
+
                 // Auto-cut preview overlay (silences/fillers)
                 if editorState.isShowingCutPreview {
                     AutoCutPreviewOverlay(editorState: editorState, timelineWidth: width)
@@ -161,6 +164,37 @@ struct EditorTimelineView: View {
                 context.stroke(centerLine, with: .color(.accentColor.opacity(0.3)), lineWidth: 0.5)
             }
             .frame(width: width, height: height)
+        }
+    }
+
+    // MARK: - Blur Region Bars
+
+    @ViewBuilder
+    private func blurRegionBars(durationMs: Int64, width: CGFloat, height: CGFloat) -> some View {
+        let regions = editorState.edl.blurRegions
+        if !regions.isEmpty && durationMs > 0 {
+            ForEach(regions) { region in
+                let startFrac = CGFloat(region.startMs) / CGFloat(durationMs)
+                let endFrac = CGFloat(region.endMs) / CGFloat(durationMs)
+                let barX = startFrac * width
+                let barW = max(2, (endFrac - startFrac) * width)
+
+                Rectangle()
+                    .fill(blurBarColor(region.style).opacity(0.35))
+                    .frame(width: barW, height: 6)
+                    .clipShape(Capsule())
+                    .offset(x: barX + barW / 2 - width / 2, y: height * 0.42)
+                    .help("\(region.style.displayName) (\(formatMs(region.startMs))–\(formatMs(region.endMs)))")
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+
+    private func blurBarColor(_ style: BlurStyle) -> Color {
+        switch style {
+        case .gaussian: .red
+        case .pixelate: .orange
+        case .blackBox: .white
         }
     }
 

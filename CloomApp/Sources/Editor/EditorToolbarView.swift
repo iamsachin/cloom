@@ -12,6 +12,7 @@ struct EditorToolbarView: View {
     @Binding var showInfoPanel: Bool
     @Binding var showBookmarksPanel: Bool
     @Binding var showCommentsPanel: Bool
+    @Binding var showBlurPanel: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -151,6 +152,16 @@ struct EditorToolbarView: View {
         .buttonStyle(.hover)
         .help("Set custom thumbnail")
         .accessibilityLabel("Set custom thumbnail")
+
+        Button {
+            showBlurPanel.toggle()
+        } label: {
+            Image(systemName: showBlurPanel ? "eye.slash.fill" : "eye.slash")
+                .foregroundStyle(.red)
+        }
+        .buttonStyle(.hover)
+        .help("Blur / redact regions")
+        .accessibilityLabel(showBlurPanel ? "Hide blur panel" : "Show blur panel")
 
         Divider().frame(height: 20)
 
