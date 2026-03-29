@@ -13,6 +13,7 @@ enum ExportService {
         quality: VideoQuality,
         recordingQuality: VideoQuality?,
         includeSubtitles: Bool,
+        reframeConfig: ReframeConfig? = nil,
         destURL: URL,
         progress: @escaping @MainActor (Double) -> Void
     ) async throws {
@@ -33,16 +34,17 @@ enum ExportService {
             snapshot: snapshot, durationMs: durationMs
         )
         let qualityMatchesRecording = quality == (recordingQuality ?? quality)
+        let hasReframe = reframeConfig != nil
 
-        // Unmodified + quality matches recording + no subtitles → passthrough copy
-        if unmodified && qualityMatchesRecording && subtitlePhrases.isEmpty {
+        // Unmodified + quality matches recording + no subtitles + no reframe → passthrough copy
+        if unmodified && qualityMatchesRecording && subtitlePhrases.isEmpty && !hasReframe {
             try FileManager.default.copyItem(at: sourceURL, to: destURL)
             logger.info("Passthrough copy → \(destURL.lastPathComponent)")
             return
         }
 
-        // Unmodified + quality matches recording + subtitles → inject directly
-        if unmodified && qualityMatchesRecording && !subtitlePhrases.isEmpty {
+        // Unmodified + quality matches recording + subtitles + no reframe → inject directly
+        if unmodified && qualityMatchesRecording && !subtitlePhrases.isEmpty && !hasReframe {
             try await ExportWriter.injectSubtitles(
                 sourceURL: sourceURL,
                 outputURL: destURL,
@@ -52,8 +54,8 @@ enum ExportService {
             return
         }
 
-        // Unmodified + different quality → re-encode from source asset
-        if unmodified {
+        // Unmodified + no reframe + different quality → re-encode from source asset
+        if unmodified && !hasReframe {
             let asset = AVURLAsset(url: sourceURL)
             if subtitlePhrases.isEmpty {
                 guard let session = AVAssetExportSession(
@@ -95,6 +97,22 @@ enum ExportService {
             return
         }
 
+        // Reframe from source (unmodified video, just reframing)
+        if unmodified && hasReframe {
+            let asset = AVURLAsset(url: sourceURL)
+            try await exportWithReframe(
+                asset: asset,
+                audioMix: nil,
+                reframeConfig: reframeConfig!,
+                quality: quality,
+                subtitlePhrases: subtitlePhrases,
+                durationMs: durationMs,
+                destURL: destURL,
+                progress: progress
+            )
+            return
+        }
+
         // Edited: build composition
         let builder = EditorCompositionBuilder()
         let result = try await builder.build(
@@ -102,6 +120,21 @@ enum ExportService {
             sourceURL: sourceURL,
             stitchURLs: []
         )
+
+        // Edited + reframe
+        if hasReframe {
+            try await exportWithReframe(
+                asset: result.composition,
+                audioMix: result.audioMix,
+                reframeConfig: reframeConfig!,
+                quality: quality,
+                subtitlePhrases: subtitlePhrases,
+                durationMs: Int64(result.composition.duration.seconds * 1000),
+                destURL: destURL,
+                progress: progress
+            )
+            return
+        }
 
         // Edited + no subtitles → AVAssetExportSession
         if subtitlePhrases.isEmpty {
@@ -147,6 +180,56 @@ enum ExportService {
             phrases: subtitlePhrases,
             durationMs: compositionDurationMs
         ) { p in Task { @MainActor in progress(p) } }
+    }
+
+    // MARK: - Reframe Export
+
+    private static func exportWithReframe(
+        asset: AVAsset,
+        audioMix: AVMutableAudioMix?,
+        reframeConfig: ReframeConfig,
+        quality: VideoQuality,
+        subtitlePhrases: [SubtitlePhrase],
+        durationMs: Int64,
+        destURL: URL,
+        progress: @escaping @MainActor (Double) -> Void
+    ) async throws {
+        let videoComposition = try await ReframeCompositor.buildVideoComposition(
+            for: asset,
+            config: reframeConfig
+        )
+
+        // Must use HighestQuality preset — named resolution presets ignore videoComposition
+        guard let session = AVAssetExportSession(
+            asset: asset,
+            presetName: AVAssetExportPresetHighestQuality
+        ) else {
+            throw NSError(
+                domain: "ExportService", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Could not create export session"]
+            )
+        }
+        session.videoComposition = videoComposition
+        if let audioMix { session.audioMix = audioMix }
+
+        if subtitlePhrases.isEmpty {
+            try await session.export(to: destURL, as: .mp4)
+            logger.info("Reframe export → \(destURL.lastPathComponent)")
+        } else {
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString + ".mp4")
+            defer { try? FileManager.default.removeItem(at: tempURL) }
+
+            try await session.export(to: tempURL, as: .mp4)
+
+            try await ExportWriter.injectSubtitles(
+                sourceURL: tempURL,
+                outputURL: destURL,
+                phrases: subtitlePhrases,
+                durationMs: durationMs
+            ) { p in Task { @MainActor in progress(p) } }
+            logger.info("Reframe + subtitles export → \(destURL.lastPathComponent)")
+        }
     }
 
     static func presetForQuality(_ quality: VideoQuality) -> String {
