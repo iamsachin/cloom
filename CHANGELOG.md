@@ -5,6 +5,16 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-03-30
+
+### Added
+- **Teleprompter speed controls** — Slower/Faster buttons on the overlay control bar with live speed indicator (±10 pt/s, range 10–200). Speed changes persist across sessions.
+- **Click-and-drag teleprompter scrolling** — grab and drag the script text up/down for manual positioning, in addition to scroll wheel support.
+
+### Fixed
+- **Toolbar toggle state desync** — zoom, annotations, keystroke, teleprompter, click emphasis, and spotlight buttons now correctly reflect their on/off state after pause/resume (previously reset to "off" when the toolbar was recreated).
+- **Teleprompter script persisting across recordings** — new recordings now start with an empty script panel instead of showing the previous recording's text.
+
 ## [0.7.1] - 2026-03-30
 
 ### Added
