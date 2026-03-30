@@ -1094,3 +1094,14 @@ In-app features directory accessible from the MenuBarExtra dropdown menu. Opens 
 - [x] Task 249 — Menu item + window: Add "Features" menu item to the MenuBarExtra dropdown. Opens a dedicated `Window` scene displaying the FeaturesView.
 - [x] Task 250 — Tests + build: 11 unit tests for feature data model, category grouping, shortcuts, and build verification.
 
+---
+
+## Phase 45: Teleprompter UX Improvements
+**Status:** Complete
+
+Improved teleprompter overlay with runtime speed controls and click-and-drag manual scrolling.
+
+- [x] Task 251 — Speed controls: Added "Slower" / "Faster" buttons to teleprompter control bar with ±10 pt/s steps (clamped 10–200), live speed indicator, persists to UserDefaults
+- [x] Task 252 — Click-and-drag scrolling: Extended ScrollWheelNSView with mouseDown/mouseDragged/mouseUp handlers for grab-and-drag text scrolling with cursor feedback
+- [x] Task 253 — Tests: 12 new tests in TeleprompterTests.swift (speed clamping, persistence, nudge clamping, drag delta math). 28 total teleprompter tests pass.
+

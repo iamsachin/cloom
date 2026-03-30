@@ -102,6 +102,13 @@ final class TeleprompterOverlayWindow {
         updateContent()
     }
 
+    func adjustSpeed(by delta: CGFloat) {
+        let newSpeed = max(10, min(200, scrollSpeed + delta))
+        scrollSpeed = newSpeed
+        UserDefaults.standard.set(Double(newSpeed), forKey: UserDefaultsKeys.teleprompterScrollSpeed)
+        updateContent()
+    }
+
     func updateScrollSpeed(_ speed: CGFloat) {
         self.scrollSpeed = speed
     }
@@ -184,12 +191,14 @@ final class TeleprompterOverlayWindow {
             scrollOffset: scrollOffset,
             isScrolling: isScrolling,
             mirrorEnabled: mirrorEnabled,
+            scrollSpeed: scrollSpeed,
             onToggleScroll: { [weak self] in self?.toggleScrolling() },
             onReset: { [weak self] in self?.resetScroll() },
             onManualScroll: { [weak self] delta in self?.nudgeScroll(by: delta) },
             onContentHeightChanged: { [weak self] height in
                 self?.contentHeight = height
-            }
+            },
+            onSpeedChange: { [weak self] delta in self?.adjustSpeed(by: delta) }
         )
         let hostingView = NSHostingView(rootView: view)
         hostingView.frame = NSRect(origin: .zero, size: frame.size)

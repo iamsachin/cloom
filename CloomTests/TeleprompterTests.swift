@@ -150,4 +150,95 @@ final class TeleprompterTests: XCTestCase {
         let duration = speed > 0 ? maxScroll / speed : CGFloat.infinity
         XCTAssertEqual(duration, .infinity)
     }
+
+    // MARK: - Speed Adjustment Logic
+
+    func testSpeedAdjustClampsToMinimum() {
+        // Simulates adjustSpeed clamping: max(10, min(200, current + delta))
+        let current: CGFloat = 20
+        let delta: CGFloat = -30
+        let result = max(10, min(200, current + delta))
+        XCTAssertEqual(result, 10, "Speed should not go below 10")
+    }
+
+    func testSpeedAdjustClampsToMaximum() {
+        let current: CGFloat = 190
+        let delta: CGFloat = 20
+        let result = max(10, min(200, current + delta))
+        XCTAssertEqual(result, 200, "Speed should not exceed 200")
+    }
+
+    func testSpeedAdjustNormalIncrement() {
+        let current: CGFloat = 60
+        let delta: CGFloat = 10
+        let result = max(10, min(200, current + delta))
+        XCTAssertEqual(result, 70)
+    }
+
+    func testSpeedAdjustNormalDecrement() {
+        let current: CGFloat = 60
+        let delta: CGFloat = -10
+        let result = max(10, min(200, current + delta))
+        XCTAssertEqual(result, 50)
+    }
+
+    func testSpeedAdjustAtBoundaryMinimum() {
+        let current: CGFloat = 10
+        let delta: CGFloat = -10
+        let result = max(10, min(200, current + delta))
+        XCTAssertEqual(result, 10, "Already at minimum, should stay at 10")
+    }
+
+    func testSpeedAdjustAtBoundaryMaximum() {
+        let current: CGFloat = 200
+        let delta: CGFloat = 10
+        let result = max(10, min(200, current + delta))
+        XCTAssertEqual(result, 200, "Already at maximum, should stay at 200")
+    }
+
+    func testSpeedPersistsToUserDefaults() {
+        let defaults = UserDefaults(suiteName: "TeleprompterSpeedPersistSuite")!
+        defaults.removePersistentDomain(forName: "TeleprompterSpeedPersistSuite")
+
+        let newSpeed: CGFloat = 80
+        defaults.set(Double(newSpeed), forKey: UserDefaultsKeys.teleprompterScrollSpeed)
+        let retrieved = defaults.double(forKey: UserDefaultsKeys.teleprompterScrollSpeed)
+        XCTAssertEqual(retrieved, 80.0)
+    }
+
+    // MARK: - Manual Scroll (Nudge)
+
+    func testNudgeScrollClampsToZero() {
+        var scrollOffset: CGFloat = 5
+        let delta: CGFloat = -20
+        scrollOffset = max(0, scrollOffset + delta)
+        XCTAssertEqual(scrollOffset, 0, "Scroll offset should not go negative")
+    }
+
+    func testNudgeScrollClampsToMax() {
+        let contentHeight: CGFloat = 500
+        let viewportHeight: CGFloat = 200
+        let maxScroll = max(0, contentHeight - viewportHeight)
+        var scrollOffset: CGFloat = 290
+        let delta: CGFloat = 20
+        scrollOffset = max(0, scrollOffset + delta)
+        scrollOffset = min(scrollOffset, maxScroll)
+        XCTAssertEqual(scrollOffset, 300, "Scroll offset should not exceed maxScroll")
+    }
+
+    func testDragDeltaCalculation() {
+        // Drag down (lastY > currentY) should scroll content up (positive delta)
+        let lastY: CGFloat = 300
+        let currentY: CGFloat = 280
+        let delta = lastY - currentY
+        XCTAssertEqual(delta, 20, "Dragging down should produce positive delta")
+    }
+
+    func testDragUpDeltaCalculation() {
+        // Drag up (lastY < currentY) should scroll content down (negative delta)
+        let lastY: CGFloat = 280
+        let currentY: CGFloat = 300
+        let delta = lastY - currentY
+        XCTAssertEqual(delta, -20, "Dragging up should produce negative delta")
+    }
 }

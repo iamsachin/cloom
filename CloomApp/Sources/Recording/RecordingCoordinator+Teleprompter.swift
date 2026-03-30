@@ -67,5 +67,6 @@ extension RecordingCoordinator {
         teleprompterOverlay?.dismiss()
         teleprompterScriptPanel?.dismiss()
         teleprompterEnabled = false
+        UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.teleprompterScript)
     }
 }
