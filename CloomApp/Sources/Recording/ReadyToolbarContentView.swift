@@ -4,11 +4,11 @@ struct ReadyToolbarContentView: View {
     @State var micEnabled: Bool
     @State var cameraEnabled: Bool
     @State var systemAudioEnabled: Bool
-    @State var annotationsEnabled: Bool = false
-    @State var clickEmphasisEnabled: Bool = false
-    @State var spotlightEnabled: Bool = false
-    @State var keystrokeEnabled: Bool = false
-    @State var teleprompterEnabled: Bool = false
+    @State var annotationsEnabled: Bool
+    @State var clickEmphasisEnabled: Bool
+    @State var spotlightEnabled: Bool
+    @State var keystrokeEnabled: Bool
+    @State var teleprompterEnabled: Bool
     let onToggleMic: () -> Void
     let onToggleCamera: () -> Void
     let onToggleSystemAudio: () -> Void
@@ -24,6 +24,11 @@ struct ReadyToolbarContentView: View {
         initialMicEnabled: Bool,
         initialCameraEnabled: Bool,
         initialSystemAudioEnabled: Bool = true,
+        initialAnnotationsEnabled: Bool = false,
+        initialClickEmphasisEnabled: Bool = false,
+        initialSpotlightEnabled: Bool = false,
+        initialKeystrokeEnabled: Bool = false,
+        initialTeleprompterEnabled: Bool = false,
         onToggleMic: @escaping () -> Void,
         onToggleCamera: @escaping () -> Void,
         onToggleSystemAudio: @escaping () -> Void = {},
@@ -38,6 +43,11 @@ struct ReadyToolbarContentView: View {
         self._micEnabled = State(initialValue: initialMicEnabled)
         self._cameraEnabled = State(initialValue: initialCameraEnabled)
         self._systemAudioEnabled = State(initialValue: initialSystemAudioEnabled)
+        self._annotationsEnabled = State(initialValue: initialAnnotationsEnabled)
+        self._clickEmphasisEnabled = State(initialValue: initialClickEmphasisEnabled)
+        self._spotlightEnabled = State(initialValue: initialSpotlightEnabled)
+        self._keystrokeEnabled = State(initialValue: initialKeystrokeEnabled)
+        self._teleprompterEnabled = State(initialValue: initialTeleprompterEnabled)
         self.onToggleMic = onToggleMic
         self.onToggleCamera = onToggleCamera
         self.onToggleSystemAudio = onToggleSystemAudio

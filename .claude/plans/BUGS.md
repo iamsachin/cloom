@@ -4,6 +4,28 @@ Chronological record of bugs fixed, with root cause analysis and PR links. Newes
 
 ---
 
+## Teleprompter script persists across recordings
+**Date:** 2026-03-30
+
+**Symptom:** Starting a new recording shows the previous recording's teleprompter script pre-filled in the script panel, instead of starting empty.
+
+**Root cause:** The script was saved to `UserDefaults` when confirmed but never cleared when the teleprompter was dismissed or the recording ended. `dismissTeleprompter()` (called by `cleanupAnnotations()` at recording stop/discard) only hid the overlay without clearing the stored script.
+
+**Fix:** Added `UserDefaults.standard.removeObject(forKey: .teleprompterScript)` to `dismissTeleprompter()`, so each new recording starts with a clean script panel.
+
+---
+
+## Recording toolbar toggle buttons show inverted state after pause/resume
+**Date:** 2026-03-30
+
+**Symptom:** Zoom, annotations, keystroke, teleprompter, click emphasis, and cursor spotlight toggle buttons on the recording toolbar could show the wrong on/off state. Most noticeable after pause/resume (which recreates the toolbar) or when features were toggled via keyboard shortcuts or escape key.
+
+**Root cause:** All 6 feature toggle buttons in `RecordingToolbarContentView` and `ReadyToolbarContentView` had their `@State` bools hardcoded to `false`. When the toolbar was recreated (pause/resume rebuilds the `NSHostingView`), local state reset to `false` regardless of the coordinator's actual feature state. The coordinator and view tracked independent bools that only stayed in sync through simultaneous toggling — any external state change (escape key, cleanup) broke the sync.
+
+**Fix:** Changed all 6 feature `@State` bools from hardcoded `false` to `State(initialValue:)` seeded from the coordinator's current state. Threaded the initial values through `RecordingToolbarPanel.show()`/`showReady()` → content view inits → `RecordingCoordinator+UI` call sites.
+
+---
+
 ## Welcome window goes behind other windows after permission dialog
 **Date:** 2026-03-28
 

@@ -9,10 +9,12 @@ struct TeleprompterContentView: View {
     let scrollOffset: CGFloat
     let isScrolling: Bool
     let mirrorEnabled: Bool
+    let scrollSpeed: CGFloat
     let onToggleScroll: () -> Void
     let onReset: () -> Void
     let onManualScroll: (CGFloat) -> Void
     let onContentHeightChanged: (CGFloat) -> Void
+    let onSpeedChange: (CGFloat) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,7 +40,7 @@ struct TeleprompterContentView: View {
     // MARK: - Control Bar
 
     private var controlBar: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 10) {
             // Reset
             Button(action: onReset) {
                 Image(systemName: "arrow.counterclockwise")
@@ -49,6 +51,18 @@ struct TeleprompterContentView: View {
             .help("Reset to top")
 
             Spacer()
+
+            // Slower
+            Button { onSpeedChange(-10) } label: {
+                Text("Slower")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.white.opacity(0.1), in: .capsule)
+            }
+            .buttonStyle(.plain)
+            .help("Decrease scroll speed")
 
             // Play / Pause
             Button(action: onToggleScroll) {
@@ -66,12 +80,25 @@ struct TeleprompterContentView: View {
             .buttonStyle(.plain)
             .help("Toggle auto-scroll (⌘⇧T)")
 
+            // Faster
+            Button { onSpeedChange(10) } label: {
+                Text("Faster")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.white.opacity(0.1), in: .capsule)
+            }
+            .buttonStyle(.plain)
+            .help("Increase scroll speed")
+
             Spacer()
 
-            // Keyboard shortcut hint
-            Text("⌘⇧T")
+            // Speed indicator
+            Text("\(Int(scrollSpeed)) pt/s")
                 .font(.system(size: 11, design: .rounded))
                 .foregroundStyle(.white.opacity(0.4))
+                .monospacedDigit()
         }
         .padding(.horizontal, 16)
         .frame(height: 36)
@@ -160,9 +187,32 @@ private struct ScrollWheelView: NSViewRepresentable {
 
 final class ScrollWheelNSView: NSView {
     var onScroll: ((CGFloat) -> Void)?
+    private var isDragging = false
+    private var lastDragY: CGFloat = 0
 
     override func scrollWheel(with event: NSEvent) {
         onScroll?(event.scrollingDeltaY)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        isDragging = true
+        lastDragY = event.locationInWindow.y
+        NSCursor.closedHand.push()
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard isDragging else { return }
+        let currentY = event.locationInWindow.y
+        let delta = lastDragY - currentY
+        lastDragY = currentY
+        onScroll?(-delta)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        if isDragging {
+            isDragging = false
+            NSCursor.pop()
+        }
     }
 }
 

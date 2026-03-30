@@ -7,12 +7,12 @@ struct RecordingToolbarContentView: View {
     @State var micEnabled: Bool
     @State var cameraEnabled: Bool
     @State var systemAudioEnabled: Bool
-    @State var annotationsEnabled: Bool = false
-    @State var clickEmphasisEnabled: Bool = false
-    @State var spotlightEnabled: Bool = false
-    @State var zoomEnabled: Bool = false
-    @State var keystrokeEnabled: Bool = false
-    @State var teleprompterEnabled: Bool = false
+    @State var annotationsEnabled: Bool
+    @State var clickEmphasisEnabled: Bool
+    @State var spotlightEnabled: Bool
+    @State var zoomEnabled: Bool
+    @State var keystrokeEnabled: Bool
+    @State var teleprompterEnabled: Bool
     let onStop: () -> Void
     let onToggleMic: () -> Void
     let onToggleCamera: () -> Void
@@ -35,6 +35,12 @@ struct RecordingToolbarContentView: View {
         initialMicEnabled: Bool,
         initialCameraEnabled: Bool,
         initialSystemAudioEnabled: Bool = true,
+        initialAnnotationsEnabled: Bool = false,
+        initialClickEmphasisEnabled: Bool = false,
+        initialSpotlightEnabled: Bool = false,
+        initialZoomEnabled: Bool = false,
+        initialKeystrokeEnabled: Bool = false,
+        initialTeleprompterEnabled: Bool = false,
         onStop: @escaping () -> Void,
         onToggleMic: @escaping () -> Void,
         onToggleCamera: @escaping () -> Void,
@@ -56,6 +62,12 @@ struct RecordingToolbarContentView: View {
         self._micEnabled = State(initialValue: initialMicEnabled)
         self._cameraEnabled = State(initialValue: initialCameraEnabled)
         self._systemAudioEnabled = State(initialValue: initialSystemAudioEnabled)
+        self._annotationsEnabled = State(initialValue: initialAnnotationsEnabled)
+        self._clickEmphasisEnabled = State(initialValue: initialClickEmphasisEnabled)
+        self._spotlightEnabled = State(initialValue: initialSpotlightEnabled)
+        self._zoomEnabled = State(initialValue: initialZoomEnabled)
+        self._keystrokeEnabled = State(initialValue: initialKeystrokeEnabled)
+        self._teleprompterEnabled = State(initialValue: initialTeleprompterEnabled)
         self.onStop = onStop
         self.onToggleMic = onToggleMic
         self.onToggleCamera = onToggleCamera
