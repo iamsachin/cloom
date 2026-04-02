@@ -16,6 +16,7 @@ Commit current changes, push to a feature branch, and create a pull request on G
    - Leftover debug prints, `TODO`/`FIXME` comments, or `[DEBUG]` log lines
    - Linter-level issues: trailing whitespace, missing newlines at EOF, inconsistent formatting
    - Accidentally included files (`.env`, credentials, unrelated changes)
+   - **Sensitive info audit**: scan the full diff for API keys, tokens, passwords, secrets, team IDs, email addresses, or any hardcoded credentials. If found, remove them before proceeding.
    - If any issues are found, fix them before proceeding to step 4.
 4. Analyze all changes and draft a concise commit message (1-2 sentences, focus on "why" not "what"). End with `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>`.
 5. If already on a feature branch, use it. Otherwise create one from the changes (e.g. `feature/short-description`).
