@@ -57,7 +57,19 @@ extension RecordingCoordinator {
             onToggleTeleprompter: { [weak self] in self?.toggleTeleprompter() },
             onToggleSystemAudio: { [weak self] in self?.toggleSystemAudio() },
             onDiscard: { [weak self] in self?.discardRecording() },
-            onRewind: { [weak self] in self?.beginRewind() }
+            onRewind: { [weak self] in self?.beginRewind() },
+            onAnnotationToolChanged: { [weak self] tool in self?.annotationCanvas?.currentTool = tool },
+            onAnnotationColorChanged: { [weak self] color in self?.annotationCanvas?.currentColor = color },
+            onAnnotationUndo: { [weak self] in
+                self?.annotationStore?.undo()
+                self?.annotationCanvas?.canvasView?.needsDisplay = true
+            },
+            onAnnotationClearAll: { [weak self] in
+                self?.annotationStore?.clearAll()
+                self?.annotationCanvas?.canvasView?.needsDisplay = true
+            },
+            initialAnnotationTool: annotationCanvas?.currentTool ?? .pen,
+            initialAnnotationColor: annotationCanvas?.currentColor ?? .red
         )
     }
 
@@ -88,7 +100,19 @@ extension RecordingCoordinator {
             onToggleTeleprompter: { [weak self] in self?.toggleTeleprompter() },
             onToggleSystemAudio: { [weak self] in self?.toggleSystemAudio() },
             onDiscard: { [weak self] in self?.discardRecording() },
-            onRewind: { [weak self] in self?.beginRewind() }
+            onRewind: { [weak self] in self?.beginRewind() },
+            onAnnotationToolChanged: { [weak self] tool in self?.annotationCanvas?.currentTool = tool },
+            onAnnotationColorChanged: { [weak self] color in self?.annotationCanvas?.currentColor = color },
+            onAnnotationUndo: { [weak self] in
+                self?.annotationStore?.undo()
+                self?.annotationCanvas?.canvasView?.needsDisplay = true
+            },
+            onAnnotationClearAll: { [weak self] in
+                self?.annotationStore?.clearAll()
+                self?.annotationCanvas?.canvasView?.needsDisplay = true
+            },
+            initialAnnotationTool: annotationCanvas?.currentTool ?? .pen,
+            initialAnnotationColor: annotationCanvas?.currentColor ?? .red
         )
     }
 

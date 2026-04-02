@@ -139,7 +139,7 @@ extension AppFeature {
             name: "Creator Mode",
             description: "Include Cloom's floating UI panels in the recording for tutorials.",
             shortcut: nil,
-            systemImage: "rectangle.on.rectangle.badge.person.crop",
+            systemImage: "person.crop.rectangle.stack",
             category: .recording
         ),
 

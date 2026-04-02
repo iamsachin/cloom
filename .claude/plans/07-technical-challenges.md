@@ -9,7 +9,7 @@
 - `OnboardingView` shows step-by-step permission setup with live status indicators
 - Accessibility made optional with warning (only needed for click emphasis/cursor spotlight)
 - `Info.plist` has `NSScreenCaptureUsageDescription`, `NSCameraUsageDescription`, `NSMicrophoneUsageDescription`
-- During development: `tccutil reset Camera/Microphone/ScreenCapture com.cloom.app` after each rebuild
+- With Developer ID code signing, TCC permissions persist across debug rebuilds
 
 ---
 
