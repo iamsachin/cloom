@@ -22,8 +22,7 @@ Record your screen with webcam overlay, annotate in real time, edit with a non-d
 ### Homebrew (recommended)
 
 ```bash
-brew tap iamsachin/cloom
-brew install --cask cloom
+brew install --cask iamsachin/cloom/cloom
 ```
 
 ### Manual download
@@ -63,12 +62,7 @@ open Cloom.xcodeproj
 
 Press Cmd+R in Xcode to build and run.
 
-> **Note:** After each rebuild, macOS resets TCC permissions. Run these before testing:
-> ```bash
-> tccutil reset Camera com.cloom.app
-> tccutil reset Microphone com.cloom.app
-> tccutil reset ScreenCapture com.cloom.app
-> ```
+> **Note:** With Developer ID code signing, TCC permissions persist across rebuilds. If you use ad-hoc signing, you may need to re-grant permissions after each build.
 
 ## Secrets Setup
 

@@ -32,7 +32,13 @@ final class RecordingToolbarPanel {
         onToggleTeleprompter: @escaping () -> Void = {},
         onToggleSystemAudio: @escaping () -> Void = {},
         onDiscard: @escaping () -> Void = {},
-        onRewind: @escaping () -> Void = {}
+        onRewind: @escaping () -> Void = {},
+        onAnnotationToolChanged: ((AnnotationTool) -> Void)? = nil,
+        onAnnotationColorChanged: ((StrokeColor) -> Void)? = nil,
+        onAnnotationUndo: (() -> Void)? = nil,
+        onAnnotationClearAll: (() -> Void)? = nil,
+        initialAnnotationTool: AnnotationTool = .pen,
+        initialAnnotationColor: StrokeColor = .red
     ) {
         self.onStop = onStop
         if panel == nil { createPanel() }
@@ -65,7 +71,13 @@ final class RecordingToolbarPanel {
                 onToggleTeleprompter: onToggleTeleprompter,
                 onToggleSystemAudio: onToggleSystemAudio,
                 onDiscard: onDiscard,
-                onRewind: onRewind
+                onRewind: onRewind,
+                onAnnotationToolChanged: onAnnotationToolChanged,
+                onAnnotationColorChanged: onAnnotationColorChanged,
+                onAnnotationUndo: onAnnotationUndo,
+                onAnnotationClearAll: onAnnotationClearAll,
+                initialAnnotationTool: initialAnnotationTool,
+                initialAnnotationColor: initialAnnotationColor
             )
         )
 

@@ -1118,3 +1118,14 @@ Adds a "Creator Mode" toggle in Settings that includes Cloom's own floating UI p
 - [x] Task 257 — Panel sharing: Update all 12 `sharingType = .none` assignments across 11 files to use `.readWrite` when creator mode is on
 - [x] Task 258 — Tests: 7 new tests in `CreatorModeTests.swift` (key exists, fromDefaults read, default false, memberwise init, CaptureState default, CaptureState settable, toggle persistence). 322 Swift tests pass.
 
+---
+
+## Phase 47: Inline Annotation Toolbar
+**Status:** Complete
+
+Moved annotation tools from a separate floating `AnnotationToolbarPanel` into the main recording toolbar as a second row. When the pencil icon is toggled on, the annotation tools (pen, highlighter, text, shapes, colors, undo, clear) slide in below the existing controls within the same glass capsule — keeping the UI tidy and reducing floating panel clutter.
+
+- [x] Task 259 — Embed annotation row in `RecordingToolbarContentView`: VStack with conditional second row, tool/color/undo/clear buttons, custom color picker with hex input, animated show/hide
+- [x] Task 260 — Wire annotation callbacks through `RecordingToolbarPanel` and `RecordingCoordinator+UI`: pass tool/color/undo/clear closures from coordinator to content view
+- [x] Task 261 — Remove separate `AnnotationToolbarPanel` usage: `showAnnotationCanvas()` no longer creates or shows `AnnotationToolbarPanel`; `hideAnnotationCanvas()` no longer dismisses it
+
