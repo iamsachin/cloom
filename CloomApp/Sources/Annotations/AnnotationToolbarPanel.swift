@@ -69,7 +69,7 @@ final class AnnotationToolbarPanel {
         panel.hasShadow = true
         panel.isMovableByWindowBackground = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.sharingType = .none
+        panel.sharingType = UserDefaults.standard.bool(forKey: UserDefaultsKeys.creatorModeEnabled) ? .readOnly : .none
         self.panel = panel
     }
 }

@@ -21,7 +21,8 @@ final class SystemContentPicker: NSObject, SCContentSharingPickerObserver, @unch
 
         var config = SCContentSharingPickerConfiguration()
         config.allowedPickerModes = [.singleWindow, .singleDisplay]
-        if let bundleID = Bundle.main.bundleIdentifier {
+        let creatorMode = UserDefaults.standard.bool(forKey: UserDefaultsKeys.creatorModeEnabled)
+        if !creatorMode, let bundleID = Bundle.main.bundleIdentifier {
             config.excludedBundleIDs = [bundleID]
         }
         picker.defaultConfiguration = config

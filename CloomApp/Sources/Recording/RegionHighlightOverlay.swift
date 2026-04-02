@@ -22,7 +22,7 @@ final class RegionHighlightOverlay {
         panel.hasShadow = false
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.sharingType = .none  // Don't capture this overlay
+        panel.sharingType = UserDefaults.standard.bool(forKey: UserDefaultsKeys.creatorModeEnabled) ? .readOnly : .none
 
         let hostingView = NSHostingView(
             rootView: RegionHighlightView(region: region)

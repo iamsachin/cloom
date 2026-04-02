@@ -49,7 +49,8 @@ struct RecordingSettingsTests {
             quality: .high,
             micDeviceID: "mic-abc",
             cameraDeviceID: "cam-xyz",
-            micSensitivity: 150
+            micSensitivity: 150,
+            creatorModeEnabled: false
         )
 
         #expect(settings.fps == 60)

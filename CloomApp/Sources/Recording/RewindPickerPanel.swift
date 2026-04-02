@@ -24,7 +24,7 @@ final class RewindPickerPanel {
             panel.level = NSWindow.Level(Int(CGShieldingWindowLevel()) + 2)
             panel.title = "Rewind Recording"
             panel.isMovableByWindowBackground = true
-            panel.sharingType = .none
+            panel.sharingType = UserDefaults.standard.bool(forKey: UserDefaultsKeys.creatorModeEnabled) ? .readOnly : .none
 
             let hostingView = NSHostingView(
                 rootView: RewindPickerContentView(

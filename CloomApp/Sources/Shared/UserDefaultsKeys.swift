@@ -24,6 +24,7 @@ enum UserDefaultsKeys {
     static let defaultSaveLocation = "defaultSaveLocation"
     static let silenceThresholdDb = "silenceThresholdDb"
     static let silenceMinDurationMs = "silenceMinDurationMs"
+    static let creatorModeEnabled = "creatorModeEnabled"
 
     // MARK: - Keystroke Visualization
     static let keystrokeEnabled = "keystrokeEnabled"

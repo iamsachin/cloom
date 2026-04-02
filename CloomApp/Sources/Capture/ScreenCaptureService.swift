@@ -19,6 +19,7 @@ struct CaptureState: @unchecked Sendable {
     var bufferPool: CVPixelBufferPool?
     var micGainProcessor: MicGainProcessor?
     var isProcessingFrame: Bool = false
+    var creatorMode: Bool = false
 }
 
 @MainActor
@@ -39,7 +40,7 @@ final class ScreenCaptureService: NSObject {
 
     func startCapture(outputURL: URL, mode: CaptureMode, micEnabled: Bool, settings: RecordingSettings, compositor: WebcamCompositor?, annotationRenderer: AnnotationRenderer? = nil, systemAudioEnabled: Bool = true) async throws {
         let content = try await SCShareableContent.current
-        let filter = try buildFilter(mode: mode, content: content)
+        let filter = try buildFilter(mode: mode, content: content, creatorMode: settings.creatorModeEnabled)
         let config = SCStreamConfiguration()
         configureStream(config, mode: mode, content: content)
         configureCommon(config, settings: settings, micEnabled: micEnabled, systemAudioEnabled: systemAudioEnabled)
@@ -87,6 +88,7 @@ final class ScreenCaptureService: NSObject {
             $0.annotationRenderer = annotationRenderer
             $0.micGainProcessor = gainProc.isUnity ? nil : gainProc
             $0.bufferPool = sendablePool
+            $0.creatorMode = settings.creatorModeEnabled
         }
 
         try await stream.startCapture()
@@ -108,6 +110,7 @@ final class ScreenCaptureService: NSObject {
             $0.annotationRenderer = nil
             $0.bufferPool = nil
             $0.micGainProcessor = nil
+            $0.creatorMode = false
         }
 
         logger.info("Capture stopped")

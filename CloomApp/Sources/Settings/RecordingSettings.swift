@@ -30,6 +30,7 @@ struct RecordingSettings {
     let micDeviceID: String?
     let cameraDeviceID: String?
     let micSensitivity: Int
+    let creatorModeEnabled: Bool
 
     static func fromDefaults() -> RecordingSettings {
         let defaults = UserDefaults.standard
@@ -38,13 +39,15 @@ struct RecordingSettings {
         let micID = defaults.string(forKey: UserDefaultsKeys.recordingMicDeviceID)
         let cameraID = defaults.string(forKey: UserDefaultsKeys.recordingCameraDeviceID)
         let sensitivity = defaults.integer(forKey: UserDefaultsKeys.micSensitivity)
+        let creatorMode = defaults.bool(forKey: UserDefaultsKeys.creatorModeEnabled)
 
         return RecordingSettings(
             fps: fps > 0 ? fps : 30,
             quality: VideoQuality(rawValue: qualityRaw) ?? .medium,
             micDeviceID: micID,
             cameraDeviceID: cameraID,
-            micSensitivity: sensitivity > 0 ? sensitivity : 100
+            micSensitivity: sensitivity > 0 ? sensitivity : 100,
+            creatorModeEnabled: creatorMode
         )
     }
 }

@@ -159,7 +159,7 @@ private final class ZoomOverlayWindow {
         panel.hasShadow = false
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.sharingType = .none
+        panel.sharingType = UserDefaults.standard.bool(forKey: UserDefaultsKeys.creatorModeEnabled) ? .readOnly : .none
 
         let view = ZoomOverlayView(frame: screenFrame)
         panel.contentView = view
@@ -186,7 +186,7 @@ private final class ZoomOverlayWindow {
             panel.backgroundColor = .clear
             panel.hasShadow = true
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-            panel.sharingType = .none
+            panel.sharingType = UserDefaults.standard.bool(forKey: UserDefaultsKeys.creatorModeEnabled) ? .readOnly : .none
 
             let hostingView = NSHostingView(rootView: ZoomCloseButton { [weak self] in
                 self?.onClose?()

@@ -40,7 +40,7 @@ extension WebcamBubbleWindow {
         panel.hasShadow = false
         panel.isMovableByWindowBackground = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.sharingType = .none
+        panel.sharingType = UserDefaults.standard.bool(forKey: UserDefaultsKeys.creatorModeEnabled) ? .readOnly : .none
 
         let contentView = BubbleContentView(frame: NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight))
         contentView.onClick = { [weak self] in

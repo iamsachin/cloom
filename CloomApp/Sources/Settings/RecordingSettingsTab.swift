@@ -9,6 +9,7 @@ struct RecordingSettingsTab: View {
     @AppStorage(UserDefaultsKeys.recordingCameraDeviceID) private var cameraDeviceID: String = ""
     @AppStorage(UserDefaultsKeys.micSensitivity) private var micSensitivity: Int = 100
     @AppStorage(UserDefaultsKeys.systemAudioEnabled) private var systemAudioEnabled: Bool = true
+    @AppStorage(UserDefaultsKeys.creatorModeEnabled) private var creatorModeEnabled: Bool = false
     @AppStorage(UserDefaultsKeys.countdownDuration) private var countdownDuration: Int = 3
     @AppStorage(UserDefaultsKeys.defaultSaveLocation) private var defaultSaveLocation: String = ""
     @AppStorage(UserDefaultsKeys.silenceThresholdDb) private var silenceThresholdDb: Double = -40.0
@@ -57,6 +58,17 @@ struct RecordingSettingsTab: View {
 
     var body: some View {
         Form {
+            Section("Creator Mode") {
+                Toggle("Include Cloom UI in Recording", isOn: $creatorModeEnabled)
+                    .help("When enabled, Cloom's floating panels (webcam bubble, annotations, teleprompter, keystrokes) appear in the recorded video as-is instead of being composited in software")
+
+                if creatorModeEnabled {
+                    Text("Cloom's controls and overlays will be visible in your recording. Great for tutorials and walkthroughs.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section("Video") {
                 Picker("Frame Rate", selection: $fps) {
                     Text("30 FPS").tag(30)

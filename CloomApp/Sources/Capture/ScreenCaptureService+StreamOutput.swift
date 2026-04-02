@@ -46,6 +46,13 @@ extension ScreenCaptureService: SCStreamOutput {
 
         guard let writer = state.videoWriter else { return }
 
+        // Creator Mode: SCStream captures panels directly — skip software compositing
+        if state.creatorMode {
+            let wrapped = SendableCVBuffer(buffer: pixelBuffer)
+            Task { await writer.appendVideo(wrapped.buffer, pts: pts) }
+            return
+        }
+
         // Step 1: Composite webcam if available
         let afterWebcam: CVPixelBuffer
         if let comp = state.compositor, let pool = state.bufferPool,
