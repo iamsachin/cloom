@@ -74,8 +74,7 @@ xcodebuild archive \
     -destination 'generic/platform=macOS' \
     -configuration Release \
     ARCHS=arm64 \
-    CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
-    DEVELOPMENT_TEAM="$TEAM_ID" \
+    CODE_SIGN_IDENTITY="-" \
     CODE_SIGNING_ALLOWED=YES \
     ENABLE_HARDENED_RUNTIME=YES \
     -quiet
