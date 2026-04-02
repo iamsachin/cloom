@@ -5,6 +5,20 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-04-02
+
+### Changed
+- **Inline annotation toolbar** — annotation tools (pen, shapes, colors, undo, clear) now appear as a second row inside the main recording toolbar instead of a separate floating panel. Animated slide-in/out.
+- Simplified Homebrew install to single command: `brew install iamsachin/cloom/cloom`.
+
+### Fixed
+- **Google OAuth crash** — "Connect Google Account" froze the app because the OAuth URL scheme wasn't resolving. Root cause: project-level build settings overrode xcconfig values with empty strings.
+- **Creator Mode icon missing** in Features directory — replaced invalid SF Symbol name.
+- **Sparkle gentle reminders** — added `SPUStandardUserDriverDelegate` so background update checks show in-app nudges instead of a silent warning log.
+
+### Removed
+- TCC permission resets from build script — no longer needed with Developer ID code signing.
+
 ## [1.0.1] - 2026-04-02
 
 ### Added
