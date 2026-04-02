@@ -131,7 +131,7 @@ final class TeleprompterOverlayWindow {
         panel.hasShadow = true
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.sharingType = .none
+        panel.sharingType = UserDefaults.standard.bool(forKey: UserDefaultsKeys.creatorModeEnabled) ? .readOnly : .none
         panel.isMovableByWindowBackground = true
         panel.minSize = NSSize(width: 300, height: 150)
 

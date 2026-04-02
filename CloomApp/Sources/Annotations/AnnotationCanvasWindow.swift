@@ -75,7 +75,7 @@ final class AnnotationCanvasWindow {
         panel.hasShadow = false
         panel.ignoresMouseEvents = !isDrawingEnabled
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.sharingType = .none
+        panel.sharingType = UserDefaults.standard.bool(forKey: UserDefaultsKeys.creatorModeEnabled) ? .readOnly : .none
 
         let view = AnnotationCanvasView(frame: frame, store: store, screenFrame: frame)
         view.currentTool = currentTool

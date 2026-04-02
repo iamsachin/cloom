@@ -1105,3 +1105,16 @@ Improved teleprompter overlay with runtime speed controls and click-and-drag man
 - [x] Task 252 — Click-and-drag scrolling: Extended ScrollWheelNSView with mouseDown/mouseDragged/mouseUp handlers for grab-and-drag text scrolling with cursor feedback
 - [x] Task 253 — Tests: 12 new tests in TeleprompterTests.swift (speed clamping, persistence, nudge clamping, drag delta math). 28 total teleprompter tests pass.
 
+---
+
+## Phase 46: Creator Mode
+**Status:** Complete
+
+Adds a "Creator Mode" toggle in Settings that includes Cloom's own floating UI panels (webcam bubble, annotation toolbar, teleprompter, keystroke overlay, zoom, recording toolbar) in the screen recording output. When enabled, SCStream captures the visible panels directly instead of software-compositing them into the pixel buffer. Toggle is only changeable when not recording.
+
+- [x] Task 254 — Setting: Add `creatorModeEnabled` UserDefaults key, read in `RecordingSettings`, add toggle to `RecordingSettingsTab`
+- [x] Task 255 — Filter: Update `buildFilter` to not exclude Cloom app when creator mode is on; update `ContentPicker` to not exclude bundle ID
+- [x] Task 256 — Compositing: Skip webcam/annotation/zoom software compositing in `ScreenCaptureService+StreamOutput` when creator mode is on
+- [x] Task 257 — Panel sharing: Update all 12 `sharingType = .none` assignments across 11 files to use `.readWrite` when creator mode is on
+- [x] Task 258 — Tests: 7 new tests in `CreatorModeTests.swift` (key exists, fromDefaults read, default false, memberwise init, CaptureState default, CaptureState settable, toggle persistence). 322 Swift tests pass.
+

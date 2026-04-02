@@ -5,17 +5,17 @@ import AVFoundation
 
 extension ScreenCaptureService {
 
-    func buildFilter(mode: CaptureMode, content: SCShareableContent) throws -> SCContentFilter {
+    func buildFilter(mode: CaptureMode, content: SCShareableContent, creatorMode: Bool = false) throws -> SCContentFilter {
         switch mode {
         case .fullScreen(let displayID):
             guard let display = content.displays.first(where: { $0.displayID == displayID })
                     ?? content.displays.first else {
                 throw CaptureError.noDisplay
             }
-            let selfApp = content.applications.filter {
+            let excludedApps: [SCRunningApplication] = creatorMode ? [] : content.applications.filter {
                 $0.bundleIdentifier == Bundle.main.bundleIdentifier
             }
-            return SCContentFilter(display: display, excludingApplications: selfApp, exceptingWindows: [])
+            return SCContentFilter(display: display, excludingApplications: excludedApps, exceptingWindows: [])
 
         case .window(let windowID):
             guard let window = content.windows.first(where: { $0.windowID == windowID }) else {
@@ -28,10 +28,10 @@ extension ScreenCaptureService {
                     ?? content.displays.first else {
                 throw CaptureError.noDisplay
             }
-            let selfApp = content.applications.filter {
+            let excludedApps: [SCRunningApplication] = creatorMode ? [] : content.applications.filter {
                 $0.bundleIdentifier == Bundle.main.bundleIdentifier
             }
-            return SCContentFilter(display: display, excludingApplications: selfApp, exceptingWindows: [])
+            return SCContentFilter(display: display, excludingApplications: excludedApps, exceptingWindows: [])
 
         }
     }

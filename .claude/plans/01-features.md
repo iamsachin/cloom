@@ -21,6 +21,7 @@ Status indicators: **Done** = implemented, **Deferred** = planned for later phas
 | A10 | Recording countdown | 3-2-1 visual countdown via CountdownOverlayWindow | Done |
 | A11 | Pause/Resume | Segment-based: stop VideoWriter on pause, new segment on resume, SegmentStitcher concatenates | Done |
 | A12 | Recording state machine | RecordingCoordinator: idle → selectingContent → countdown → recording → paused → stopping | Done |
+| A13 | Creator Mode | Settings toggle to include Cloom's floating UI panels in recording; skips software compositing, uses SCStream direct capture | Done |
 
 ---
 
