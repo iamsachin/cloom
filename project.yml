@@ -64,6 +64,8 @@ targets:
           - "-lcloom_core"
         SWIFT_OBJC_BRIDGING_HEADER: CloomApp/Sources/Bridge/Cloom-Bridging-Header.h
         SWIFT_ENABLE_EXPLICIT_MODULES: NO
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: ${APPLE_DEVELOPER_TEAM_ID}
         OTHER_SWIFT_FLAGS:
           - "-Xcc"
           - "-Wno-incomplete-umbrella"
