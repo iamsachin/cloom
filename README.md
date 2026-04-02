@@ -30,19 +30,7 @@ brew install --cask cloom
 
 Download the latest DMG from [GitHub Releases](https://github.com/iamsachin/cloom/releases), open it, and drag Cloom to your Applications folder.
 
-### First launch
-
-Cloom is ad-hoc signed (not notarized by Apple), so macOS will block it on first launch. This is a **one-time** step — after you allow it once, it won't ask again.
-
-**Option A** — System Settings:
-1. Open **System Settings → Privacy & Security**
-2. Scroll down and click **Open Anyway** next to the Cloom message
-
-**Option B** — Terminal:
-```bash
-xattr -cr /Applications/Cloom.app
-open /Applications/Cloom.app
-```
+The app is signed with a Developer ID certificate and notarized by Apple — it will open without any Gatekeeper warnings.
 
 ## Requirements (for building from source)
 
