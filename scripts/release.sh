@@ -15,6 +15,11 @@ APP_NAME="Cloom"
 REPO="iamsachin/cloom"
 BUILD_ONLY=false
 
+# Code signing & notarization (set in ~/.zshrc)
+SIGN_IDENTITY="${APPLE_SIGN_IDENTITY:?Set APPLE_SIGN_IDENTITY in ~/.zshrc}"
+TEAM_ID="${APPLE_DEVELOPER_TEAM_ID:?Set APPLE_DEVELOPER_TEAM_ID in ~/.zshrc}"
+NOTARIZE_PROFILE="${CLOOM_NOTARIZE_PROFILE:?Set CLOOM_NOTARIZE_PROFILE in ~/.zshrc}"
+
 # Parse args
 if [ "${1:-}" = "--build-only" ]; then
     BUILD_ONLY=true
@@ -35,12 +40,12 @@ echo "==> Building Cloom v${VERSION}"
 echo ""
 
 # ── Step 1: Build Rust + UniFFI bindings ──────────────────────────────
-echo "==> Step 1/6: Building Rust and generating UniFFI bindings..."
+echo "==> Step 1/7: Building Rust and generating UniFFI bindings..."
 "$PROJECT_ROOT/build.sh"
 
 # ── Step 2: Generate Xcode project ────────────────────────────────────
 echo ""
-echo "==> Step 2/6: Generating Xcode project..."
+echo "==> Step 2/7: Generating Xcode project..."
 if ! command -v xcodegen &>/dev/null; then
     echo "Error: xcodegen is not installed. Install with: brew install xcodegen"
     exit 1
@@ -55,9 +60,9 @@ if [ ! -f "$XCCONFIG" ]; then
     cp "$PROJECT_ROOT/CloomApp/Resources/Secrets.xcconfig.example" "$XCCONFIG"
 fi
 
-# ── Step 4: Archive + ad-hoc sign ─────────────────────────────────────
+# ── Step 4: Archive + Developer ID sign ──────────────────────────────
 echo ""
-echo "==> Step 3/6: Archiving with Xcode (Release configuration)..."
+echo "==> Step 3/7: Archiving with Xcode (Release configuration)..."
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
@@ -69,8 +74,10 @@ xcodebuild archive \
     -destination 'generic/platform=macOS' \
     -configuration Release \
     ARCHS=arm64 \
-    CODE_SIGN_IDENTITY="-" \
+    CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
+    DEVELOPMENT_TEAM="$TEAM_ID" \
     CODE_SIGNING_ALLOWED=YES \
+    ENABLE_HARDENED_RUNTIME=YES \
     -quiet
 
 # Extract .app from archive
@@ -78,13 +85,15 @@ APP_PATH="$BUILD_DIR/${APP_NAME}.app"
 cp -R "$ARCHIVE_PATH/Products/Applications/${APP_NAME}.app" "$APP_PATH"
 
 echo ""
-echo "==> Step 4/6: Ad-hoc code signing..."
-codesign --sign - --force --deep "$APP_PATH"
-codesign --verify --verbose "$APP_PATH" 2>&1 || true
+echo "==> Step 4/7: Signing app with Developer ID (hardened runtime)..."
+codesign --sign "$SIGN_IDENTITY" --force --deep --options runtime \
+    --entitlements "$PROJECT_ROOT/CloomApp/Resources/Cloom.entitlements" \
+    "$APP_PATH"
+codesign --verify --verbose "$APP_PATH"
 
 # ── Step 5: Create DMG ────────────────────────────────────────────────
 echo ""
-echo "==> Step 5/6: Creating DMG..."
+echo "==> Step 5/7: Creating DMG..."
 if ! command -v create-dmg &>/dev/null; then
     echo "Error: create-dmg is not installed. Install with: brew install create-dmg"
     exit 1
@@ -118,9 +127,20 @@ SHA256=$(shasum -a 256 "$DMG_PATH" | cut -d ' ' -f 1)
 echo "    DMG:      $DMG_PATH ($DMG_SIZE_HUMAN)"
 echo "    SHA256:   $SHA256"
 
-# ── Step 6: Sparkle EdDSA signing ─────────────────────────────────────
+# ── Step 6: Notarize DMG ─────────────────────────────────────────────
 echo ""
-echo "==> Step 6/6: Signing DMG with Sparkle EdDSA..."
+echo "==> Step 6/7: Notarizing DMG with Apple..."
+xcrun notarytool submit "$DMG_PATH" \
+    --keychain-profile "$NOTARIZE_PROFILE" \
+    --wait
+
+echo "    Stapling notarization ticket..."
+xcrun stapler staple "$DMG_PATH"
+xcrun stapler validate "$DMG_PATH"
+
+# ── Step 7: Sparkle EdDSA signing ─────────────────────────────────────
+echo ""
+echo "==> Step 7/7: Signing DMG with Sparkle EdDSA..."
 ED_SIG=""
 SIGN_TOOL=$(find ~/Library/Developer/Xcode/DerivedData -name "sign_update" -path "*/Sparkle/bin/*" 2>/dev/null | head -1 || true)
 if [ -n "$SIGN_TOOL" ]; then
@@ -170,7 +190,6 @@ ${CHANGELOG_NOTES}
 
 1. Download \`Cloom-${VERSION}.dmg\` below
 2. Open the DMG and drag **Cloom** to your Applications folder
-3. On first launch, right-click the app and select **Open** (Gatekeeper bypass for unsigned apps)
 
 **Homebrew:**
 \`\`\`bash
