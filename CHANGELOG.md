@@ -5,6 +5,25 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-04-02
+
+### First Stable Release
+
+Cloom graduates to v1.0 — a full-featured, open-source screen recorder for macOS.
+
+**Highlights:**
+- **Screen, window, and app recording** with webcam overlay, system audio, and microphone capture
+- **Non-destructive editor** with trim, cut, stitch, speed control, and timeline thumbnails
+- **AI-powered features** — transcription, titles, summaries, chapters, filler/silence detection, and multi-language caption translation (14 languages)
+- **Annotations & presenter tools** — drawing, text, zoom/magnifier, keystroke visualization, click emphasis, spotlight, and teleprompter overlay
+- **Punch-in re-record** — rewind and re-record from any point without restarting
+- **Social media export presets** — 16:9, 9:16, 1:1, 4:5 with reframing and background options
+- **PII redaction** — blur, pixelate, or black-box sensitive regions in video
+- **Library management** — folders, tags, search, filters, hover preview, drag-and-drop, and comments
+- **Google Drive integration** for cloud uploads
+- **Sparkle auto-updates** with Developer ID signed and Apple-notarized builds
+- **Smart editing** — undo/redo, auto-cut silence/fillers, keyboard-driven workflow (J/K/L, I/O, arrows)
+
 ## [0.7.2] - 2026-03-30
 
 ### Added
