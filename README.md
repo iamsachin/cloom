@@ -22,7 +22,7 @@ Record your screen with webcam overlay, annotate in real time, edit with a non-d
 ### Homebrew (recommended)
 
 ```bash
-brew install --cask iamsachin/cloom/cloom
+brew install iamsachin/cloom/cloom
 ```
 
 ### Manual download
