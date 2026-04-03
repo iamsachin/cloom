@@ -120,11 +120,7 @@ if [ ! -f "$DMG_PATH" ]; then
 fi
 
 DMG_SIZE_HUMAN=$(du -h "$DMG_PATH" | cut -f1)
-DMG_SIZE_BYTES=$(stat -f%z "$DMG_PATH")
-SHA256=$(shasum -a 256 "$DMG_PATH" | cut -d ' ' -f 1)
-
 echo "    DMG:      $DMG_PATH ($DMG_SIZE_HUMAN)"
-echo "    SHA256:   $SHA256"
 
 # ── Step 6: Notarize DMG ─────────────────────────────────────────────
 echo ""
@@ -136,6 +132,11 @@ xcrun notarytool submit "$DMG_PATH" \
 echo "    Stapling notarization ticket..."
 xcrun stapler staple "$DMG_PATH"
 xcrun stapler validate "$DMG_PATH"
+
+# Compute SHA-256 and size AFTER notarization stapling (stapler modifies the DMG)
+DMG_SIZE_BYTES=$(stat -f%z "$DMG_PATH")
+SHA256=$(shasum -a 256 "$DMG_PATH" | cut -d ' ' -f 1)
+echo "    SHA256:   $SHA256 (post-notarization)"
 
 # ── Step 7: Sparkle EdDSA signing ─────────────────────────────────────
 echo ""
