@@ -6,6 +6,7 @@ enum UserDefaultsKeys {
     static let appearanceMode = "appearanceMode"
     static let libraryViewStyle = "libraryViewStyle"
     static let notificationsEnabled = "notificationsEnabled"
+    static let hasSeenMenuBarHint = "hasSeenMenuBarHint"
 
     // MARK: - AI
     static let aiAutoTranscribe = "aiAutoTranscribe"
