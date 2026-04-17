@@ -5,6 +5,18 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-04-17
+
+### Changed
+- **Glass toolbar edge visibility** — recording, ready, annotation, bubble, and keystroke floating toolbars now have a hairline edge stroke so the pill shape stays defined over bright or low-contrast backgrounds (white docs, bright wallpapers, video content).
+- **Onboarding menu bar hint** — after granting permissions, a new second step shows an animated arrow pointing at the menu bar with "Cloom lives in your menu bar — click the Cloom icon to start a recording." Window repositions to top-right so the arrow points at the real icon.
+
+### Added
+- Welcome notification 3s after onboarding dismisses: "Cloom is ready — click the Cloom icon in your menu bar to start a recording." Safety net if the user closes the hint window before discovering the menu bar icon.
+
+### Fixed
+- Keystroke overlay panel now has a proper drop shadow (was previously shadowless).
+
 ## [1.0.2] - 2026-04-02
 
 ### Changed
