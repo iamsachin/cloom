@@ -58,7 +58,7 @@ final class KeystrokeOverlayWindow {
         panel.level = NSWindow.Level(Int(CGShieldingWindowLevel()) + 1)
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = false
+        panel.hasShadow = true
         panel.hidesOnDeactivate = false
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -180,6 +180,6 @@ struct KeystrokePillView: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .glassEffect(in: .rect(cornerRadius: 10))
+            .cloomGlassRoundedRect(cornerRadius: 10)
     }
 }

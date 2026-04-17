@@ -188,7 +188,7 @@ private struct BubbleControlPillContentView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .glassEffect(in: .capsule)
+        .cloomGlassCapsule()
     }
 
     private func formatElapsed(_ seconds: TimeInterval) -> String {

@@ -126,7 +126,7 @@ struct RecordingToolbarContentView: View {
         .animation(.easeInOut(duration: 0.2), value: annotationsEnabled)
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .glassEffect(in: .capsule)
+        .cloomGlassCapsule()
         .accessibilityValue(isPaused ? "Recording paused" : "Recording in progress")
     }
 

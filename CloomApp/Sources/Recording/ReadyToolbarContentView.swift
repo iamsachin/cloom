@@ -121,7 +121,7 @@ struct ReadyToolbarContentView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .glassEffect(in: .capsule)
+        .cloomGlassCapsule()
         .accessibilityValue("Ready to record")
     }
 }
