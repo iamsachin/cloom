@@ -1129,3 +1129,14 @@ Moved annotation tools from a separate floating `AnnotationToolbarPanel` into th
 - [x] Task 260 — Wire annotation callbacks through `RecordingToolbarPanel` and `RecordingCoordinator+UI`: pass tool/color/undo/clear closures from coordinator to content view
 - [x] Task 261 — Remove separate `AnnotationToolbarPanel` usage: `showAnnotationCanvas()` no longer creates or shows `AnnotationToolbarPanel`; `hideAnnotationCanvas()` no longer dismisses it
 
+---
+
+## Phase 48: Glass Visibility Fix
+**Status:** Complete
+
+User feedback: the transparent glass of the floating toolbars was hard to see over bright or low-contrast backgrounds. Fix adds a hairline edge stroke to every `.glassEffect` surface so the pill shape stays defined regardless of what's behind it. Restores the system shadow on the keystroke overlay panel for depth.
+
+- [x] Task 262 — Shared modifier: `CloomApp/Sources/Shared/GlassStyle.swift` adds `cloomGlassCapsule()` and `cloomGlassRoundedRect(cornerRadius:)` view modifiers. Each wraps `.glassEffect(in:)` with a `LinearGradient` strokeBorder overlay (white@30% → white@8%, 0.5pt) matching Apple's Liquid Glass edge highlight.
+- [x] Task 263 — Apply to floating toolbars: `BubbleControlPill`, `RecordingToolbarContentView`, `ReadyToolbarContentView`, `AnnotationToolbarContentView` all switched from `.glassEffect(in: .capsule)` to `.cloomGlassCapsule()`.
+- [x] Task 264 — Keystroke overlay: `KeystrokePillView` switched to `.cloomGlassRoundedRect(cornerRadius: 10)`; `KeystrokeOverlayWindow` panel now has `hasShadow = true` (was `false`) so floating keystroke pills get a proper drop shadow.
+

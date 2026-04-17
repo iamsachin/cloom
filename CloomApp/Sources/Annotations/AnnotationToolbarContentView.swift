@@ -121,7 +121,7 @@ struct AnnotationToolbarContentView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .glassEffect(in: .capsule)
+        .cloomGlassCapsule()
     }
 
     private var colorPickerPopover: some View {
