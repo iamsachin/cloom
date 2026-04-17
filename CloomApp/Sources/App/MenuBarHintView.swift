@@ -3,8 +3,6 @@ import AppKit
 
 /// Shown after a user completes permissions onboarding. Teaches them where
 /// Cloom lives (the menu bar) so a headless LSUIElement app isn't invisible.
-/// Window repositions itself to the top-right so the up-right arrow naturally
-/// points at the actual menu bar icon.
 struct MenuBarHintView: View {
     let onDismiss: () -> Void
 
@@ -12,10 +10,10 @@ struct MenuBarHintView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Image(systemName: "arrow.up.right")
+            Image(systemName: "arrow.up.left")
                 .font(.system(size: 64, weight: .semibold))
                 .foregroundStyle(.tint)
-                .offset(x: arrowOffset, y: -arrowOffset)
+                .offset(x: -arrowOffset, y: -arrowOffset)
                 .animation(
                     .easeInOut(duration: 1.1).repeatForever(autoreverses: true),
                     value: arrowOffset
