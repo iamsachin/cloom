@@ -1140,3 +1140,15 @@ User feedback: the transparent glass of the floating toolbars was hard to see ov
 - [x] Task 263 — Apply to floating toolbars: `BubbleControlPill`, `RecordingToolbarContentView`, `ReadyToolbarContentView`, `AnnotationToolbarContentView` all switched from `.glassEffect(in: .capsule)` to `.cloomGlassCapsule()`.
 - [x] Task 264 — Keystroke overlay: `KeystrokePillView` switched to `.cloomGlassRoundedRect(cornerRadius: 10)`; `KeystrokeOverlayWindow` panel now has `hasShadow = true` (was `false`) so floating keystroke pills get a proper drop shadow.
 
+---
+
+## Phase 49: Menu Bar Discoverability
+**Status:** Complete
+
+User feedback: "the onboarding was a bit unclear, i literally was expecting a Dashboard UI at the start, couldn't find Cloom… until rams showed me a bit how to use." Because Cloom is `LSUIElement=true` (no Dock icon, menu bar only), after permissions finish the user was dropped to a blank screen with no indication the app was alive. This phase adds a second onboarding step that teaches users where the app lives, plus a notification safety net.
+
+- [x] Task 265 — New `MenuBarHintView` (`CloomApp/Sources/App/MenuBarHintView.swift`): animated `arrow.up.right` SF Symbol with repeating bounce, "You're all set! Cloom lives in your menu bar." copy, "Got it" CTA. On appear, repositions the onboarding `NSWindow` to the top-right of the visible screen so the arrow naturally points at the real menu bar icon.
+- [x] Task 266 — Two-step `OnboardingView`: "Let's Record!" no longer dismisses; it advances to `MenuBarHintView` with a spring transition. Only the "Got it" button in step 2 actually completes onboarding. New `UserDefaultsKeys.hasSeenMenuBarHint` flag gates re-entry — once seen, future opens of the onboarding window (e.g. re-granting a permission) skip the hint and auto-finish.
+- [x] Task 267 — Welcome notification: after onboarding dismisses, `NotificationService.post` is scheduled 3s later with "Cloom is ready — click the Cloom icon in your menu bar to start a recording." Safety net in case the user closes the hint window before clicking the menu bar icon.
+- [x] Task 268 — Tests: `MenuBarHintTests` covers the new UserDefaults key existence, default value, and persistence round-trip.
+
