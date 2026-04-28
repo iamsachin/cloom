@@ -47,10 +47,20 @@ extension ScreenCaptureService {
             config.width = (display?.width ?? 1920) * scaleFactor
             config.height = (display?.height ?? 1080) * scaleFactor
 
-        case .window:
-            scaleFactor = 2
-            config.width = 1920 * scaleFactor
-            config.height = 1080 * scaleFactor
+        case .window(let windowID):
+            let window = content.windows.first { $0.windowID == windowID }
+            let displayID: CGDirectDisplayID? = {
+                guard let frame = window?.frame else { return nil }
+                let center = CGPoint(x: frame.midX, y: frame.midY)
+                return content.displays.first { $0.frame.contains(center) }?.displayID
+            }()
+            scaleFactor = displayID.map { screenScaleFactor(for: $0) } ?? 2
+            let pxWidth = Int((window?.frame.width ?? 1920).rounded()) * scaleFactor
+            let pxHeight = Int((window?.frame.height ?? 1080).rounded()) * scaleFactor
+            config.width = pxWidth + (pxWidth % 2)
+            config.height = pxHeight + (pxHeight % 2)
+            config.scalesToFit = true
+            config.preservesAspectRatio = true
 
         case .region(let displayID, let rect):
             scaleFactor = screenScaleFactor(for: displayID)
