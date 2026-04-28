@@ -5,6 +5,11 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2026-04-28
+
+### Fixed
+- **Window capture resolution** — recording a single window no longer resamples into a fixed 3840×2160 canvas. Stream now sizes to the window's actual frame × its display's `backingScaleFactor`, matching what full-screen mode already does. Text-heavy UIs (dashboards, IDEs) stay sharp instead of looking soft and blurry.
+
 ## [1.0.4] - 2026-04-17
 
 ### Changed
