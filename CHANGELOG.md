@@ -5,6 +5,11 @@ All notable changes to Cloom will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-29
+
+### Added
+- **Per-bar selection in silence/filler auto-cut preview** — the orange preview bars on the timeline are now individually toggleable. Click a bar to deselect it (becomes a dashed outline only); click again to re-include it. New `Select All` / `Deselect All` buttons in the toolbar, and the count now reads `N of M`. Default is still all-selected, so the existing one-click "detect → Apply" flow is unchanged.
+
 ## [1.0.5] - 2026-04-28
 
 ### Fixed
