@@ -17,12 +17,27 @@ struct AutoCutToolbarView: View {
 
     @ViewBuilder
     private var previewControls: some View {
+        let selectedCount = state.selectedPreviewIDs.count
+        let totalCount = state.previewCutRanges.count
+
         HStack(spacing: 6) {
             Image(systemName: "eye")
                 .foregroundStyle(.orange)
-            Text("\(state.previewCutRanges.count) \(state.previewCutLabel)")
+            Text("\(selectedCount) of \(totalCount) \(state.previewCutLabel)")
                 .font(.caption)
                 .foregroundStyle(.orange)
+
+            Button("Select All") {
+                state.selectAllPreviews()
+            }
+            .controlSize(.small)
+            .disabled(selectedCount == totalCount)
+
+            Button("Deselect All") {
+                state.deselectAllPreviews()
+            }
+            .controlSize(.small)
+            .disabled(selectedCount == 0)
 
             Button("Apply") {
                 state.applyPreviewedCuts()
@@ -30,6 +45,7 @@ struct AutoCutToolbarView: View {
             .buttonStyle(.glassProminent)
             .tint(.orange)
             .controlSize(.small)
+            .disabled(selectedCount == 0)
 
             Button("Cancel") {
                 state.dismissCutPreview()
