@@ -5,6 +5,8 @@ struct EditorTimelineView: View {
     var cutMarkInMs: Int64? = nil
 
     @State private var isDragging = false
+    @State private var gestureStartHandled = false
+    @State private var gestureConsumedBySelection = false
 
     var body: some View {
         // Read @Observable properties in view builder context so SwiftUI tracks changes
@@ -63,6 +65,16 @@ struct EditorTimelineView: View {
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
+                        if !gestureStartHandled {
+                            gestureStartHandled = true
+                            if editorState.isShowingCutPreview,
+                               let hit = previewBarHit(at: value.location.x, width: width) {
+                                editorState.togglePreviewSelection(hit)
+                                gestureConsumedBySelection = true
+                                return
+                            }
+                        }
+                        if gestureConsumedBySelection { return }
                         isDragging = true
                         let fraction = max(0, min(1, value.location.x / width))
                         let ms = Int64(Double(durationMs) * fraction)
@@ -70,6 +82,8 @@ struct EditorTimelineView: View {
                     }
                     .onEnded { _ in
                         isDragging = false
+                        gestureStartHandled = false
+                        gestureConsumedBySelection = false
                     }
             )
         }
@@ -346,6 +360,24 @@ struct EditorTimelineView: View {
     }
 
     // MARK: - Helpers
+
+    /// Returns the ID of the preview bar under the given click x, if any.
+    /// Hit-tests in pixel space using the same `max(_, 2)` width floor as the
+    /// overlay, so the click target matches what the user sees.
+    private func previewBarHit(at clickX: CGFloat, width: CGFloat) -> UUID? {
+        let durationMs = editorState.durationMs
+        guard durationMs > 0 else { return nil }
+        for range in editorState.previewCutRanges {
+            let startFrac = CGFloat(range.startMs) / CGFloat(durationMs)
+            let endFrac = CGFloat(range.endMs) / CGFloat(durationMs)
+            let barX = startFrac * width
+            let barW = max((endFrac - startFrac) * width, 2)
+            if clickX >= barX && clickX <= barX + barW {
+                return range.id
+            }
+        }
+        return nil
+    }
 
     private func formatMs(_ ms: Int64) -> String {
         let totalSeconds = Int(ms / 1000)

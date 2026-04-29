@@ -35,7 +35,8 @@ final class EditorState {
     private(set) var transcriptSentences: [TranscriptSentence] = []
 
     // Auto-cut preview ranges (shown on timeline before applying)
-    private(set) var previewCutRanges: [(startMs: Int64, endMs: Int64)] = []
+    private(set) var previewCutRanges: [PreviewCutRange] = []
+    private(set) var selectedPreviewIDs: Set<UUID> = []
     private(set) var previewCutLabel: String = ""  // "silences" or "filler words"
     var isShowingCutPreview: Bool { !previewCutRanges.isEmpty }
 
@@ -466,8 +467,9 @@ final class EditorState {
 
     /// Show silence ranges as preview highlights on the timeline.
     func previewSilenceRemoval() {
-        let ranges = silenceRanges.map { (startMs: $0.startMs, endMs: $0.endMs) }
+        let ranges = silenceRanges.map { PreviewCutRange(startMs: $0.startMs, endMs: $0.endMs) }
         previewCutRanges = ranges
+        selectedPreviewIDs = Set(ranges.map(\.id))
         previewCutLabel = "silences"
     }
 
@@ -475,22 +477,55 @@ final class EditorState {
     func previewFillerRemoval() {
         let ranges = transcriptWords
             .filter { $0.isFillerWord }
-            .map { (startMs: $0.startMs, endMs: $0.endMs) }
+            .map { PreviewCutRange(startMs: $0.startMs, endMs: $0.endMs) }
         previewCutRanges = ranges
+        selectedPreviewIDs = Set(ranges.map(\.id))
         previewCutLabel = "filler words"
     }
 
-    /// Apply the previewed cut ranges as actual EDL cuts.
+    /// Toggle whether a single preview range is selected for cutting.
+    func togglePreviewSelection(_ id: UUID) {
+        if selectedPreviewIDs.contains(id) {
+            selectedPreviewIDs.remove(id)
+        } else {
+            selectedPreviewIDs.insert(id)
+        }
+    }
+
+    /// Mark every previewed range as selected.
+    func selectAllPreviews() {
+        selectedPreviewIDs = Set(previewCutRanges.map(\.id))
+    }
+
+    /// Clear the preview selection without dismissing the preview.
+    func deselectAllPreviews() {
+        selectedPreviewIDs = []
+    }
+
+    /// Apply the selected previewed cut ranges as actual EDL cuts.
     func applyPreviewedCuts() {
-        addCuts(ranges: previewCutRanges)
+        let ranges = Self.filterSelectedRanges(previewCutRanges, selectedIDs: selectedPreviewIDs)
+        addCuts(ranges: ranges)
         previewCutRanges = []
+        selectedPreviewIDs = []
         previewCutLabel = ""
     }
 
     /// Dismiss the preview without applying.
     func dismissCutPreview() {
         previewCutRanges = []
+        selectedPreviewIDs = []
         previewCutLabel = ""
+    }
+
+    /// Pure helper: keep only ranges whose IDs are in the selection set.
+    nonisolated static func filterSelectedRanges(
+        _ ranges: [PreviewCutRange],
+        selectedIDs: Set<UUID>
+    ) -> [(startMs: Int64, endMs: Int64)] {
+        ranges
+            .filter { selectedIDs.contains($0.id) }
+            .map { (startMs: $0.startMs, endMs: $0.endMs) }
     }
 
     // MARK: - Persistence
@@ -555,4 +590,18 @@ struct ChapterSnapshot: Identifiable {
     let id: String
     let title: String
     let startMs: Int64
+}
+
+/// A previewed silence/filler range awaiting Apply. Carries an ID so individual
+/// ranges can be selected or deselected before being committed as EDL cuts.
+struct PreviewCutRange: Identifiable, Sendable, Equatable {
+    let id: UUID
+    let startMs: Int64
+    let endMs: Int64
+
+    init(id: UUID = UUID(), startMs: Int64, endMs: Int64) {
+        self.id = id
+        self.startMs = startMs
+        self.endMs = endMs
+    }
 }
